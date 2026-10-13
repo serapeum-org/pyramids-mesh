@@ -118,3 +118,6 @@ pr-diff-review-*.md
 # Local-only project instructions (not shared on remote)
 CLAUDE.md
 .claude/
+
+# Local-only planning notes (design + task briefs, not shared on remote)
+planning/
