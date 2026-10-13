@@ -1,7 +1,13 @@
 # ADR-0003: Scope boundary with pyramids-gis
 
-- Status: Accepted
+- Status: Superseded by [ADR-0005](0005-file-format-drivers.md)
 - Date: 2026-10-13
+
+> **Superseded 2026-10-13.** The three-concerns decision below (generation, quality,
+> refinement) was written during scaffolding and was not the intended scope. This package is
+> a file-format driver package; see [ADR-0005](0005-file-format-drivers.md), which restates
+> every boundary rule from this ADR unchanged. Kept for the record; do not act on its
+> Decision section.
 
 ## Context
 

@@ -1,8 +1,9 @@
 # pyramids-mesh
 
-The unstructured-mesh tier of the [pyramids](https://github.com/serapeum-org/pyramids) GIS stack.
-It extends the UGRID support `pyramids-gis` already ships (`pyramids.netcdf.ugrid`) with the
-operations that tier deliberately leaves out: **generation**, **quality**, and **refinement**.
+Reads and writes the file formats of hydrodynamic and hydraulic mesh models — 2DM, Selafin, DFSU,
+XMDF, PLY and more — as [pyramids](https://github.com/serapeum-org/pyramids) UGRID objects.
+`pyramids-gis` already ships the mesh data model and every operation that follows from a topology
+in hand; what it cannot do is open other people's mesh files. That is this package's only job.
 
 ## The layer boundary
 
@@ -19,15 +20,21 @@ mesh *data model* and everything that follows from a topology already in hand:
 | Mesh ↔ vector, gap filling, xarray / zarr hand-off | `pyramids.netcdf.ugrid.{vector_ops,fill,interop_xarray}` |
 | Mesh rendering | `pyramids.netcdf.ugrid.plot` → cleopatra `MeshGlyph` |
 
-**pyramids-mesh** adds the three things that are missing from that list:
+**pyramids-mesh** adds the one thing that is missing from that list — **the ability to open other
+people's mesh files**:
 
-- **Generation** — building a mesh where no topology exists yet, rather than flattening a grid or a
-  polygon layer that already carries one.
-- **Quality** — per-element metrics (aspect ratio, skewness, orthogonality) and quality-driven
-  smoothing.
-- **Refinement** — local refinement and coarsening of an existing mesh.
+| Concern | Lives in |
+|---|---|
+| Reading 2DM, Selafin, DFSU, XMDF, XDMF, DAT, FLO-2D, 3Di, PLY, TIN, … | `pyramids_mesh.drivers` |
+| Writing 2DM, Selafin, DAT, PLY, Mike21 | `pyramids_mesh.drivers` |
+| Driver discovery via the `pyramids.mesh_drivers` entry points | `pyramids-gis` reads, this package registers |
 
-Anything that belongs on the left-hand side of that table is a change to `pyramids-gis`, not a
+A survey of [MDAL](https://github.com/lutraconsulting/MDAL) — the library QGIS uses for mesh
+layers — found `pyramids-gis` reads exactly one of its eighteen driver families (UGRID NetCDF).
+The other seventeen are what this package is for. In the other direction MDAL performs no
+interpolation, regridding, reprojection or graph analysis, all of which `pyramids-gis` already has.
+
+Anything that belongs on the left-hand side of the first table is a change to `pyramids-gis`, not a
 feature of this package. Report it upstream rather than duplicating it here.
 
 ## Status

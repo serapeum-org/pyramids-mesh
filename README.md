@@ -4,10 +4,11 @@
 
 # pyramids-mesh
 
-**pyramids-mesh** is the unstructured-mesh tier of the
-[pyramids](https://github.com/serapeum-org/pyramids) GIS stack. It extends the UGRID support that
-`pyramids-gis` already ships — `pyramids.netcdf.ugrid` — with the operations that tier deliberately
-leaves out.
+**pyramids-mesh** reads and writes the file formats of hydrodynamic and hydraulic mesh models —
+2DM, Selafin, DFSU, XMDF, PLY and more — as [pyramids](https://github.com/serapeum-org/pyramids)
+UGRID objects. `pyramids-gis` already ships the mesh data model and every operation that follows
+from a topology in hand; what it cannot do is open other people's mesh files. That is this
+package's job, and its only job.
 
 What `pyramids-gis` owns today, and this package therefore does not reimplement:
 
@@ -21,12 +22,17 @@ What `pyramids-gis` owns today, and this package therefore does not reimplement:
 - **Conversion** — mesh ↔ vector, construction from a raster grid or a polygon layer, xarray/zarr
   hand-off, gap filling.
 
-What this package adds:
+What this package adds — **file-format drivers, and nothing else**:
 
-- **Generation** — building a mesh where no topology exists yet.
-- **Quality** — element metrics (aspect ratio, skewness, orthogonality) and quality-driven
-  smoothing.
-- **Refinement** — local refinement and coarsening of an existing mesh.
+- **Readers** for the native formats of hydrodynamic and hydraulic solvers: 2DM (SMS / TUFLOW /
+  BASEMENT), Selafin (TELEMAC), DFSU and DFS2 (DHI MIKE), XMDF and XDMF, DAT, FLO-2D, 3Di, H2i,
+  Mike21, HEC-RAS 2D, plus the geometry interchange formats PLY and TIN.
+- **Writers** for the formats that support it — 2DM, Selafin, DAT, PLY, Mike21.
+- **Discovery** through the `pyramids.mesh_drivers` entry-point group, so
+  `UgridDataset.read_file("model.slf")` just works once this package is installed.
+
+Every mesh *operation* belongs upstream in `pyramids-gis`. A driver parses a file and builds
+`pyramids.netcdf.ugrid` objects; it implements no GIS, no interpolation and no analysis.
 
 > **Status** — `0.1.0` is the repository scaffold: packaging, CI, docs and the import contract. No
 > mesh API is published yet. Follow the [change log](docs/change-log.md) for what lands.
