@@ -64,7 +64,9 @@ repos:
         exclude: ^(examples/|tests/)
 
   - repo: https://github.com/ambv/black
-    rev: 24.10.0
+    # Keep in step with the `black==` pin in pyproject.toml's dev group; see the
+    # comment there for why it may not go below 26.3.1.
+    rev: 26.10.1
     hooks:
       - id: black
         name: "[py   - format] black"

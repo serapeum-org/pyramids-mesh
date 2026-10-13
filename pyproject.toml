@@ -76,7 +76,12 @@ dev = [
     "pytest-mock>=3.12.0",
     # Same versions the pre-commit hooks pin, so `pixi run -e dev python -m black`,
     # `-m flake8` and `-m pydocstyle` match what CI and the hooks enforce.
-    "black==24.10.0",
+    #
+    # black must stay >= 26.3.1: 24.10.0 (which digital-rivers still pins, and
+    # this file inherited) carries PYSEC-2026-2120 and PYSEC-2026-2121, so
+    # `pip-audit.yml` fails on the py311 resolution. Keep this pin and the
+    # `.pre-commit-config.yaml` rev in step.
+    "black==26.10.1",
     "flake8==7.1.1",
     "Flake8-pyproject>=1.2.3",
     "pydocstyle==6.3.0"
