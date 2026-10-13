@@ -50,17 +50,3 @@ def test_unit_square_mesh_fixture(unit_square_mesh):
     assert face_node_connectivity.shape == (2, 3)
 
 
-@pytest.mark.plot
-def test_viz_extra_is_installed():
-    """The `viz` extra resolves: cleopatra and its matplotlib backend import.
-
-    Marked `plot` so the main suite (`-m 'not plot'`) stays runnable on a bare
-    install, and so the `plot` task has at least one test to select — pytest
-    exits 5 ("no tests collected") on an empty selection, which CI reads as a
-    failed step.
-    """
-    import cleopatra
-    import matplotlib
-
-    assert cleopatra is not None
-    assert matplotlib is not None

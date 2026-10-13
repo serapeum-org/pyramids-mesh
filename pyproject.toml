@@ -56,8 +56,29 @@ dependencies = [
 [project.optional-dependencies]
 # No `viz` extra. A driver returns data and the caller plots it, through pyramids
 # and cleopatra — this package declares no plotting code and therefore no plotting
-# dependency (ADR-0005). Per-format extras are added as their drivers land:
-# `dhi` (mikeio), `interchange` (meshio), `hdf` (h5py).
+# dependency (ADR-0005).
+#
+# One extra per dependency-backed driver family. A driver whose extra is absent
+# raises `OptionalPackageDoesNotExist` from `require_optional` at driver-module
+# import, and pyramids' registry skips it with a warning — so a bare install stays
+# small and every other driver keeps working.
+
+# DHI MIKE: DFSU (unstructured) and DFS2 (structured grid). MDAL does not parse
+# these at all — its DFS support is an external driver needing DHI's proprietary
+# NuGet packages on Windows + Visual Studio + MFC. mikeio is DHI's own Python
+# library and the only portable route. It is the heaviest extra here: it pulls
+# mikecore, pandas, matplotlib, scipy and tqdm.
+dhi = ["mikeio >=3.0.0"]
+
+# PLY and the TIN formats — geometry interchange rather than solver output, and
+# the one family where a mature MIT parser already exists. meshio's own deps are
+# just numpy + rich.
+interchange = ["meshio >=5.3.0"]
+
+# HDF5-backed result containers: XMDF, XDMF, HEC-RAS 2D.
+hdf = ["h5py >=3.10.0"]
+
+all = ["pyramids-mesh[dhi,interchange,hdf]"]
 
 [dependency-groups]
 dev = [
@@ -174,9 +195,12 @@ style = [
 pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [
-    "plot: test needing the optional plotting stack (deselect with '-m \"not plot\"')",
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
-    "fast: mark test as fast (deselect with '-m \"not fast\"')"
+    "fast: mark test as fast (deselect with '-m \"not fast\"')",
+    # A test needing a vendor sample file rather than a hand-built fixture. Those
+    # files are binary and large, so they are fetched in CI and never committed;
+    # the default run deselects them with '-m \"not vendor_data\"'.
+    "vendor_data: test needing a fetched vendor sample file"
 ]
 
 
@@ -197,9 +221,11 @@ platforms = ["win-64", "linux-64", { platform = "osx-arm64", macos = "14.0" }]
 pyramids-mesh = { path = ".", editable = true }
 # The editable self-install is the only entry, and there is no
 # [tool.pixi.dependencies] table at all: every environment is built from the
-# standard declarations — runtime deps from [project.dependencies], plotting
-# from the `viz` extra, tooling from the `dev` / `docs` dependency groups — all
-# resolved from PyPI.
+# standard declarations — runtime deps from [project.dependencies], tooling from
+# the `dev` / `docs` dependency groups — all resolved from PyPI. The per-driver
+# extras (`dhi`, `interchange`, `hdf`) are declared for pip users and are
+# deliberately in no pixi environment yet: each is wired into one when the driver
+# that needs it lands, so the lock never carries a dependency nothing imports.
 #
 # In particular there is no conda `gdal`: the pyramids-gis wheel vendors its own
 # osgeo and `import pyramids` prepends that directory to `sys.path`, so a conda
@@ -208,8 +234,10 @@ pyramids-mesh = { path = ".", editable = true }
 # requirements from [project.dependencies].
 
 [tool.pixi.tasks]
-main = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv -m 'not plot' --cov-report=xml", description = "Run the main test suite" }
-plot = { cmd = "pytest -vvv --cov=src/pyramids_mesh --cov-append -sv -m 'plot' --cov-report=xml", description = "Run the plot test suite" }
+# No `plot` task: this package declares no plotting code and no plotting
+# dependency (ADR-0005). `main` therefore runs everything except the
+# vendor-sample tests, whose files are fetched rather than committed.
+main = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv -m 'not vendor_data' --cov-report=xml", description = "Run the main test suite" }
 test-all = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv --cov-report=xml --cov-report=term-missing", description = "Run the whole test suite" }
 notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples", description = "check notebooks" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
