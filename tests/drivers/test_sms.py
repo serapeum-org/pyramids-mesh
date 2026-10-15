@@ -509,6 +509,32 @@ def test_2dm_header_found_past_a_long_comment_header(tmp_path):
     assert TwoDmDriver().read(path).mesh.n_face == 2
 
 
+@pytest.mark.parametrize("header", ["MESH2D", "MESH2DX"])
+@pytest.mark.parametrize("offset", range(4088, 4100))
+def test_2dm_sniff_agrees_with_read_across_a_block_boundary(tmp_path, header, offset):
+    """``can_open`` agrees with ``read`` wherever the block edge falls.
+
+    The sniff reads in blocks, and a verdict taken from the last element of
+    ``splitlines()`` is a verdict taken from a line that is still being read. With the
+    boundary inside the first significant line that declined valid ``MESH2D`` files and
+    accepted ``MESH2DX`` truncated to exactly ``MESH2D`` -- both of the asymmetries the
+    sniff exists to prevent, at a six-byte window every 4096 bytes.
+    """
+    padding = "#" + "x" * (offset - 2) + "\n"
+    assert len(padding) == offset
+    body = _UNIT_SQUARE.replace("MESH2D", header, 1)
+    path = _write(tmp_path, padding + body)
+
+    can_open = TwoDmDriver().can_open(path)
+    try:
+        TwoDmDriver().read(path)
+        readable = True
+    except FileFormatNotSupportedError:
+        readable = False
+
+    assert can_open is readable, f"offset {offset}, header {header}"
+
+
 def test_2dm_can_open_declines_a_file_that_is_only_comments(tmp_path):
     """A file with no significant line at all is still declined, and bounded."""
     path = _write(tmp_path, "# nothing here\n" * 2000)

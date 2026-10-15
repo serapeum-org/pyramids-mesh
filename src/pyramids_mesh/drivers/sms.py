@@ -280,21 +280,26 @@ class TwoDmDriver(BaseDriver):
             bool: ``True`` when the first significant line starts with ``MESH2D``.
         """
         with open(path, "rb") as handle:
-            buffer = b""
-            while len(buffer) < _SNIFF_LIMIT:
+            pending = b""
+            consumed = 0
+            while consumed < _SNIFF_LIMIT:
                 block = handle.read(_SNIFF_BLOCK)
                 if not block:
-                    break
-                buffer += block
-                # `utf-8-sig` drops a byte-order mark, which Windows editors add and
-                # which would otherwise make the first token '﻿MESH2D'.
-                for line in buffer.decode("utf-8-sig", errors="replace").splitlines():
-                    stripped = line.strip()
-                    if stripped and not stripped.startswith(_COMMENT):
-                        # Compare the first token for equality, exactly as the parser
-                        # does. A `startswith` here accepted MESH2DX, which the parser
-                        # then refused: the sniff must not be looser than the parser.
-                        return stripped.split()[0].upper() == _HEADER
+                    # End of file, so whatever is left is a whole line after all.
+                    return _header_verdict(pending) is True
+                consumed += len(block)
+                # Only ever judge complete lines. Deciding on the tail of the buffer
+                # means deciding on a line still being read: with a block edge inside
+                # the first significant line that declined valid files and accepted a
+                # MESH2DX truncated to exactly MESH2D. Splitting on the last newline
+                # also keeps the work linear, and is a safe character boundary because
+                # no UTF-8 continuation byte can be 0x0A.
+                complete, newline, pending = (pending + block).rpartition(b"\n")
+                if not newline:
+                    continue
+                verdict = _header_verdict(complete)
+                if verdict is not None:
+                    return verdict
         return False
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
@@ -589,6 +594,27 @@ class _Scan:
                 values=np.array(column, dtype=np.float64),
             )
         return variables
+
+
+def _header_verdict(chunk: bytes) -> bool | None:
+    """Judge the first significant line of a chunk of complete lines.
+
+    Args:
+        chunk: Bytes holding whole lines only.
+
+    Returns:
+        bool | None: Whether the first significant line is the ``MESH2D`` header, or
+            ``None`` when the chunk holds no significant line and the answer is still
+            undecided. The first token is compared for equality, exactly as the parser
+            compares it, so the sniff is neither stricter nor looser than ``read``.
+    """
+    # `utf-8-sig` drops a byte-order mark, which Windows editors add and which would
+    # otherwise make the first token '﻿MESH2D'.
+    for line in chunk.decode("utf-8-sig", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith(_COMMENT):
+            return stripped.split()[0].upper() == _HEADER
+    return None
 
 
 def _as_int(value: str, keyword: str, path: str) -> int:
