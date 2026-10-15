@@ -1,8 +1,9 @@
-"""SMS-family drivers: 2DM (mesh frame) and DAT (results-only).
+"""SMS-family drivers: the 2DM mesh frame, with the results-only DAT still to come.
 
-2DM is the reference driver every later one copies (task D1). DAT carries values but
-no topology, so it declares ``needs_mesh`` and implements ``read_data`` rather than
-``read`` (task D2). See ``planning/design.md`` section 20.1.
+2DM is the reference driver every later one copies (task D1), and the only one this
+module holds today. DAT carries values but no topology, so when it lands it will declare
+``needs_mesh`` and implement ``read_data`` rather than ``read`` (task D2). See
+``planning/design.md`` section 20.1.
 
 The 2DM structure here was verified against MDAL's ``mdal_2dm.cpp``: a plain-text file
 whose first significant line is ``MESH2D``, then one record per line.
@@ -96,7 +97,13 @@ class TwoDmDriver(BaseDriver):
           ``Network1d`` has no parameter for them. Each is named in a warning rather
           than dropped quietly. That is a ``pyramids-gis`` limitation to fix upstream.
         - ``node_z`` is omitted entirely when no ``ND`` record carries a z column,
-          rather than fabricated as zeros.
+          rather than fabricated as zeros. A file whose ``ND`` records disagree about
+          that column is refused instead: a fabricated ``0.0`` cannot be told from a
+          real zero datum, so there is nothing safe to fill the gaps with.
+        - ``NUM_MATERIALS_PER_ELEM`` is accepted from 1 to 16 columns. Each column
+          allocates a face-length array and a variable from a count a file supplied, so
+          one corrupt line must not be able to ask for thousands; MDAL's practical
+          limit is single digits.
         - 2DM carries no CRS, so ``crs`` is always ``None``; it is never guessed from
           the coordinate magnitudes.
 
@@ -283,6 +290,13 @@ class TwoDmDriver(BaseDriver):
         are read until the first significant line or ``_SNIFF_LIMIT`` bytes, so a file
         whose comment header runs long is not declined for that alone.
 
+        Each block is split at its last newline and the remainder carried into the next
+        one, so only a line that has been read to its end is ever judged; the leftover
+        is judged at end of file, where it is a whole line after all. Deciding on the
+        buffer's tail instead meant deciding on a line still arriving: with a block edge
+        falling inside the first significant line, that declined valid files and
+        accepted a ``MESH2DX`` truncated to exactly ``MESH2D``.
+
         Blank and comment lines are skipped, exactly as
         :func:`~pyramids_mesh._text.iter_records` skips them while parsing. The two must
         agree: a sniff stricter than the parser would decline a file this driver can
@@ -336,8 +350,9 @@ class TwoDmDriver(BaseDriver):
             FileFormatNotSupportedError: If the ``MESH2D`` header is missing, an
                 unsupported element type appears, the file declares no elements, a
                 record is short of the fields its keyword requires, a numeric field is
-                not a number, or ``NUM_MATERIALS_PER_ELEM`` declares fewer than one
-                column.
+                not a number, ``NUM_MATERIALS_PER_ELEM`` declares a column count
+                outside 1 to 16, or the ``ND`` records disagree about whether they
+                carry a z column.
             ValueError: If an element references a node id the file never defined, or
                 two nodes, two faces or two line elements share an id.
         """
@@ -465,7 +480,10 @@ class _Scan:
 
         Raises:
             FileFormatNotSupportedError: If the record is short of an id and both
-                coordinates.
+                coordinates, or if it disagrees with an earlier ``ND`` record about the
+                z column -- in either direction, since whichever kind came first, a
+                datum would have to be invented for the records without one. A file
+                where *no* record carries z is fine: ``node_z`` is then omitted.
         """
         _require_fields(_NODE, fields, 3, path)
         self.node_ids.append(_as_int(fields[0], _NODE, path))
@@ -526,7 +544,10 @@ class _Scan:
 
         Raises:
             FileFormatNotSupportedError: If the file declares no elements at all.
-            ValueError: If an element references an undefined node id.
+            ValueError: If an element references an undefined node id, or if two nodes,
+                two faces or two line elements share an id. Nothing in a 2DM references
+                an element by id, so the element maps are built for their duplicate
+                check alone.
         """
         if not self.face_vertices and not self.edge_vertices:
             raise FileFormatNotSupportedError(

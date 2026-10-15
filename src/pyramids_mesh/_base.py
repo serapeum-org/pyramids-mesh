@@ -223,20 +223,71 @@ class BaseDriver:
     def can_open(self, path: str) -> bool:
         """Report whether this driver recognises the file, without ever raising.
 
-        The default is a suffix match followed by ``_sniff``. An empty file, a file of
-        another format, a directory or a missing path all answer ``False``, and a
-        ``_sniff`` that fails for any reason is reported as a warning and the file
-        declined, so a broken candidate cannot abort driver dispatch.
+        A missing path or a directory answers ``False``, and so does a suffix this
+        driver does not claim. Everything about the file's *content* is the subclass's
+        ``_sniff`` to judge, and the default ``_sniff`` judges nothing -- so on
+        ``BaseDriver`` itself an empty file with a claimed suffix answers ``True``. A
+        driver that means to decline an empty or foreign file reads a header signature,
+        as :meth:`~pyramids_mesh.drivers.sms.TwoDmDriver._sniff` does.
 
-        The path checks sit outside that guard: a ``TypeError`` from being handed
-        something that is not a path is the caller's mistake, not a verdict about a
-        file, so it propagates.
+        A ``_sniff`` that fails for any reason is reported as a warning and the file
+        declined, so a broken candidate cannot abort driver dispatch. Only ``_sniff``
+        sits inside that guard: a ``TypeError`` from being handed something that is not
+        a path is the caller's mistake, not a verdict about a file, so it propagates.
 
         Args:
             path: The filesystem path to test.
 
         Returns:
             bool: ``True`` only when the suffix matches and ``_sniff`` accepts the file.
+
+        Examples:
+            - The path checks and the suffix are all the base class decides. With the
+              default ``_sniff``, which accepts whatever reaches it, an empty file
+              under a claimed suffix is recognised and a missing one is not:
+
+                >>> import os
+                >>> import tempfile
+                >>> from pyramids_mesh._base import BaseDriver
+                >>> class TinyDriver(BaseDriver):
+                ...     name = "tiny"
+                ...     suffixes = (".tiny",)
+                >>> driver = TinyDriver()
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     empty = os.path.join(directory, "empty.tiny")
+                ...     open(empty, "wb").close()
+                ...     verdicts = (
+                ...         driver.can_open(empty),
+                ...         driver.can_open(os.path.join(directory, "gone.tiny")),
+                ...         driver.can_open(directory),
+                ...     )
+                >>> verdicts
+                (True, False, False)
+
+            - A ``_sniff`` that raises never escapes: the file is declined and the
+              driver named, so one broken candidate cannot abort dispatch for the rest:
+
+                >>> import os
+                >>> import tempfile
+                >>> import warnings
+                >>> from pyramids_mesh._base import BaseDriver
+                >>> class BrokenSniffDriver(BaseDriver):
+                ...     name = "broken"
+                ...     suffixes = (".tiny",)
+                ...
+                ...     def _sniff(self, path):
+                ...         raise RuntimeError("header parser is wrong")
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     path = os.path.join(directory, "f.tiny")
+                ...     with open(path, "wb") as handle:
+                ...         _ = handle.write(b"anything at all")
+                ...     with warnings.catch_warnings(record=True) as caught:
+                ...         warnings.simplefilter("always")
+                ...         verdict = BrokenSniffDriver().can_open(path)
+                >>> verdict
+                False
+                >>> str(caught[0].message).split(" and ")[-1]
+                'is treated as declining it: RuntimeError: header parser is wrong'
         """
         # Outside the guard on purpose: a bad argument type is the caller's error, not a
         # verdict about a file, so it propagates rather than becoming a warning.
@@ -305,6 +356,16 @@ class BaseDriver:
 
         Returns:
             UgridDataset | Network1d: The built mesh, or a network for a 1D topology.
+
+        Raises:
+            ValueError: If ``mesh_name`` is not one of the topologies ``mesh_names``
+                offers for this file, if the driver offers a 1D topology its ``_parse``
+                did not produce, if a synthesised variable would collide with one the
+                file already defines, or on any invariant
+                :func:`~pyramids_mesh._validate.validate_and_normalise` enforces.
+            Exception: Whatever ``_parse`` raises for a malformed file -- a format
+                driver raises ``FileFormatNotSupportedError``, which is pyramids' own
+                type rather than one invented here.
 
         Examples:
             - A driver implements ``_parse`` and inherits everything else. Here the
@@ -539,6 +600,12 @@ class BaseDriver:
         silently, each omission is warned about by name. Carrying it properly needs
         ``Network1d`` to grow somewhere to put it, which is upstream work in
         ``pyramids-gis``, not something to fake here.
+
+        Raises:
+            ValueError: If this read was routed to the 1D path but the parse holds no
+                edges for it -- a driver whose ``mesh_names`` offers a network its
+                ``_parse`` never produced. Returning an empty ``Network1d`` would make
+                that a silent answer to a question the file cannot answer.
         """
         edges = self._network_edges(parsed)
         if edges is None:
@@ -668,6 +735,13 @@ class BaseDriver:
 
         Returns:
             dict[str, MeshVariable]: The data variables, keyed by name.
+
+        Raises:
+            ValueError: If a synthesised name is already taken -- a variable whose
+                active mask would be attached as ``<var>_active`` when the file defines
+                ``<var>_active`` itself, or a parse carrying both a ``node_z``
+                coordinate and a variable of that name. Either way one would silently
+                replace the other.
         """
         built: dict[str, MeshVariable] = {}
         for var_name, parsed_var in parsed.variables.items():

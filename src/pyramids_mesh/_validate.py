@@ -9,12 +9,19 @@ that forgets one produces wrong numbers rather than an error.
 3. The fill value does not collide with a valid index (``-1``).
 4. Face winding is counter-clockwise -- area, centroid, ``polygonize`` and ``voronoi``
    all assume it.
-5. Every variable's declared shape matches its element and time counts.
+5. Every variable's declared shape matches its element and time counts, and every
+   per-node and per-face array is as long as the topology it describes.
 
-Checks 1-3 raise on the unrecoverable (an out-of-range index, a ragged array, a fill
-value indistinguishable from a real index); check 4 corrects what it can and leaves a
-genuinely degenerate face alone with a warning; check 5 reads ``shape`` only, never the
-values, so it never defeats a lazy load.
+Before any of those, a topology that calls itself two-dimensional must actually carry
+faces: construction accepted a face-less one and the ``IndexError`` surfaced only when a
+caller later asked for ``n_face``, a long way from the driver that caused it.
+
+Checks 1-3 raise on the unrecoverable: an out-of-range index, a ragged array, an edge
+row that does not join exactly two nodes, a fill value indistinguishable from a real
+index. Check 4 corrects what it can -- a clockwise face is reversed, a genuinely
+degenerate one is left alone with a warning -- but still raises on a row no winding rule
+can apply to: padding between real vertices, or fewer than three real nodes. Check 5
+reads ``shape`` only, never the values, so it never defeats a lazy load.
 
 Normalisation also settles the two index bases: ``start_index`` becomes ``0`` (the
 re-basing is done) and ``original_start_index`` becomes the base a writer should emit,
@@ -52,11 +59,13 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
 
     Raises:
         ValueError: If a two-dimensional topology carries no faces, and on an
-            out-of-range index, a ragged connectivity array, a fill value
-            that collides with a valid index, a per-node or per-face array whose length
-            disagrees with the topology, a variable carrying both or neither of
-            ``values``/``loader``, a variable whose shape does not match its element and
-            time counts, or a face row padded between its real vertices.
+            out-of-range index, a ragged connectivity array, an edge row that does not
+            join exactly two nodes, a fill value that collides with a valid index, a
+            per-node or per-face array whose length disagrees with the topology, a
+            variable carrying both or neither of ``values``/``loader``, a variable or
+            active mask whose shape does not match its element and time counts, or a
+            face row padded between its real vertices or holding fewer than three of
+            them.
 
     Examples:
         - A 1-based file becomes 0-based. The copy then says so -- ``start_index`` is
@@ -106,6 +115,21 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             ... except ValueError as error:
             ...     print(str(error).split(";")[0])
             faces fill_value 0 collides with a valid index (base 0, 3 nodes)
+
+        - A parse that forgot its faces but still calls itself two-dimensional is
+          refused here, rather than building a mesh whose ``n_face`` raises later:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh
+            >>> faceless = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 2.0]),
+            ...     node_y=np.array([0.0, 0.0, 0.0]),
+            ... )
+            >>> try:
+            ...     validate_and_normalise(faceless)
+            ... except ValueError as error:
+            ...     print(str(error).split(";")[0])
+            this mesh declares topology_dimension 2 but no faces
     """
     if parsed.faces is None and parsed.topology_dimension != 1:
         # Caught here rather than left to construction, which accepted it: the mesh came
@@ -192,7 +216,8 @@ def _normalise_connectivity(
             was ``None``.
 
     Raises:
-        ValueError: On a ragged array, a fill/index collision, or an out-of-range index.
+        ValueError: On a ragged array, an edge array whose rows are not exactly two
+            nodes wide, a fill/index collision, or an out-of-range index.
     """
     if conn is None:
         return None
@@ -326,9 +351,11 @@ def fix_winding(
 
     The signed area is the shoelace sum over a face's **real** vertices only; padding
     is sliced off first, or a ``-1`` entry poisons the sign and reverses a correct face.
-    A degenerate face -- one whose area is zero to within a tolerance scaled by its own
-    span: collinear, or a repeated node -- has no winding, so it is neither reversed nor
-    rejected, matching pyramids' own handling.
+    A degenerate face -- collinear, or carrying a repeated node -- has no winding, so it
+    is neither reversed nor rejected, matching pyramids' own handling. "Degenerate" means
+    an area below what this face's own coordinates can resolve, which takes both its
+    span and their magnitude: see :func:`_area_tolerance`, where a span-only threshold
+    read every flat face in a projected CRS as clockwise and reversed it.
 
     Reversal rewrites the leading run of a row, which assumes UGRID's convention that
     padding is a trailing run. A row padded between real vertices is rejected rather
@@ -391,6 +418,42 @@ def fix_winding(
             ... )
             >>> reversed_count, degenerate
             (0, 1)
+
+        - Degeneracy is measured against what the face's own coordinates can resolve,
+          not against its span alone. At a northing of 7e6 a double resolves to about
+          1e-9, so three points meant to be collinear do not *store* as collinear --
+          yet the flat face is still reported degenerate rather than reversed, and the
+          real metre-scale face beside it is untouched:
+
+            >>> import numpy as np
+            >>> node_x = np.array([500000.0, 500001.0, 500002.0, 500001.0])
+            >>> node_y = np.array(
+            ...     [7000000.0, np.nextafter(7000000.0, 1e9), 7000000.0, 7000001.0]
+            ... )
+            >>> flat_and_real = np.array([[0, 1, 2], [0, 2, 3]])
+            >>> fixed, reversed_count, degenerate = fix_winding(
+            ...     flat_and_real, node_x, node_y, -1
+            ... )
+            >>> reversed_count, degenerate
+            (0, 1)
+            >>> fixed.tolist()
+            [[0, 1, 2], [0, 2, 3]]
+
+        - A row padded between its real vertices is refused: reversal rewrites the
+          leading run, so relaying this one would move the padding:
+
+            >>> import numpy as np
+            >>> interior_pad = np.array([[0, -1, 1, 2]])
+            >>> try:
+            ...     fix_winding(
+            ...         interior_pad,
+            ...         np.array([0.0, 1.0, 1.0]),
+            ...         np.array([0.0, 0.0, 1.0]),
+            ...         -1,
+            ...     )
+            ... except ValueError as error:
+            ...     print(str(error).split(";")[0])
+            face row [0, -1, 1, 2] pads between real vertices
     """
     out = np.asarray(faces).copy()
     reversed_count = 0
@@ -516,9 +579,14 @@ def check_shapes(parsed: "ParsedMesh") -> None:
     """Check every variable's declared shape against its element and time counts.
 
     Reads ``shape`` only -- never ``values`` or ``loader`` -- so a lazy variable is
-    validated without forcing a read. It also checks the two things that otherwise make
-    ``shape`` untrustworthy: that every per-node array is as long as ``node_x``, and
-    that each variable carries exactly one of an eager array or a lazy loader.
+    validated without forcing a read. It also checks everything else that would
+    otherwise leave ``shape`` untrustworthy: that every per-node array is as long as
+    ``node_x`` and every face-centre array as long as the face count, that each variable
+    carries exactly one of an eager array or a lazy loader, and that a variable's active
+    mask has the shape of the variable it describes. An edge-located variable is counted
+    against whichever edge topology the mesh has -- ``edges``, or ``network_edges`` for a
+    parse that reported a 1D topology -- so a correct edge variable is not left
+    unvalidatable on exactly those meshes.
 
     Args:
         parsed: The mesh carrying the variables.
@@ -526,8 +594,9 @@ def check_shapes(parsed: "ParsedMesh") -> None:
     Raises:
         ValueError: If a per-node or per-face array length disagrees with the topology,
             a variable carries both or neither of ``values``/``loader``, its location is
-            unknown, or its shape does not equal ``(element_count,)`` (static) or
-            ``(len(time_values), element_count)`` (temporal).
+            unknown, its shape does not equal ``(element_count,)`` (static) or
+            ``(len(time_values), element_count)`` (temporal), or its active mask does
+            not have that same shape.
 
     Examples:
         - A sound mesh passes silently; the check returns nothing and reads no values,
@@ -604,6 +673,34 @@ def check_shapes(parsed: "ParsedMesh") -> None:
             ... except ValueError as error:
             ...     print(str(error).split("; ")[1])
             it carries neither
+
+        - An active mask becomes a sibling variable built straight from this array,
+          after every other check has run, so its shape is held to the shape of the
+          variable it describes here or nowhere:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh, ParsedVariable
+            >>> bad_mask = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ...     variables={
+            ...         "depth": ParsedVariable(
+            ...             location="face",
+            ...             shape=(1,),
+            ...             values=np.array([2.5]),
+            ...             active=np.array([True, False]),
+            ...         )
+            ...     },
+            ... )
+            >>> try:
+            ...     check_shapes(bad_mask)
+            ... except ValueError as error:
+            ...     head, _, tail = str(error).partition(", which")
+            ...     print(head)
+            ...     print(tail.split(": ")[1])
+            the active mask of 'depth' has shape (2,)
+            expected (1,)
     """
     n_node = int(np.asarray(parsed.node_x).shape[0])
     _check_node_arrays(parsed, n_node)

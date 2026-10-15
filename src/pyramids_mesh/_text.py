@@ -1,8 +1,9 @@
 """Record-oriented parsing helpers for the plain-text formats.
 
-Shared by 2DM, DAT, Mike21 and FLO-2D. Includes ``native_id_map``, which exists because
-2DM node and element ids can have gaps and can be out of file order -- a driver assuming
-``id == index + 1`` silently mis-wires connectivity on any file a tool has renumbered.
+Meant for 2DM, DAT, Mike21 and FLO-2D; 2DM is the only driver using them so far.
+Includes ``native_id_map``, which exists because 2DM node and element ids can have gaps
+and can be out of file order -- a driver assuming ``id == index + 1`` silently mis-wires
+connectivity on any file a tool has renumbered.
 
 These helpers are pure parsing: they import nothing from ``pyramids`` and are testable
 without it installed.

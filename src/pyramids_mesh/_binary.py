@@ -43,6 +43,11 @@ def detect_endianness(
     is swapped and it is read again. If neither matches, the file is not of this format.
     This is exactly how MDAL probes a Selafin file.
 
+    The probe only works on an asymmetric value, so four bytes that read the same in
+    either order are refused rather than resolved to ``"<"`` -- that would be a guess
+    dressed as a detection. 80 is asymmetric, so this only reaches a caller passing its
+    own ``expect_first_record``.
+
     Args:
         path: The binary file to probe.
         expect_first_record: The length the first record must declare. Defaults to 80,
@@ -53,8 +58,9 @@ def detect_endianness(
             prefix.
 
     Raises:
-        ValueError: If the file is shorter than one length word, or declares the
-            expected length in neither byte order.
+        ValueError: If the file is shorter than one length word, opens with four bytes
+            that are a palindrome and so identify no byte order, or declares the
+            expected length in neither order.
 
     Examples:
         - A little-endian file announces its 80-byte title record in the low byte:
@@ -83,6 +89,23 @@ def detect_endianness(
             ...         _ = handle.write(word + b"T" * 80 + word)
             ...     detect_endianness(path)
             '>'
+
+        - A probe value whose four bytes are a palindrome is refused, because it
+          cannot tell the two orders apart. The default 80 never is; this reaches a
+          caller who supplies its own expected length:
+
+            >>> import os
+            >>> import tempfile
+            >>> palindrome = bytes([1, 0, 0, 1])
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(palindrome + b"T" * 80)
+            ...     try:
+            ...         detect_endianness(path, expect_first_record=16777217)
+            ...     except ValueError as error:
+            ...         print(str(error).split("which ")[1])
+            reads identically in both orders; it cannot identify the byte order
     """
     with open(path, "rb") as handle:
         head = handle.read(_LENGTH_WORD)

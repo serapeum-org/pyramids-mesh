@@ -16,20 +16,29 @@ here once this package is installed. Dependency-backed drivers sit behind extras
 is absent. See ADR-0005 for the scope decision.
 
 The package root deliberately re-exports nothing: it carries `__version__` and the
-import contract that activates the vendored osgeo bindings, and that is all. What this
-package publishes is drivers, registered with `pyramids-gis` through the
-`pyramids.mesh_drivers` entry-point group, so installing it is the whole integration —
-`UgridDataset.read_file("domain.2dm")` then resolves to the driver that claims the
-suffix, with nothing imported from here. A driver class is reachable by its module path
-(`pyramids_mesh.drivers.sms.TwoDmDriver`, which is how its entry point names it) for the
-rare case of wanting one directly.
+import contract that activates the vendored osgeo bindings, and that is all. Installing
+the package is the whole integration, so nothing here needs importing. A driver class is
+still reachable by its module path (`pyramids_mesh.drivers.sms.TwoDmDriver`, which is how
+its entry point names it) for the rare case of wanting one directly.
 
 Examples:
-    - The installed version string:
+    - The root carries the installed version and nothing else. `__all__` is empty
+      because there is deliberately nothing to re-export:
 
         >>> import pyramids_mesh
-        >>> isinstance(pyramids_mesh.__version__, str)
+        >>> pyramids_mesh.__version__.split(".")[0].isdigit()
         True
+        >>> pyramids_mesh.__all__
+        []
+
+    - A driver is reached by its module path, not from the root, and reports the
+      suffixes it claims:
+
+        >>> from pyramids_mesh.drivers.sms import TwoDmDriver
+        >>> TwoDmDriver.name
+        '2dm'
+        >>> TwoDmDriver.suffixes
+        ('.2dm',)
 """
 
 # Import pyramids FIRST — before anything else, and keep it first. pyramids-gis
