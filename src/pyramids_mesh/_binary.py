@@ -11,6 +11,13 @@ driver does not rescan the file per variable per timestep.
 These helpers are pure parsing: they import nothing from ``pyramids`` and are testable
 without it installed.
 
+Nothing in this package calls them yet -- the only driver shipped so far is 2DM, which is
+plain text -- so these signatures are shaped by the format rather than by a caller, and
+``record_offsets`` in particular builds an index for a lazy loader that does not exist.
+They are provisional until the first binary driver (Selafin, task D3) uses them, and that
+driver is free to change them: nothing depends on them, and the full test coverage here
+measures the tests, not the design.
+
 See ``planning/design.md`` section 19. Implemented by task S4.
 """
 
