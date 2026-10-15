@@ -52,8 +52,9 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in `
   same way: HDF5 is read through the GDAL multidimensional API over the GDAL vendored in the
   `pyramids-gis` wheel, which supplies group traversal, attributes and typed reads. `mikeio`
   remains because DFSU and DFS2 are proprietary DHI containers with no portable alternative.
-- Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
-  `MANIFEST.in`'s `prune tests`. Vendor sample
+- Test fixtures are hand-built minimal files, committed, and kept out of the built
+  distribution. Nothing special is needed for that: setuptools' sdist does not collect
+  `tests/data/*`, and the wheel is built from `src/` only. Vendor sample
   files are fetched in CI behind a marker, never committed.
 
 ## The boundary (carried over from ADR-0003 unchanged)

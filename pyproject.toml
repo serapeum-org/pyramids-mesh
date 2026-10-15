@@ -141,6 +141,16 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pyramids_mesh", "pyramids_mesh.*"]
+# Belt and braces: `where = ["src"]` already means `tests/` cannot be picked up as a
+# package, so this only states the intent for anyone reading the wheel contents.
+exclude = ["tests*"]
+
+# No sdist configuration here, and not for want of trying: setuptools offers no
+# pyproject.toml equivalent of MANIFEST.in's `prune`, so sdist contents cannot be
+# steered from this file. The default sdist carries `tests/*.py` and, importantly, does
+# NOT carry `tests/data/*` -- so the binary format fixtures the PyPI-quota argument in
+# ADR-0005 is about stay out of the distribution on their own. A handful of small test
+# modules riding along costs nothing, so there is no MANIFEST.in.
 
 
 [tool.flake8]
