@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Unstructured-mesh generation, quality and refinement for the pyramids GIS stack">
+        <meta name="description" content="Mesh file-format drivers for pyramids: 2DM, Selafin, DFSU, XMDF, PLY and more">
       
       
       
@@ -1146,9 +1146,10 @@
 
 
 <h1 id="pyramids-mesh"><a class="toclink" href="#pyramids-mesh">pyramids-mesh</a><a class="headerlink" href="#pyramids-mesh" title="Permanent link">#</a></h1>
-<p>The unstructured-mesh tier of the <a href="https://github.com/serapeum-org/pyramids">pyramids</a> GIS stack.
-It extends the UGRID support <code>pyramids-gis</code> already ships (<code>pyramids.netcdf.ugrid</code>) with the
-operations that tier deliberately leaves out: <strong>generation</strong>, <strong>quality</strong>, and <strong>refinement</strong>.</p>
+<p>Reads and writes the file formats of hydrodynamic and hydraulic mesh models — 2DM, Selafin, DFSU,
+XMDF, PLY and more — as <a href="https://github.com/serapeum-org/pyramids">pyramids</a> UGRID objects.
+<code>pyramids-gis</code> already ships the mesh data model and every operation that follows from a topology
+in hand; what it cannot do is open other people's mesh files. That is this package's only job.</p>
 <h2 id="the-layer-boundary"><a class="toclink" href="#the-layer-boundary">The layer boundary</a><a class="headerlink" href="#the-layer-boundary" title="Permanent link">#</a></h2>
 <p>The split is the point of the package, so it is worth stating precisely. <code>pyramids-gis</code> owns the
 mesh <em>data model</em> and everything that follows from a topology already in hand:</p>
@@ -1190,15 +1191,35 @@ mesh <em>data model</em> and everything that follows from a topology already in 
 </tr>
 </tbody>
 </table>
-<p><strong>pyramids-mesh</strong> adds the three things that are missing from that list:</p>
-<ul>
-<li><strong>Generation</strong> — building a mesh where no topology exists yet, rather than flattening a grid or a
-  polygon layer that already carries one.</li>
-<li><strong>Quality</strong> — per-element metrics (aspect ratio, skewness, orthogonality) and quality-driven
-  smoothing.</li>
-<li><strong>Refinement</strong> — local refinement and coarsening of an existing mesh.</li>
-</ul>
-<p>Anything that belongs on the left-hand side of that table is a change to <code>pyramids-gis</code>, not a
+<p><strong>pyramids-mesh</strong> adds the one thing that is missing from that list — <strong>the ability to open other
+people's mesh files</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Lives in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reading 2DM, Selafin, DFSU, XMDF, XDMF, DAT, FLO-2D, 3Di, PLY, TIN, …</td>
+<td><code>pyramids_mesh.drivers</code></td>
+</tr>
+<tr>
+<td>Writing 2DM, Selafin, DAT, PLY, Mike21</td>
+<td><code>pyramids_mesh.drivers</code></td>
+</tr>
+<tr>
+<td>Driver discovery via the <code>pyramids.mesh_drivers</code> entry points</td>
+<td><code>pyramids-gis</code> reads, this package registers</td>
+</tr>
+</tbody>
+</table>
+<p>A survey of <a href="https://github.com/lutraconsulting/MDAL">MDAL</a> — the library QGIS uses for mesh
+layers — found <code>pyramids-gis</code> reads exactly one of its eighteen driver families (UGRID NetCDF).
+The other seventeen are what this package is for. In the other direction MDAL performs no
+interpolation, regridding, reprojection or graph analysis, all of which <code>pyramids-gis</code> already has.</p>
+<p>Anything that belongs on the left-hand side of the first table is a change to <code>pyramids-gis</code>, not a
 feature of this package. Report it upstream rather than duplicating it here.</p>
 <h2 id="status"><a class="toclink" href="#status">Status</a><a class="headerlink" href="#status" title="Permanent link">#</a></h2>
 <p><code>0.1.0</code> is the repository scaffold — packaging, CI, docs, and the import contract that pins

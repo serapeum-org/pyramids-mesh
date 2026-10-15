@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Unstructured-mesh generation, quality and refinement for the pyramids GIS stack">
+        <meta name="description" content="Mesh file-format drivers for pyramids: 2DM, Selafin, DFSU, XMDF, PLY and more">
       
       
       
@@ -1155,9 +1155,16 @@
 
 <h1 id="adr-0003-scope-boundary-with-pyramids-gis"><a class="toclink" href="#adr-0003-scope-boundary-with-pyramids-gis">ADR-0003: Scope boundary with pyramids-gis</a><a class="headerlink" href="#adr-0003-scope-boundary-with-pyramids-gis" title="Permanent link">#</a></h1>
 <ul>
-<li>Status: Accepted</li>
+<li>Status: Superseded by <a href="../0005-file-format-drivers/">ADR-0005</a></li>
 <li>Date: 2026-10-13</li>
 </ul>
+<blockquote>
+<p><strong>Superseded 2026-10-13.</strong> The three-concerns decision below (generation, quality,
+refinement) was written during scaffolding and was not the intended scope. This package is
+a file-format driver package; see <a href="../0005-file-format-drivers/">ADR-0005</a>, which restates
+every boundary rule from this ADR unchanged. Kept for the record; do not act on its
+Decision section.</p>
+</blockquote>
 <h2 id="context"><a class="toclink" href="#context">Context</a><a class="headerlink" href="#context" title="Permanent link">#</a></h2>
 <p><code>pyramids-gis</code> already ships UGRID support in <code>pyramids.netcdf.ugrid</code>: the data model (<code>Mesh2d</code>,
 <code>Network1d</code>, <code>UgridDataset</code>, <code>Connectivity</code>), UGRID-compliant NetCDF I/O, connectivity derivation

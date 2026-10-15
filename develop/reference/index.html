@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Unstructured-mesh generation, quality and refinement for the pyramids GIS stack">
+        <meta name="description" content="Mesh file-format drivers for pyramids: 2DM, Selafin, DFSU, XMDF, PLY and more">
       
       
       
@@ -1073,14 +1073,20 @@ two is <a href="../adr/0003-scope-boundary/">ADR-0003</a>.</p>
 
     <div class="doc doc-contents first">
 
-        <p>Unstructured-mesh generation, quality and refinement for the pyramids stack.</p>
-<p><code>pyramids-mesh</code> sits one tier above <code>pyramids.netcdf.ugrid</code>, which owns the UGRID
-data model (<code>Mesh2d</code>, <code>Network1d</code>, <code>UgridDataset</code>), its NetCDF I/O, and every
-operation that follows from a topology already in hand — connectivity and graph
-algorithms, regridding and sampling, gap filling, mesh-to-vector conversion, and
-construction from a raster or a polygon layer. This package adds what that tier
-deliberately does not do: building a mesh where no topology exists yet, measuring
-and improving element quality, and refining or coarsening an existing mesh.</p>
+        <p>Mesh file-format drivers for the pyramids stack.</p>
+<p><code>pyramids-mesh</code> reads and writes the file formats of hydrodynamic and hydraulic
+mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of MDAL's driver table —
+as <code>pyramids.netcdf.ugrid</code> objects. <code>pyramids.netcdf.ugrid</code> owns the UGRID data
+model (<code>Mesh2d</code>, <code>Network1d</code>, <code>UgridDataset</code>), its NetCDF I/O, and every operation
+that follows from a topology already in hand — connectivity and graph algorithms,
+regridding and sampling, gap filling, mesh-to-vector conversion, and construction
+from a raster or a polygon layer. What it cannot do is open other people's mesh
+files; that is this package's job, and its only job.</p>
+<p>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code>
+entry-point group, so <code>UgridDataset.read_file("model.slf")</code> resolves to a driver
+here once this package is installed. Dependency-backed drivers sit behind extras
+(<code>[dhi]</code>, <code>[interchange]</code>, <code>[hdf]</code>) and are skipped at discovery when their extra
+is absent. See ADR-0005 for the scope decision.</p>
 <p>The public surface is empty at <code>0.1.0</code> — this release is the repository scaffold
 (packaging, CI, docs) plus <code>__version__</code>. Every name added later is re-exported
 here, so <code>from pyramids_mesh import ...</code> stays the import worth using.</p>
