@@ -62,7 +62,10 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
             >>> fields[1:4]
             ['1', '2', '3']
     """
-    with open(path, "r", encoding="utf-8", errors="replace") as handle:
+    # `utf-8-sig` drops a leading byte-order mark. Windows editors write one routinely,
+    # and without this the first keyword of an otherwise valid file reads as
+    # '﻿MESH2D' and the file is refused.
+    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
         for line in handle:
             stripped = line.strip()
             if not stripped or stripped.startswith(comment):

@@ -487,6 +487,34 @@ def test_2dm_header_may_follow_blank_and_comment_lines(tmp_path):
     assert TwoDmDriver().read(path).mesh.n_face == 2
 
 
+def test_2dm_reads_a_file_saved_with_a_byte_order_mark(tmp_path):
+    """A UTF-8 BOM, which Windows editors add routinely, does not hide the header."""
+    path = tmp_path / "bom.2dm"
+    path.write_text(_UNIT_SQUARE, encoding="utf-8-sig")
+
+    assert TwoDmDriver().can_open(str(path)) is True
+    assert TwoDmDriver().read(str(path)).mesh.n_face == 2
+
+
+def test_2dm_header_found_past_a_long_comment_header(tmp_path):
+    """A comment header longer than one sniff block does not make can_open disagree.
+
+    The sniff reading a single fixed prefix declined files that ``read`` parsed fine,
+    which is exactly the asymmetry the sniff is written to avoid.
+    """
+    path = _write(tmp_path, "# padding\n" * 500 + _UNIT_SQUARE)
+
+    assert TwoDmDriver().can_open(path) is True
+    assert TwoDmDriver().read(path).mesh.n_face == 2
+
+
+def test_2dm_can_open_declines_a_file_that_is_only_comments(tmp_path):
+    """A file with no significant line at all is still declined, and bounded."""
+    path = _write(tmp_path, "# nothing here\n" * 2000)
+
+    assert TwoDmDriver().can_open(path) is False
+
+
 def test_2dm_empty_file_is_refused(tmp_path):
     """A file with no significant records is refused, naming the missing header."""
     path = _write(tmp_path, "\n\n# nothing but comments\n")

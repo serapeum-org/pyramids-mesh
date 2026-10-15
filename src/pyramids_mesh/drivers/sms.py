@@ -48,9 +48,14 @@ _MATERIALS_TAG = "NUM_MATERIALS_PER_ELEM"
 # skip the same lines, or one accepts a file the other refuses.
 _COMMENT = "#"
 
-# ``can_open`` must not read the whole file, so the header sniff looks at a bounded
-# prefix. A binary file decodes to replacement characters rather than raising.
-_SNIFF_BYTES = 4096
+# ``can_open`` must not read the whole file, so the header sniff reads in blocks and
+# stops at the first significant line. A single fixed prefix was not enough: a file
+# whose comment header ran past it was declined by ``can_open`` and then read fine by
+# ``read``, which is the asymmetry the sniff exists to avoid. The limit still bounds the
+# work for a file that is all comments, or binary -- which decodes to replacement
+# characters rather than raising.
+_SNIFF_BLOCK = 4096
+_SNIFF_LIMIT = 256 * 1024
 
 # The smallest valid 2DM: the unit square split into two counter-clockwise triangles.
 _MINIMAL_FIXTURE = """MESH2D
@@ -207,14 +212,21 @@ class TwoDmDriver(BaseDriver):
             bool: ``True`` when the first significant line starts with ``MESH2D``.
         """
         with open(path, "rb") as handle:
-            head = handle.read(_SNIFF_BYTES)
-        for line in head.decode("utf-8", errors="replace").splitlines():
-            stripped = line.strip()
-            if stripped and not stripped.startswith(_COMMENT):
-                # Compare the first token for equality, exactly as the parser does. A
-                # `startswith` here accepted MESH2DX, which the parser then refused:
-                # the sniff must not be looser than the parser either.
-                return stripped.split()[0].upper() == _HEADER
+            buffer = b""
+            while len(buffer) < _SNIFF_LIMIT:
+                block = handle.read(_SNIFF_BLOCK)
+                if not block:
+                    break
+                buffer += block
+                # `utf-8-sig` drops a byte-order mark, which Windows editors add and
+                # which would otherwise make the first token '﻿MESH2D'.
+                for line in buffer.decode("utf-8-sig", errors="replace").splitlines():
+                    stripped = line.strip()
+                    if stripped and not stripped.startswith(_COMMENT):
+                        # Compare the first token for equality, exactly as the parser
+                        # does. A `startswith` here accepted MESH2DX, which the parser
+                        # then refused: the sniff must not be looser than the parser.
+                        return stripped.split()[0].upper() == _HEADER
         return False
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
