@@ -118,6 +118,7 @@ nav:
     - Installation: installation.md
   - Reference:
     - Overview: reference/index.md
+    - 2DM (SMS/TUFLOW): reference/2dm.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

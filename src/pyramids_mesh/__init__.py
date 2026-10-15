@@ -15,16 +15,30 @@ here once this package is installed. Dependency-backed drivers sit behind extras
 (`[dhi]`, `[interchange]`, `[hdf]`) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.
 
-The public surface is empty at `0.1.0` — this release is the repository scaffold
-(packaging, CI, docs) plus `__version__`. Every name added later is re-exported
-here, so `from pyramids_mesh import ...` stays the import worth using.
+The package root deliberately re-exports nothing: it carries `__version__` and the
+import contract that activates the vendored osgeo bindings, and that is all. Installing
+the package is the whole integration, so nothing here needs importing. A driver class is
+still reachable by its module path (`pyramids_mesh.drivers.sms.TwoDmDriver`, which is how
+its entry point names it) for the rare case of wanting one directly.
 
 Examples:
-    - The installed version string:
+    - The root carries the installed version and nothing else. `__all__` is empty
+      because there is deliberately nothing to re-export:
 
         >>> import pyramids_mesh
-        >>> isinstance(pyramids_mesh.__version__, str)
+        >>> pyramids_mesh.__version__.split(".")[0].isdigit()
         True
+        >>> pyramids_mesh.__all__
+        []
+
+    - A driver is reached by its module path, not from the root, and reports the
+      suffixes it claims:
+
+        >>> from pyramids_mesh.drivers.sms import TwoDmDriver
+        >>> TwoDmDriver.name
+        '2dm'
+        >>> TwoDmDriver.suffixes
+        ('.2dm',)
 """
 
 # Import pyramids FIRST — before anything else, and keep it first. pyramids-gis

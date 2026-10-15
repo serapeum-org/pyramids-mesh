@@ -26,24 +26,12 @@ classifiers = [
 
 requires-python = ">= 3.11, <4"
 
-# PROVISIONAL FLOOR. 0.66.0 is the release this repo was scaffolded against, and
-# it does carry the types every driver builds on: `Mesh2d`, `UgridDataset`,
-# `Connectivity`, `MeshVariable`, `MeshTopologyInfo`, `Network1d`.
-#
-# But a driver package needs one thing more: the `pyramids.mesh_drivers`
-# entry-point registry that `UgridDataset.read_file` dispatches through, which has
-# not shipped in any pyramids release yet. Until it does, the entry points
-# declared here are INERT — nothing reads them, so a driver is never dispatched
-# to. Raise this floor to the release that ships the registry as soon as it
-# exists, and do not publish to PyPI before then: the package would install and
-# silently do nothing. See ADR-0005 and planning/tasks/R1.md.
-#
 # GDAL is deliberately absent. It is not a dependency of this package: the
 # `pyramids-gis` wheel vendors its own osgeo bindings and `import pyramids` is
 # what puts them on `sys.path` (activate_vendored_osgeo). Nothing here installs
 # or pins a separate GDAL.
 dependencies = [
-    "pyramids-gis >=0.66.0",
+    "pyramids-gis >=0.68.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
@@ -135,6 +123,16 @@ notebook = [
 ]
 
 
+# One entry point per driver. The value is a class, which pyramids' registry
+# instantiates with no arguments; a class rather than a function because `can_open`
+# matters -- several of these formats share `.dat`, `.mesh` and `.out`, so a suffix
+# alone cannot identify one. A driver whose optional extra is missing raises at
+# driver-module import and the registry skips it with a warning, which is why a bare
+# install stays useful.
+[project.entry-points."pyramids.mesh_drivers"]
+2dm = "pyramids_mesh.drivers.sms:TwoDmDriver"
+
+
 [project.urls]
 homepage = "https://github.com/serapeum-org/pyramids-mesh"
 repository = "https://github.com/serapeum-org/pyramids-mesh"
@@ -190,6 +188,15 @@ style = [
     ["text", ""],
     ["disabled", "fg:#858585 italic"]
 ]
+
+[tool.coverage.run]
+# Branch coverage, not just line coverage. The two differ exactly where the silent
+# failures of this package live -- a connectivity re-basing or winding branch that is
+# executed but never taken both ways reads as covered while being untested. Set here
+# rather than as a task flag so every runner measures it: the pixi tasks, the
+# pre-commit `pytest-check` hook and a bare `pytest` alike.
+branch = true
+source = ["src/pyramids_mesh"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

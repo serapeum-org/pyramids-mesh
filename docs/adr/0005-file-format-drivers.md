@@ -35,15 +35,20 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in `
 - **Generation, quality and refinement are dropped**, not deferred. They were not an intended scope.
   If mesh generation is wanted later it gets its own package and its own argument.
 - Drivers are discovered by `pyramids-gis` through the `pyramids.mesh_drivers` **entry-point group**.
-  This package depends on `pyramids-gis`; `pyramids-gis` never imports this package. Nothing is
-  registered until the pyramids release that ships that registry.
+  This package depends on `pyramids-gis`; `pyramids-gis` never imports this package. That registry
+  shipped in `pyramids-gis 0.68.0`, which is this package's floor, so registered drivers are
+  discovered and dispatched to.
 - Each driver is a class declaring `name`, `long_name`, `suffixes`, `api_version` and a
-  `capabilities` set, implementing `can_open` plus either `read` (a format carrying topology) or
-  `read_data` (a results-only format such as DAT, XMDF or XDMF, which carries values but no mesh).
+  `capabilities` set, implementing `can_open` and `mesh_names` — which pyramids calls on every
+  driver whatever it declares — plus either `read` (a format carrying topology) or `read_data` (a
+  results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
+  `read_mesh`, `needs_mesh`, `write_mesh` and `write_data` gate behaviour upstream; `read_data`,
+  `lazy_data` and `multi_mesh` are **declarative** and require no method of their own.
 - Dependency-backed drivers live behind extras — `[dhi]` (`mikeio`), `[interchange]` (`meshio`),
   `[hdf]` (`h5py`) — and a driver whose extra is absent is skipped at discovery, so a bare install
   stays small and useful.
-- Test fixtures are hand-built minimal files, committed, and excluded from the sdist. Vendor sample
+- Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
+  `MANIFEST.in`'s `prune tests`. Vendor sample
   files are fetched in CI behind a marker, never committed.
 
 ## The boundary (carried over from ADR-0003 unchanged)
@@ -65,9 +70,10 @@ full. Only its three-concerns decision was wrong.
 
 ## Consequences
 
-- The `pyramids-gis` floor becomes an API floor on the **registry**, not on the mesh model. Until
-  that release exists the floor is provisional and this package's entry points are inert: it
-  installs and is never dispatched to. It must not be published to PyPI before then.
+- The `pyramids-gis` floor is an API floor on the **registry**, not on the mesh model. The registry
+  shipped in `pyramids-gis 0.68.0`, so the floor is now `>= 0.68.0` and this package's entry points
+  are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
+  while the registry was unreleased and the entry points inert — is lifted.
 - Three concerns MDAL supports and `pyramids-gis` does not — ragged vertical levels
   (`DataOnVolumes`), per-timestep active/dry flags, and a dataset reference time — are **upstream**
   work. A driver meeting them carries the value through without fabricating data: it raises on a

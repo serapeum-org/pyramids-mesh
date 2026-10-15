@@ -17,7 +17,7 @@ This page covers installation of **pyramids-mesh** and its native dependencies.
 
 ### Runtime
 
-- `pyramids-gis >= 0.66.0` (provides the `pyramids` import; pulled from PyPI)
+- `pyramids-gis >= 0.68.0` (provides the `pyramids` import and the mesh-driver registry; pulled from PyPI)
 - `numpy >= 2.0.0`
 
 GDAL is deliberately absent from that list. It is not a dependency of this package: the
