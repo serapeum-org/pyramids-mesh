@@ -8,6 +8,7 @@ other driver in this package follows.
 | Driver name | `2dm` |
 | Suffixes | `.2dm` |
 | Capabilities | `read_mesh`, `read_data`, `multi_mesh` |
+| | `read_data` and `multi_mesh` are **declarative** — they describe the driver in `info(drivers=True)` and require no method. There is no `read_data()` to call: `read_data` here means the file carries values (material, elevation) that `read` returns alongside the topology. A results-only format declares `needs_mesh` instead and *does* implement the method. |
 | Extra required | none |
 | Returns | `UgridDataset` for the surface mesh, `Network1d` for the `E2L` network |
 

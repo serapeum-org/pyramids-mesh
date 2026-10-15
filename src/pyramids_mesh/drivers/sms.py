@@ -190,6 +190,11 @@ class TwoDmDriver(BaseDriver):
     long_name = "SMS/TUFLOW 2DM mesh"
     suffixes = (".2dm",)
     api_version = MESH_DRIVER_API_VERSION
+    # `read_data` and `multi_mesh` are declarative upstream: they describe the driver in
+    # `info(drivers=True)` and gate nothing, so neither implies a method. `read_data`
+    # here means this format carries values -- material and elevation -- that `read`
+    # returns with the topology; there is deliberately no `read_data()`. Only a
+    # results-only format declares `needs_mesh` and implements that method.
     capabilities = frozenset({"read_mesh", "read_data", "multi_mesh"})
 
     def mesh_names(self, path: str) -> list[str]:
