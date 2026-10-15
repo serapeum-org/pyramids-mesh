@@ -1,0 +1,298 @@
+"""Tests for the SMS 2DM reader (D1).
+
+2DM is the reference driver, so these cover the traps every later driver inherits:
+native ids that are not indices, mixed element widths, higher-order elements, winding,
+and the 1D/2D split. Fixtures are written inline -- the format is plain text, which is
+exactly why it is the cheapest one to test.
+"""
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+import pyramids  # noqa: F401  # isort:skip
+
+from pyramids.base._errors import FileFormatNotSupportedError
+from pyramids.netcdf.ugrid import Network1d, UgridDataset
+
+from pyramids_mesh.drivers.sms import TwoDmDriver, build_minimal_fixture
+
+_UNIT_SQUARE = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+ND 4 0.0 1.0 0.0
+E3T 1 1 2 3 1
+E3T 2 1 3 4 1
+"""
+
+
+def _write(tmp_path, text, name="mesh.2dm"):
+    """Write a 2DM fixture and return its path."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
+def _signed_area2(mesh, row):
+    """Twice the signed area of one face of a built mesh."""
+    real = row[row != -1]
+    xs, ys = mesh.node_x[real], mesh.node_y[real]
+    return float(np.dot(xs, np.roll(ys, -1)) - np.dot(ys, np.roll(xs, -1)))
+
+
+def test_2dm_requires_mesh2d_header(tmp_path):
+    """A file that does not open with MESH2D is refused, not guessed at."""
+    path = _write(tmp_path, "ND 1 0.0 0.0 0.0\nE3T 1 1 1 1 1\n")
+
+    with pytest.raises(FileFormatNotSupportedError, match="MESH2D"):
+        TwoDmDriver().read(path)
+
+
+def test_2dm_reads_nodes_and_triangles(tmp_path):
+    """Nodes and triangular faces arrive with the right counts and coordinates."""
+    dataset = TwoDmDriver().read(_write(tmp_path, _UNIT_SQUARE))
+
+    assert isinstance(dataset, UgridDataset)
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    np.testing.assert_allclose(dataset.mesh.node_x, [0.0, 1.0, 1.0, 0.0])
+    np.testing.assert_allclose(dataset.mesh.node_y, [0.0, 0.0, 1.0, 1.0])
+
+
+def test_2dm_connectivity_is_zero_based_after_read(tmp_path):
+    """The 1-based file becomes 0-based data, with the file's base still recorded."""
+    dataset = TwoDmDriver().read(_write(tmp_path, _UNIT_SQUARE))
+    connectivity = dataset.mesh.face_node_connectivity
+
+    np.testing.assert_array_equal(connectivity.data, [[0, 1, 2], [0, 2, 3]])
+    assert connectivity.data.min() == 0
+    assert connectivity.original_start_index == 1
+
+
+def test_2dm_mixed_e3t_e4q_pads_to_four(tmp_path):
+    """A mixed triangle/quad file is padded to the widest element with -1."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+ND 4 0.0 1.0 0.0
+ND 5 2.0 0.0 0.0
+ND 6 2.0 1.0 0.0
+E3T 1 1 2 3 1
+E4Q 2 2 5 6 3 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+    connectivity = dataset.mesh.face_node_connectivity
+
+    assert connectivity.data.shape == (2, 4)
+    assert connectivity.data[0, 3] == -1
+    np.testing.assert_array_equal(connectivity.data[1], [1, 4, 5, 2])
+
+
+def test_2dm_e6t_read_as_six_node_face(tmp_path):
+    """E6T is a real six-node face, never demoted to its corner triangle."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 2.0 0.0 0.0
+ND 4 1.5 1.0 0.0
+ND 5 1.0 2.0 0.0
+ND 6 0.5 1.0 0.0
+E6T 1 1 2 3 4 5 6 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+    connectivity = dataset.mesh.face_node_connectivity
+
+    assert connectivity.data.shape == (1, 6)
+    np.testing.assert_array_equal(connectivity.data[0], [0, 1, 2, 3, 4, 5])
+
+
+@pytest.mark.parametrize("element", ["E8Q", "E9Q", "E3L"])
+def test_2dm_e8q_raises_unsupported_element(tmp_path, element):
+    """Unsupported element types refuse the whole file and name the element."""
+    text = f"""MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+{element} 1 1 2 3 1
+"""
+    with pytest.raises(FileFormatNotSupportedError, match=element):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_non_contiguous_node_ids_resolve_correctly(tmp_path):
+    """Gapped node ids resolve through the id map, not by assuming id == index + 1."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 5 1.0 0.0 0.0
+ND 9 1.0 1.0 0.0
+ND 12 0.0 1.0 0.0
+E3T 1 1 5 9 1
+E3T 2 1 9 12 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    # The node count is the number of ND records, never the highest id, or the mesh
+    # would carry phantom nodes at (0, 0) and wrong bounds.
+    assert dataset.mesh.n_node == 4
+    np.testing.assert_array_equal(
+        dataset.mesh.face_node_connectivity.data, [[0, 1, 2], [0, 2, 3]]
+    )
+
+
+def test_2dm_out_of_order_node_ids_resolve_correctly(tmp_path):
+    """Node ids out of file order still wire each face to the right coordinates."""
+    text = """MESH2D
+ND 7 0.0 0.0 0.0
+ND 3 1.0 0.0 0.0
+ND 5 1.0 1.0 0.0
+E3T 1 7 3 5 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_array_equal(dataset.mesh.face_node_connectivity.data, [[0, 1, 2]])
+    np.testing.assert_allclose(dataset.mesh.node_x, [0.0, 1.0, 1.0])
+    np.testing.assert_allclose(dataset.mesh.node_y, [0.0, 0.0, 1.0])
+
+
+def test_2dm_material_becomes_face_variable(tmp_path):
+    """The material id becomes a face-located variable."""
+    text = _UNIT_SQUARE.replace("E3T 1 1 2 3 1", "E3T 1 1 2 3 4").replace(
+        "E3T 2 1 3 4 1", "E3T 2 1 3 4 7"
+    )
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert "material" in dataset.data_variable_names
+    material = dataset.get("material")
+    assert material.location == "face"
+    np.testing.assert_allclose(material.data, [4.0, 7.0])
+
+
+def test_2dm_num_materials_per_elem_switches_parser(tmp_path):
+    """NUM_MATERIALS_PER_ELEM makes the trailing columns materials, not aux."""
+    text = """MESH2D
+NUM_MATERIALS_PER_ELEM 2
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 7 9
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("material").data, [7.0])
+    np.testing.assert_allclose(dataset.get("material_2").data, [9.0])
+
+
+def test_2dm_e2l_only_file_yields_network1d(tmp_path):
+    """A file of only E2L line elements is a 1D network."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 2.0 0.0 0.0
+E2L 1 1 2 1
+E2L 2 2 3 1
+"""
+    result = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert isinstance(result, Network1d)
+    assert result.n_node == 3
+    assert result.n_edge == 2
+    np.testing.assert_array_equal(result.edge_node_connectivity.data, [[0, 1], [1, 2]])
+
+
+def test_2dm_e2l_with_faces_warns(tmp_path):
+    """A mixed-dimension file returns the faces and warns, naming Network1d."""
+    text = _UNIT_SQUARE + "E2L 3 1 2 1\n"
+
+    with pytest.warns(UserWarning, match="Network1d"):
+        dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert isinstance(dataset, UgridDataset)
+    assert dataset.mesh.n_face == 2
+
+
+def test_2dm_z_becomes_node_variable(tmp_path):
+    """Node elevation is carried as a node variable, since the model is planar."""
+    text = """MESH2D
+ND 1 0.0 0.0 1.5
+ND 2 1.0 0.0 2.5
+ND 3 1.0 1.0 3.5
+E3T 1 1 2 3 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert "node_z" in dataset.data_variable_names
+    node_z = dataset.get("node_z")
+    assert node_z.location == "node"
+    np.testing.assert_allclose(node_z.data, [1.5, 2.5, 3.5])
+
+
+def test_2dm_clockwise_face_is_reversed(tmp_path):
+    """A clockwise face in the file comes back counter-clockwise."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 1.0 0.0
+ND 3 1.0 0.0 0.0
+E3T 1 1 2 3 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert _signed_area2(dataset.mesh, dataset.mesh.face_node_connectivity.data[0]) > 0
+
+
+def test_2dm_can_open_false_on_empty_binary_and_directory(tmp_path):
+    """can_open declines anything that is not a 2DM file, and never raises."""
+    driver = TwoDmDriver()
+    empty = tmp_path / "empty.2dm"
+    empty.write_bytes(b"")
+    binary = tmp_path / "binary.2dm"
+    binary.write_bytes(bytes(range(256)) * 4)
+    directory = tmp_path / "dir.2dm"
+    directory.mkdir()
+    foreign = tmp_path / "notes.txt"
+    foreign.write_text("MESH2D\n", encoding="utf-8")
+
+    assert driver.can_open(str(empty)) is False
+    assert driver.can_open(str(binary)) is False
+    assert driver.can_open(str(directory)) is False
+    assert driver.can_open(str(tmp_path / "missing.2dm")) is False
+    # Right content, wrong suffix: the suffix gate still applies.
+    assert driver.can_open(str(foreign)) is False
+    assert driver.can_open(_write(tmp_path, _UNIT_SQUARE)) is True
+
+
+def test_2dm_undefined_node_reference_raises(tmp_path):
+    """An element naming a node id no ND record defines is an error, not a guess."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 99 1
+"""
+    with pytest.raises(ValueError, match="node id 99"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_committed_fixture_reads(tmp_path):
+    """The committed minimal fixture reads, and matches build_minimal_fixture."""
+    committed = Path(__file__).parent.parent / "data" / "minimal.2dm"
+    dataset = TwoDmDriver().read(str(committed))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+
+    generated = tmp_path / "generated.2dm"
+    build_minimal_fixture(str(generated))
+    assert generated.read_text(encoding="utf-8") == committed.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_2dm_has_no_crs(tmp_path):
+    """2DM carries no CRS, and none is guessed from the coordinate magnitudes."""
+    dataset = TwoDmDriver().read(_write(tmp_path, _UNIT_SQUARE))
+
+    assert dataset.crs_wkt is None
+    assert dataset.mesh.crs is None

@@ -123,6 +123,16 @@ notebook = [
 ]
 
 
+# One entry point per driver. The value is a class, which pyramids' registry
+# instantiates with no arguments; a class rather than a function because `can_open`
+# matters -- several of these formats share `.dat`, `.mesh` and `.out`, so a suffix
+# alone cannot identify one. A driver whose optional extra is missing raises at
+# driver-module import and the registry skips it with a warning, which is why a bare
+# install stays useful.
+[project.entry-points."pyramids.mesh_drivers"]
+2dm = "pyramids_mesh.drivers.sms:TwoDmDriver"
+
+
 [project.urls]
 homepage = "https://github.com/serapeum-org/pyramids-mesh"
 repository = "https://github.com/serapeum-org/pyramids-mesh"

@@ -35,6 +35,20 @@ from pyramids_mesh._validate import validate_and_normalise
 _LOCATION_DIMENSION = {"node": "n_node", "face": "n_face", "edge": "n_edge"}
 
 
+def _recorded_start_index(parsed: "ParsedMesh") -> int:
+    """Return the connectivity base to record on ``Connectivity`` for a round trip.
+
+    Args:
+        parsed: The validated mesh.
+
+    Returns:
+        int: ``original_start_index`` when the driver set one, else ``start_index``.
+    """
+    if parsed.original_start_index is None:
+        return parsed.start_index
+    return parsed.original_start_index
+
+
 @dataclass
 class ParsedVariable:
     """One data variable as a driver's ``_parse`` produced it, before construction.
@@ -85,7 +99,14 @@ class ParsedMesh:
             for a pure 1D network.
         edges: Edge-node connectivity, ``(n_edge, 2)``; set by 1D formats.
         fill_value: The pad value the file used for short face rows.
-        start_index: The connectivity base the file used (0 or 1).
+        start_index: The base ``validate_and_normalise`` subtracts from connectivity.
+            It is the file's own base for a format whose ids are contiguous; a driver
+            that resolves ids through ``_text.native_id_map`` has already produced
+            0-based indices and leaves this ``0``.
+        original_start_index: The base the **file** used, recorded on ``Connectivity``
+            so a writer can restore it. Defaults to ``start_index`` when ``None``; set
+            it explicitly when connectivity was resolved through an id map, so the
+            file's base survives even though ``start_index`` is ``0``.
         node_z: Node elevation, carried as a node variable rather than a coordinate
             (see design section 6); ``None`` when the format has none.
         face_x: Face-centre x-coordinates, if the file provides them.
@@ -104,6 +125,7 @@ class ParsedMesh:
     edges: np.ndarray | None = None
     fill_value: int = -1
     start_index: int = 0
+    original_start_index: int | None = None
     node_z: np.ndarray | None = None
     face_x: np.ndarray | None = None
     face_y: np.ndarray | None = None
@@ -265,7 +287,7 @@ class BaseDriver:
             data=np.asarray(parsed.edges),
             fill_value=-1,
             cf_role="edge_node_connectivity",
-            original_start_index=parsed.start_index,
+            original_start_index=_recorded_start_index(parsed),
         )
         return Network1d(
             node_x, node_y, edge_node_connectivity=edge_conn, crs=parsed.crs
@@ -285,7 +307,7 @@ class BaseDriver:
             data=np.asarray(parsed.faces),
             fill_value=-1,
             cf_role="face_node_connectivity",
-            original_start_index=parsed.start_index,
+            original_start_index=_recorded_start_index(parsed),
         )
         edge_conn = None
         if parsed.edges is not None:
@@ -293,7 +315,7 @@ class BaseDriver:
                 data=np.asarray(parsed.edges),
                 fill_value=-1,
                 cf_role="edge_node_connectivity",
-                original_start_index=parsed.start_index,
+                original_start_index=_recorded_start_index(parsed),
             )
         mesh = Mesh2d(
             node_x,
