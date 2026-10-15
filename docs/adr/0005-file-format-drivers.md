@@ -35,15 +35,20 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in `
 - **Generation, quality and refinement are dropped**, not deferred. They were not an intended scope.
   If mesh generation is wanted later it gets its own package and its own argument.
 - Drivers are discovered by `pyramids-gis` through the `pyramids.mesh_drivers` **entry-point group**.
-  This package depends on `pyramids-gis`; `pyramids-gis` never imports this package. Nothing is
-  registered until the pyramids release that ships that registry.
+  This package depends on `pyramids-gis`; `pyramids-gis` never imports this package. That registry
+  shipped in `pyramids-gis 0.68.0`, which is this package's floor, so registered drivers are
+  discovered and dispatched to.
 - Each driver is a class declaring `name`, `long_name`, `suffixes`, `api_version` and a
-  `capabilities` set, implementing `can_open` plus either `read` (a format carrying topology) or
-  `read_data` (a results-only format such as DAT, XMDF or XDMF, which carries values but no mesh).
+  `capabilities` set, implementing `can_open` and `mesh_names` — which pyramids calls on every
+  driver whatever it declares — plus either `read` (a format carrying topology) or `read_data` (a
+  results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
+  `read_mesh`, `needs_mesh`, `write_mesh` and `write_data` gate behaviour upstream; `read_data`,
+  `lazy_data` and `multi_mesh` are **declarative** and require no method of their own.
 - Dependency-backed drivers live behind extras — `[dhi]` (`mikeio`), `[interchange]` (`meshio`),
   `[hdf]` (`h5py`) — and a driver whose extra is absent is skipped at discovery, so a bare install
   stays small and useful.
-- Test fixtures are hand-built minimal files, committed, and excluded from the sdist. Vendor sample
+- Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
+  `MANIFEST.in`'s `prune tests`. Vendor sample
   files are fetched in CI behind a marker, never committed.
 
 ## The boundary (carried over from ADR-0003 unchanged)

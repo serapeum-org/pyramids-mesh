@@ -189,6 +189,15 @@ style = [
     ["disabled", "fg:#858585 italic"]
 ]
 
+[tool.coverage.run]
+# Branch coverage, not just line coverage. The two differ exactly where the silent
+# failures of this package live -- a connectivity re-basing or winding branch that is
+# executed but never taken both ways reads as covered while being untested. Set here
+# rather than as a task flag so every runner measures it: the pixi tasks, the
+# pre-commit `pytest-check` hook and a bare `pytest` alike.
+branch = true
+source = ["src/pyramids_mesh"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

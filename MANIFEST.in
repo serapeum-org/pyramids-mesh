@@ -1,0 +1,11 @@
+# The test suite is not part of the distribution. ADR-0005 commits this package to
+# keeping fixtures out of the sdist, and without this file that held only because
+# setuptools' default sdist happens not to pick up `tests/data/*.2dm` -- luck, not a
+# decision, and luck that ends the moment anything adds a `graft`.
+#
+# The PyPI quota argument in ADR-0005 section 1 is what this protects: format fixtures
+# are binary, and a distribution carrying them spends a budget that is already short.
+prune tests
+
+# Review artefacts written into the repo root by the review workflow.
+exclude pr-diff-review-*.md

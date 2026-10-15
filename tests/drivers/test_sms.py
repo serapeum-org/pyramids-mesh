@@ -275,6 +275,15 @@ def test_2dm_mesh_names_lists_both_topologies_of_a_mixed_file(tmp_path):
     assert TwoDmDriver().mesh_names(path) == ["mesh2d", "network1d"]
 
 
+def test_2dm_mesh_names_falls_back_on_an_unreadable_path(tmp_path):
+    """``mesh_names`` never raises: an unreadable path reports the surface name.
+
+    pyramids calls ``mesh_names`` on every driver whatever it declares, so failing here
+    would break dispatch for a file another driver could have read.
+    """
+    assert TwoDmDriver().mesh_names(str(tmp_path / "absent.2dm")) == ["mesh2d"]
+
+
 def test_2dm_mesh_names_lists_only_what_the_file_holds(tmp_path):
     """A faces-only and an E2L-only file each name one topology."""
     faces_only = _write(tmp_path, _UNIT_SQUARE, name="faces.2dm")

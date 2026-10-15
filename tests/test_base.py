@@ -15,7 +15,12 @@ import pytest
 
 from pyramids.netcdf.ugrid import Network1d, UgridDataset
 
-from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
+from pyramids_mesh._base import (
+    BaseDriver,
+    ParsedMesh,
+    ParsedVariable,
+    _recorded_start_index,
+)
 
 
 class _StubDriver(BaseDriver):
@@ -236,6 +241,18 @@ def test_can_open_rejects_a_foreign_suffix(tmp_path):
     path.write_text("content", encoding="utf-8")
 
     assert _StubDriver(_unit_square()).can_open(str(path)) is False
+
+
+def test_recorded_start_index_falls_back_to_start_index():
+    """Construction still records a base if it is handed an unvalidated mesh.
+
+    ``validate_and_normalise`` always resolves ``original_start_index``, so this
+    fallback is unreachable through ``read``; it keeps a direct ``_construct`` call from
+    handing ``None`` to ``Connectivity``.
+    """
+    parsed = _unit_square(start_index=1, original_start_index=None)
+
+    assert _recorded_start_index(parsed) == 1
 
 
 def test_mesh_names_defaults_to_one_entry():
