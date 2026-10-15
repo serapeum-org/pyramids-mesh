@@ -105,6 +105,12 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             ...     print(str(error).split(";")[0])
             faces fill_value 0 collides with a valid index (base 0, 3 nodes)
     """
+    # Rectangularity first: a ragged list of lists is the natural product of a
+    # line-oriented text parser, and numpy's own message for it says nothing about
+    # which array of whose driver is at fault.
+    _require_rectangular(parsed.faces, "faces")
+    _require_rectangular(parsed.edges, "edges")
+    _require_rectangular(parsed.network_edges, "network_edges")
     check_shapes(parsed)
     n_node = int(np.asarray(parsed.node_x).shape[0])
     faces = _normalise_connectivity(
@@ -169,12 +175,7 @@ def _normalise_connectivity(
     """
     if conn is None:
         return None
-    array = np.asarray(conn)
-    if array.dtype == object or array.ndim != 2:
-        raise ValueError(
-            f"{label} connectivity must be a rectangular 2-D array; a ragged one is a "
-            f"driver bug"
-        )
+    array = _require_rectangular(conn, label)
     if start_index <= fill_value < start_index + n_node:
         raise ValueError(
             f"{label} fill_value {fill_value} collides with a valid index "
@@ -190,6 +191,35 @@ def _normalise_connectivity(
             f"got {int(valid.min())}..{int(valid.max())}; the start index was wrong"
         )
     return shifted
+
+
+def _require_rectangular(conn: np.ndarray | None, label: str) -> np.ndarray | None:
+    """Return ``conn`` as a rectangular 2-D array, or raise saying it is ragged.
+
+    Args:
+        conn: The connectivity a driver produced, or ``None``.
+        label: ``"faces"``, ``"edges"`` or ``"network_edges"``, for the message.
+
+    Returns:
+        np.ndarray | None: The array, or ``None`` when ``conn`` was ``None``.
+
+    Raises:
+        ValueError: If the rows are of unequal length, whether that reaches here as a
+            list of lists or as an object-dtype array.
+    """
+    if conn is None:
+        return None
+    message = (
+        f"{label} connectivity must be a rectangular 2-D array; a ragged one is a "
+        f"driver bug -- pad short rows with the fill value"
+    )
+    try:
+        array = np.asarray(conn)
+    except ValueError as error:
+        raise ValueError(message) from error
+    if array.dtype == object or array.ndim != 2:
+        raise ValueError(message)
+    return array
 
 
 def to_zero_based(conn: np.ndarray, start_index: int, fill_value: int) -> np.ndarray:
@@ -338,6 +368,43 @@ def fix_winding(
     return out, reversed_count, degenerate_count
 
 
+def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
+    """Check every per-node array is as long as ``node_x``.
+
+    Without this a short ``node_y`` surfaces as an ``IndexError`` from inside the
+    shoelace sum, which never mentions the mismatch and does not fire at all on a parse
+    with no faces; a short ``node_z`` is not noticed at any point and builds a variable
+    whose declared shape contradicts its data.
+
+    Args:
+        parsed: The mesh whose node arrays to check.
+        n_node: The node count, taken from ``node_x``.
+
+    Raises:
+        ValueError: If any per-node array has a different length.
+    """
+    for label in ("node_y", "node_z"):
+        array = getattr(parsed, label)
+        if array is None:
+            continue
+        length = int(np.asarray(array).shape[0])
+        if length != n_node:
+            raise ValueError(
+                f"{label} has {length} values but node_x has {n_node}; every per-node "
+                f"array must be the same length"
+            )
+    for label in ("face_x", "face_y"):
+        array = getattr(parsed, label)
+        if array is None or parsed.faces is None:
+            continue
+        n_face = int(np.asarray(parsed.faces).shape[0])
+        length = int(np.asarray(array).shape[0])
+        if length != n_face:
+            raise ValueError(
+                f"{label} has {length} values but there are {n_face} faces"
+            )
+
+
 def _signed_area_2(xs: np.ndarray, ys: np.ndarray) -> float:
     """Twice the signed polygon area via the shoelace formula (positive is CCW)."""
     return float(np.dot(xs, np.roll(ys, -1)) - np.dot(ys, np.roll(xs, -1)))
@@ -347,18 +414,23 @@ def check_shapes(parsed: "ParsedMesh") -> None:
     """Check every variable's declared shape against its element and time counts.
 
     Reads ``shape`` only -- never ``values`` or ``loader`` -- so a lazy variable is
-    validated without forcing a read.
+    validated without forcing a read. It also checks the two things that otherwise make
+    ``shape`` untrustworthy: that every per-node array is as long as ``node_x``, and
+    that each variable carries exactly one of an eager array or a lazy loader.
 
     Args:
         parsed: The mesh carrying the variables.
 
     Raises:
-        ValueError: If a variable's location is unknown, or its shape does not equal
-            ``(element_count,)`` (static) or ``(len(time_values), element_count)``
-            (temporal).
+        ValueError: If a per-node or per-face array length disagrees with the topology,
+            a variable carries both or neither of ``values``/``loader``, its location is
+            unknown, or its shape does not equal ``(element_count,)`` (static) or
+            ``(len(time_values), element_count)`` (temporal).
     """
+    n_node = int(np.asarray(parsed.node_x).shape[0])
+    _check_node_arrays(parsed, n_node)
     counts = {
-        "node": int(np.asarray(parsed.node_x).shape[0]),
+        "node": n_node,
         "face": 0 if parsed.faces is None else int(np.asarray(parsed.faces).shape[0]),
         "edge": 0 if parsed.edges is None else int(np.asarray(parsed.edges).shape[0]),
     }
@@ -366,6 +438,12 @@ def check_shapes(parsed: "ParsedMesh") -> None:
         if var.location not in counts:
             raise ValueError(
                 f"variable {var_name!r} has unknown location {var.location!r}"
+            )
+        if (var.values is None) == (var.loader is None):
+            carried = "both" if var.values is not None else "neither"
+            raise ValueError(
+                f"variable {var_name!r} must carry exactly one of values (eager) or "
+                f"loader (lazy); it carries {carried}"
             )
         element_count = counts[var.location]
         expected: tuple[int, ...]

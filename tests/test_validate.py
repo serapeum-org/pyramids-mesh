@@ -153,6 +153,69 @@ def test_shape_mismatch_raises_without_loading_values():
     assert loaded == []
 
 
+def test_ragged_list_of_lists_raises_the_documented_error():
+    """A ragged plain list -- what a text parser naturally produces -- is named as such.
+
+    numpy's own message for an inhomogeneous shape says nothing about which array of
+    whose driver is wrong, so the rectangularity check runs before anything touches it.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+        node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+        faces=[[0, 1, 2], [0, 2, 3, 1]],
+    )
+
+    with pytest.raises(ValueError, match="rectangular"):
+        validate_and_normalise(parsed)
+
+
+@pytest.mark.parametrize("field", ["node_y", "node_z"])
+def test_per_node_array_length_mismatch_raises(field):
+    """A per-node array shorter than ``node_x`` is caught, named, before any indexing."""
+    fields = {
+        "node_x": np.array([0.0, 1.0, 1.0]),
+        "node_y": np.array([0.0, 0.0, 1.0]),
+        "faces": np.array([[0, 1, 2]], dtype=np.int64),
+    }
+    fields[field] = np.array([0.0, 1.0])
+
+    with pytest.raises(ValueError, match=f"{field} has 2 values but node_x has 3"):
+        validate_and_normalise(ParsedMesh(**fields))
+
+
+def test_face_centre_length_mismatch_raises():
+    """Face-centre coordinates must match the face count."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        face_x=np.array([0.5, 0.5]),
+    )
+
+    with pytest.raises(ValueError, match="face_x has 2 values but there are 1 faces"):
+        validate_and_normalise(parsed)
+
+
+@pytest.mark.parametrize(
+    "kwargs, carried",
+    [
+        ({}, "neither"),
+        ({"values": np.zeros(1), "loader": lambda: np.zeros(1)}, "both"),
+    ],
+)
+def test_variable_must_carry_exactly_one_data_source(kwargs, carried):
+    """A variable with no data source, or two, is rejected rather than built."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        variables={"wl": ParsedVariable(location="face", shape=(1,), **kwargs)},
+    )
+
+    with pytest.raises(ValueError, match=f"it carries {carried}"):
+        validate_and_normalise(parsed)
+
+
 def test_ragged_rows_raise():
     """A ragged (object-dtype) connectivity array is a driver bug, so it raises."""
     parsed = ParsedMesh(
@@ -231,7 +294,9 @@ def test_unknown_variable_location_raises():
         node_x=np.array([0.0, 1.0, 1.0]),
         node_y=np.array([0.0, 0.0, 1.0]),
         faces=np.array([[0, 1, 2]], dtype=np.int64),
-        variables={"t": ParsedVariable(location="volume", shape=(1,))},
+        variables={
+            "t": ParsedVariable(location="volume", shape=(1,), values=np.zeros(1))
+        },
     )
 
     with pytest.raises(ValueError, match="unknown location"):
@@ -276,7 +341,10 @@ def test_check_shapes_accepts_temporal_variable():
         faces=np.array([[0, 1, 2]], dtype=np.int64),
         variables={
             "wl": ParsedVariable(
-                location="face", shape=(2, 1), time_values=np.array([0.0, 1.0])
+                location="face",
+                shape=(2, 1),
+                values=np.zeros((2, 1)),
+                time_values=np.array([0.0, 1.0]),
             )
         },
     )
