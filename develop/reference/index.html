@@ -1179,25 +1179,40 @@ here once this package is installed. Dependency-backed drivers sit behind extras
 (<code>[dhi]</code>, <code>[interchange]</code>, <code>[hdf]</code>) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.</p>
 <p>The package root deliberately re-exports nothing: it carries <code>__version__</code> and the
-import contract that activates the vendored osgeo bindings, and that is all. What this
-package publishes is drivers, registered with <code>pyramids-gis</code> through the
-<code>pyramids.mesh_drivers</code> entry-point group, so installing it is the whole integration —
-<code>UgridDataset.read_file("domain.2dm")</code> then resolves to the driver that claims the
-suffix, with nothing imported from here. A driver class is reachable by its module path
-(<code>pyramids_mesh.drivers.sms.TwoDmDriver</code>, which is how its entry point names it) for the
-rare case of wanting one directly.</p>
+import contract that activates the vendored osgeo bindings, and that is all. Installing
+the package is the whole integration, so nothing here needs importing. A driver class is
+still reachable by its module path (<code>pyramids_mesh.drivers.sms.TwoDmDriver</code>, which is how
+its entry point names it) for the rare case of wanting one directly.</p>
 
 
 <p><span class="doc-section-title">Examples:</span></p>
     <ul>
 <li>
-<p>The installed version string:</p>
+<p>The root carries the installed version and nothing else. <code>__all__</code> is empty
+  because there is deliberately nothing to re-export:</p>
 <blockquote>
 <blockquote>
 <blockquote>
 <p>import pyramids_mesh
-isinstance(pyramids_mesh.<strong>version</strong>, str)
-True</p>
+pyramids_mesh.<strong>version</strong>.split(".")[0].isdigit()
+True
+pyramids_mesh.<strong>all</strong>
+[]</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+<li>
+<p>A driver is reached by its module path, not from the root, and reports the
+  suffixes it claims:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>from pyramids_mesh.drivers.sms import TwoDmDriver
+TwoDmDriver.name
+'2dm'
+TwoDmDriver.suffixes
+('.2dm',)</p>
 </blockquote>
 </blockquote>
 </blockquote>
