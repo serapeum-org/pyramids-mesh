@@ -436,6 +436,23 @@ def test_interior_padding_is_caught_even_on_a_short_row():
         fix_winding(faces, node_x, node_y, -1)
 
 
+def test_two_dimensional_parse_without_faces_raises():
+    """A 2D topology with no faces is a contradiction, refused where it is made.
+
+    Left alone it was not even a loud failure: ``read`` returned a ``UgridDataset``
+    whose connectivity was a 0-d object array, and the ``IndexError`` surfaced later
+    when the caller touched ``n_face`` -- far from the driver that caused it.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=None,
+    )
+
+    with pytest.raises(ValueError, match="topology_dimension 2 but no faces"):
+        validate_and_normalise(parsed)
+
+
 def test_edge_variable_validates_against_a_network_topology():
     """An edge variable is counted against whichever edge topology the mesh has.
 
@@ -462,6 +479,8 @@ def test_edge_connectivity_must_be_two_columns_wide(field):
     fields = {
         "node_x": np.array([0.0, 1.0, 1.0]),
         "node_y": np.array([0.0, 0.0, 1.0]),
+        # An edge-only mesh is one-dimensional, and saying so is now required.
+        "topology_dimension": 1,
         field: np.array([[0, 1, 2]], dtype=np.int64),
     }
 
@@ -507,9 +526,11 @@ def test_out_of_range_error_names_the_array_at_fault(label):
 @pytest.mark.parametrize("label", ["edges", "network_edges"])
 def test_ragged_error_names_the_array_at_fault(label):
     """Rectangularity is checked on all three arrays, each named for itself."""
+    faces = np.array([[0, 1, 2]], dtype=np.int64) if label != "faces" else None
     parsed = ParsedMesh(
         node_x=np.array([0.0, 1.0, 1.0]),
         node_y=np.array([0.0, 0.0, 1.0]),
+        faces=faces,
         **{label: [[0, 1], [1]]},
     )
 

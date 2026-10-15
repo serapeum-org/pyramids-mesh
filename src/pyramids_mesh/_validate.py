@@ -51,7 +51,8 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
         ParsedMesh: A normalised copy safe to construct pyramids objects from.
 
     Raises:
-        ValueError: On an out-of-range index, a ragged connectivity array, a fill value
+        ValueError: If a two-dimensional topology carries no faces, and on an
+            out-of-range index, a ragged connectivity array, a fill value
             that collides with a valid index, a per-node or per-face array whose length
             disagrees with the topology, a variable carrying both or neither of
             ``values``/``loader``, a variable whose shape does not match its element and
@@ -106,6 +107,16 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             ...     print(str(error).split(";")[0])
             faces fill_value 0 collides with a valid index (base 0, 3 nodes)
     """
+    if parsed.faces is None and parsed.topology_dimension != 1:
+        # Caught here rather than left to construction, which accepted it: the mesh came
+        # back carrying a 0-d object array for its connectivity, and the IndexError only
+        # surfaced when a caller later asked for n_face -- a silently malformed result,
+        # returned a long way from the driver that caused it.
+        raise ValueError(
+            f"this mesh declares topology_dimension "
+            f"{parsed.topology_dimension} but no faces; a surface mesh needs face "
+            f"connectivity, and a 1D topology must say topology_dimension=1"
+        )
     # Rectangularity first: a ragged list of lists is the natural product of a
     # line-oriented text parser, and numpy's own message for it says nothing about
     # which array of whose driver is at fault.
