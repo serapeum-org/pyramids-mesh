@@ -1178,9 +1178,14 @@ entry-point group, so <code>UgridDataset.read_file("model.slf")</code> resolves 
 here once this package is installed. Dependency-backed drivers sit behind extras
 (<code>[dhi]</code>, <code>[interchange]</code>, <code>[hdf]</code>) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.</p>
-<p>The public surface is empty at <code>0.1.0</code> — this release is the repository scaffold
-(packaging, CI, docs) plus <code>__version__</code>. Every name added later is re-exported
-here, so <code>from pyramids_mesh import ...</code> stays the import worth using.</p>
+<p>The package root deliberately re-exports nothing: it carries <code>__version__</code> and the
+import contract that activates the vendored osgeo bindings, and that is all. What this
+package publishes is drivers, registered with <code>pyramids-gis</code> through the
+<code>pyramids.mesh_drivers</code> entry-point group, so installing it is the whole integration —
+<code>UgridDataset.read_file("domain.2dm")</code> then resolves to the driver that claims the
+suffix, with nothing imported from here. A driver class is reachable by its module path
+(<code>pyramids_mesh.drivers.sms.TwoDmDriver</code>, which is how its entry point names it) for the
+rare case of wanting one directly.</p>
 
 
 <p><span class="doc-section-title">Examples:</span></p>
