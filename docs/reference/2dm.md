@@ -78,6 +78,17 @@ Every one of these is deliberate; none is a silent approximation.
   will be carried properly once `Network1d` has somewhere to put it.
 - **No elevation is invented.** If no `ND` record carries a z column, `node_z` is omitted
   entirely rather than filled with zeros a consumer could not tell from a real zero datum.
+- **Records this driver does not model are skipped**, as MDAL skips them: `MESHNAME`, the
+  `BEGPARAMDEF` block and anything else beyond the nodes, elements and
+  `NUM_MATERIALS_PER_ELEM`. One consequence is that a file naming its own mesh loses that name —
+  the topology is always built as `mesh2d`.
+- **A malformed record is refused, never guessed.** A record short of the fields its keyword
+  requires, a non-numeric coordinate, id or material, and a `NUM_MATERIALS_PER_ELEM` below one all
+  raise and name the file and the record. An element short of its *declared* material columns is
+  the one exception: the missing columns read as `0.0`, because a writer omitting a trailing
+  column is common and refusing the file would cost more than it buys.
+- **Two nodes, faces or line elements sharing an id** are refused: the connectivity would be
+  ambiguous.
 - **No CRS.** 2DM carries none, so `crs` is always `None`; it is never inferred from the
   coordinate magnitudes.
 - **Read-only for now.** `write_mesh` arrives with the 2DM writer (task W1).

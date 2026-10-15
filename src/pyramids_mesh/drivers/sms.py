@@ -15,6 +15,14 @@ from __future__ import annotations
 
 import numpy as np
 
+# Imported from a private module because there is no public one: as of pyramids-gis
+# 0.68.0 nothing named *Error is re-exported from `pyramids` or `pyramids.base`, while
+# the published driver contract ("Exceptions -- reuse, do not invent") tells a driver to
+# raise exactly this type. ADR-0005 requires a local workaround to name the upstream
+# gap and be removed when it closes: the ask upstream is a public export of
+# FileFormatNotSupportedError (and a public eager/lazy MeshVariable constructor, which
+# _base.py needs for the same reason). Until then a patch release renaming the private
+# module would break this import, so `tests/test_package.py` keeps a canary on it.
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
