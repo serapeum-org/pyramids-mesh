@@ -19,6 +19,8 @@ import pytest
 
 from pyramids.netcdf.ugrid import UgridDataset, mesh_drivers
 
+from pyramids_mesh._validate import _area_tolerance, _signed_area_2
+
 
 @pytest.fixture(params=sorted(mesh_drivers()))
 def driver(request):
@@ -64,10 +66,17 @@ def _connectivity(result):
     return result.edge_node_connectivity.data, result.n_node
 
 
-def _signed_area2(node_x, node_y, real):
-    """Twice the signed area of the polygon through ``real`` node indices."""
-    xs, ys = node_x[real], node_y[real]
-    return float(np.dot(xs, np.roll(ys, -1)) - np.dot(ys, np.roll(xs, -1)))
+def _winding(node_x, node_y, vertices):
+    """Return the signed area of a face and the tolerance below which it is degenerate.
+
+    Deliberately the package's own functions rather than a reimplementation. Summing
+    over absolute coordinates cancels at projected magnitudes, and comparing against an
+    exact zero never fires there, so a harness that rolled its own would assert on noise
+    for the first driver whose fixture is in a real CRS -- and could disagree with the
+    code it exists to check.
+    """
+    xs, ys = node_x[vertices], node_y[vertices]
+    return _signed_area_2(xs, ys), _area_tolerance(xs, ys)
 
 
 def test_connectivity_is_zero_based_integer(driver, minimal_file):
@@ -107,11 +116,11 @@ def test_faces_are_counter_clockwise(driver, minimal_file):
     mesh = result.mesh
 
     for row in mesh.face_node_connectivity.data:
-        real = row[row != -1]
-        if real.size < 3:
+        vertices = row[row != -1]
+        if vertices.size < 3:
             continue
-        area2 = _signed_area2(mesh.node_x, mesh.node_y, real)
-        if area2 == 0:
+        area2, tolerance = _winding(mesh.node_x, mesh.node_y, vertices)
+        if abs(area2) <= tolerance:
             continue
         assert area2 > 0
 

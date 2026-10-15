@@ -396,15 +396,18 @@ def fix_winding(
 def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
     """Return the area below which a face counts as degenerate.
 
-    Degeneracy is a geometric property, not an exact float, so a sliver whose shoelace
-    sum lands a few ULP either side of zero is reported as degenerate rather than
-    "reversed" on the strength of its sign bit.
+    Degeneracy is "smaller than this face's coordinates can resolve", so the threshold
+    needs both of the quantities that decide that: the face's **span**, which sets the
+    scale of the area, and the coordinate **magnitude**, which sets how finely the
+    vertices are representable at all.
 
-    The threshold scales with the face's own **span**, not its distance from the origin.
-    Using the absolute coordinate magnitude made the tolerance a function of where the
-    mesh sits: at a projected northing of 7e6 it reached ~0.09, declaring every element
-    smaller than that degenerate and leaving real clockwise faces unreversed. A span is
-    translation-invariant, which is what a geometric property must be.
+    Both halves were learned the hard way. A magnitude-only threshold is not a
+    geometric property: at a northing of 7e6 it reached ~0.09 and declared every element
+    smaller than that degenerate. A span-only threshold ignores representability: near
+    7e6 a coordinate resolves to ~4.7e-10, so three collinear points do not *store* as
+    collinear and a truly flat face carries ~1e-9 of irreducible area -- far above
+    ``eps * span**2``, so it was read as clockwise and reversed, and no mesh in a
+    projected CRS ever reported a degenerate face.
 
     Args:
         xs: The face's vertex x-coordinates.
@@ -414,7 +417,8 @@ def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
         float: The absolute signed-area threshold for this face.
     """
     span = max(float(np.ptp(xs)), float(np.ptp(ys)))
-    return 8.0 * float(np.finfo(np.float64).eps) * span * span
+    magnitude = max(float(np.abs(xs).max()), float(np.abs(ys).max()))
+    return 8.0 * float(np.finfo(np.float64).eps) * span * max(span, magnitude)
 
 
 def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:

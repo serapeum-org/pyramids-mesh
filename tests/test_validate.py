@@ -168,6 +168,25 @@ def test_small_clockwise_face_at_projected_coordinates_is_reversed():
     assert _signed_area2(node_x, node_y, fixed[0]) > 0
 
 
+def test_collinear_face_at_projected_coordinates_is_degenerate_not_reversed():
+    """A collinear face stays degenerate when written at projected coordinates.
+
+    The mirror of the reversal test, and the direction a span-only tolerance got wrong.
+    Coordinates near 7e6 resolve to about 4.7e-10, so three collinear points do not
+    *store* as collinear: their signed area is ~9.3e-10 of real, irreducible area. A
+    tolerance that ignores the coordinate magnitude therefore reads it as clockwise and
+    reverses it, and `degenerate_count` never fires on any mesh in a projected CRS.
+    """
+    node_x = 500000.0 + np.array([0.0, 1.0, 2.0])
+    node_y = 7000000.0 + np.array([0.1, 0.2, 0.3])
+    faces = np.array([[0, 1, 2]], dtype=np.int64)
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    assert (reversed_count, degenerate_count) == (0, 1)
+    np.testing.assert_array_equal(fixed, faces)
+
+
 def test_area_is_measured_the_same_wherever_the_mesh_sits():
     """The signed area of a face does not change when the mesh is translated."""
     xs = np.array([0.0, 1.0, 1.0])
@@ -479,9 +498,9 @@ def test_an_explicit_zero_writer_base_is_not_overwritten():
 def test_an_ordinary_face_at_projected_coordinates_is_still_wound(origin):
     """The degeneracy tolerance scales with the coordinates but must not swallow a face.
 
-    The tolerance is ``8 * eps * scale ** 2``, so at projected-coordinate magnitudes it
-    is no longer negligible. A real 100 m element offset to a UTM-sized origin has to
-    keep being reversed rather than reported as having no winding at all.
+    The tolerance is ``8 * eps * span * max(span, magnitude)``, so at projected
+    magnitudes it is no longer negligible. A real 100 m element offset to a UTM-sized
+    origin has to keep being reversed rather than reported as having no winding at all.
     """
     node_x = np.array([0.0, 100.0, 100.0]) + origin
     node_y = np.array([0.0, 100.0, 0.0]) + origin
