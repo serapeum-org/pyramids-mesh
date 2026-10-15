@@ -185,7 +185,15 @@ def _normalise_connectivity(
     """
     if conn is None:
         return None
+    # Repeats the check `validate_and_normalise` already ran, so this stays correct for
+    # a driver or a test that calls it directly; the early call exists only so the
+    # ragged message beats numpy's.
     array = _require_rectangular(conn, label)
+    if label.endswith("edges") and array.shape[1] != 2:
+        raise ValueError(
+            f"{label} connectivity must be {array.shape[0]} rows of 2 nodes, but its "
+            f"rows are {array.shape[1]} wide; an edge joins exactly two nodes"
+        )
     if start_index <= fill_value < start_index + n_node:
         raise ValueError(
             f"{label} fill_value {fill_value} collides with a valid index "
@@ -323,10 +331,13 @@ def fix_winding(
 
     Returns:
         tuple[np.ndarray, int, int]: The corrected faces, the number of faces reversed,
-            and the number of degenerate faces found.
+            and the number of degenerate faces found. Every row is counted in exactly
+            one of three groups -- reversed, degenerate, or already counter-clockwise --
+            so the faces neither count are the ones that were already correct.
 
     Raises:
-        ValueError: If a row pads between real vertices.
+        ValueError: If a row pads between its real vertices, or holds fewer than three
+            real nodes.
 
     Examples:
         - A clockwise triangle is reversed and counted:
@@ -375,13 +386,19 @@ def fix_winding(
     degenerate_count = 0
     for row in out:
         vertices = row[row != fill_value]
-        if vertices.size < 3:
-            continue
+        # Row shape before winding: both of these are properties of the row itself, so
+        # they are checked for every row rather than only for rows wide enough to wind.
         pad_positions = np.flatnonzero(row == fill_value)
         if pad_positions.size and int(pad_positions.min()) < vertices.size:
             raise ValueError(
                 f"face row {row.tolist()} pads between real vertices; UGRID pads only "
                 f"the tail of a row, and reversing this one would move the padding"
+            )
+        if vertices.size < 3:
+            raise ValueError(
+                f"face row {row.tolist()} holds {vertices.size} real node(s); a face "
+                f"needs at least three, so this is a driver bug -- a 1D topology "
+                f"belongs in edges or network_edges, not in faces"
             )
         xs, ys = node_x[vertices], node_y[vertices]
         area2 = _signed_area_2(xs, ys)
@@ -579,10 +596,14 @@ def check_shapes(parsed: "ParsedMesh") -> None:
     """
     n_node = int(np.asarray(parsed.node_x).shape[0])
     _check_node_arrays(parsed, n_node)
+    # An edge variable is indexed by whichever edge topology the mesh actually has. A
+    # driver reporting a 1D topology puts its edges in `network_edges`, so counting only
+    # `edges` made a correct edge variable unvalidatable on exactly those meshes.
+    edges = parsed.edges if parsed.edges is not None else parsed.network_edges
     counts = {
         "node": n_node,
         "face": 0 if parsed.faces is None else int(np.asarray(parsed.faces).shape[0]),
-        "edge": 0 if parsed.edges is None else int(np.asarray(parsed.edges).shape[0]),
+        "edge": 0 if edges is None else int(np.asarray(edges).shape[0]),
     }
     for var_name, var in parsed.variables.items():
         if var.location not in counts:

@@ -390,17 +390,62 @@ def test_unknown_variable_location_raises():
         check_shapes(parsed)
 
 
-def test_winding_skips_rows_with_fewer_than_three_real_vertices():
-    """A row holding fewer than three real nodes is not a polygon, so it is skipped."""
+def test_row_with_fewer_than_three_real_vertices_raises():
+    """A row holding fewer than three real nodes is not a face, so it is refused.
+
+    It was previously skipped, which meant it reached ``Mesh2d`` uncounted by either
+    tally and invisible to every check. A 1D topology belongs in ``edges`` or
+    ``network_edges``; in ``faces`` it is a driver bug.
+    """
     faces = np.array([[0, 1, -1]], dtype=np.int64)
     node_x = np.array([0.0, 1.0, 1.0])
     node_y = np.array([0.0, 0.0, 1.0])
 
-    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+    with pytest.raises(ValueError, match="holds 2 real node"):
+        fix_winding(faces, node_x, node_y, -1)
 
-    np.testing.assert_array_equal(fixed, faces)
-    assert reversed_count == 0
-    assert degenerate_count == 0
+
+def test_interior_padding_is_caught_even_on_a_short_row():
+    """The padding check is a row-shape rule, so it applies before the width rule."""
+    faces = np.array([[0, -1, 1]], dtype=np.int64)
+    node_x = np.array([0.0, 1.0, 1.0])
+    node_y = np.array([0.0, 0.0, 1.0])
+
+    with pytest.raises(ValueError, match="pads between real vertices"):
+        fix_winding(faces, node_x, node_y, -1)
+
+
+def test_edge_variable_validates_against_a_network_topology():
+    """An edge variable is counted against whichever edge topology the mesh has.
+
+    A driver reporting a 1D topology puts its edges in ``network_edges``, so counting
+    only ``edges`` made a correct edge variable impossible to validate there.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 2.0]),
+        node_y=np.array([0.0, 0.0, 0.0]),
+        faces=None,
+        network_edges=np.array([[0, 1], [1, 2]], dtype=np.int64),
+        topology_dimension=1,
+        variables={
+            "q": ParsedVariable(location="edge", shape=(2,), values=np.zeros(2))
+        },
+    )
+
+    check_shapes(parsed)  # does not raise
+
+
+@pytest.mark.parametrize("field", ["edges", "network_edges"])
+def test_edge_connectivity_must_be_two_columns_wide(field):
+    """An edge joins exactly two nodes, so a wider array is refused."""
+    fields = {
+        "node_x": np.array([0.0, 1.0, 1.0]),
+        "node_y": np.array([0.0, 0.0, 1.0]),
+        field: np.array([[0, 1, 2]], dtype=np.int64),
+    }
+
+    with pytest.raises(ValueError, match="rows are 3 wide"):
+        validate_and_normalise(ParsedMesh(**fields))
 
 
 def test_validate_leaves_the_input_untouched():
