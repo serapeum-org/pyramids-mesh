@@ -113,6 +113,13 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
     edges = _normalise_connectivity(
         parsed.edges, parsed.start_index, parsed.fill_value, n_node, "edges"
     )
+    network_edges = _normalise_connectivity(
+        parsed.network_edges,
+        parsed.start_index,
+        parsed.fill_value,
+        n_node,
+        "network_edges",
+    )
     if faces is not None:
         faces, reversed_count, degenerate_count = fix_winding(
             faces, np.asarray(parsed.node_x), np.asarray(parsed.node_y), -1
@@ -130,6 +137,7 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
         parsed,
         faces=faces,
         edges=edges,
+        network_edges=network_edges,
         fill_value=-1,
         start_index=0,
         original_start_index=writer_base,

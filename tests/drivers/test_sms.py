@@ -202,6 +202,58 @@ E2L 2 2 3 1
     np.testing.assert_array_equal(result.edge_node_connectivity.data, [[0, 1], [1, 2]])
 
 
+_MIXED = _UNIT_SQUARE + "E2L 3 1 2 1\nE2L 4 2 3 1\n"
+
+
+def test_2dm_mesh_names_lists_both_topologies_of_a_mixed_file(tmp_path):
+    """A file carrying faces and E2L names its two topologies separately."""
+    path = _write(tmp_path, _MIXED)
+
+    assert TwoDmDriver().mesh_names(path) == ["mesh2d", "network1d"]
+
+
+def test_2dm_mesh_names_lists_only_what_the_file_holds(tmp_path):
+    """A faces-only and an E2L-only file each name one topology."""
+    faces_only = _write(tmp_path, _UNIT_SQUARE, name="faces.2dm")
+    lines_only = _write(
+        tmp_path,
+        "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nE2L 1 1 2 1\n",
+        name="lines.2dm",
+    )
+
+    assert TwoDmDriver().mesh_names(faces_only) == ["mesh2d"]
+    assert TwoDmDriver().mesh_names(lines_only) == ["network1d"]
+
+
+def test_2dm_mixed_file_1d_elements_are_reachable(tmp_path):
+    """The 1D elements of a mixed file are read by naming the network topology."""
+    path = _write(tmp_path, _MIXED)
+
+    network = TwoDmDriver().read(path, mesh_name="network1d")
+
+    assert isinstance(network, Network1d)
+    assert network.n_edge == 2
+    np.testing.assert_array_equal(network.edge_node_connectivity.data, [[0, 1], [1, 2]])
+
+
+def test_2dm_mixed_file_1d_elements_reachable_through_network_read_file(tmp_path):
+    """The documented route works: Network1d.read_file with the network's name."""
+    path = _write(tmp_path, _MIXED)
+
+    network = Network1d.read_file(path, mesh_name="network1d")
+
+    assert isinstance(network, Network1d)
+    assert network.n_edge == 2
+
+
+def test_2dm_requesting_a_network_from_a_faces_only_file_raises(tmp_path):
+    """Asking for a topology the file does not hold is an error naming what it has."""
+    path = _write(tmp_path, _UNIT_SQUARE)
+
+    with pytest.raises(ValueError, match="network1d"):
+        TwoDmDriver().read(path, mesh_name="network1d")
+
+
 def test_2dm_e2l_with_faces_warns(tmp_path):
     """A mixed-dimension file returns the faces and warns, naming Network1d."""
     text = _UNIT_SQUARE + "E2L 3 1 2 1\n"
@@ -211,6 +263,25 @@ def test_2dm_e2l_with_faces_warns(tmp_path):
 
     assert isinstance(dataset, UgridDataset)
     assert dataset.mesh.n_face == 2
+
+
+def test_2dm_e2l_only_file_reports_its_dropped_elevation(tmp_path):
+    """An E2L-only file carrying real z values says so rather than losing them quietly.
+
+    The original test used ``z = 0.0`` throughout, which hid the loss entirely.
+    """
+    text = """MESH2D
+ND 1 0.0 0.0 5.0
+ND 2 1.0 0.0 6.0
+ND 3 2.0 0.0 7.0
+E2L 1 1 2 1
+E2L 2 2 3 1
+"""
+    with pytest.warns(UserWarning, match="node_z"):
+        network = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert isinstance(network, Network1d)
+    assert network.n_node == 3
 
 
 def test_2dm_z_becomes_node_variable(tmp_path):
@@ -383,8 +454,8 @@ E3T 1 1 2
         TwoDmDriver().read(_write(tmp_path, text))
 
 
-def test_2dm_node_without_elevation_defaults_to_zero(tmp_path):
-    """An ND record with no z still reads, with the elevation defaulting to zero."""
+def test_2dm_file_without_a_z_column_carries_no_elevation(tmp_path):
+    """A file declaring no z gets no ``node_z`` -- zeros would be invented data."""
     text = """MESH2D
 ND 1 0.0 0.0
 ND 2 1.0 0.0
@@ -393,7 +464,7 @@ E3T 1 1 2 3 1
 """
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    np.testing.assert_allclose(dataset.get("node_z").data, [0.0, 0.0, 0.0])
+    assert "node_z" not in dataset.data_variable_names
 
 
 def test_2dm_face_without_material_defaults_to_zero(tmp_path):

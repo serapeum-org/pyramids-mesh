@@ -7,15 +7,32 @@ other driver in this package follows.
 |---|---|
 | Driver name | `2dm` |
 | Suffixes | `.2dm` |
-| Capabilities | `read_mesh`, `read_data` |
+| Capabilities | `read_mesh`, `read_data`, `multi_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset`, or `Network1d` for a file of only `E2L` elements |
+| Returns | `UgridDataset` for the surface mesh, `Network1d` for the `E2L` network |
 
 ```python
 from pyramids.netcdf.ugrid import UgridDataset
 
 mesh = UgridDataset.read_file("domain.2dm")
 ```
+
+## Files holding both a surface and a network
+
+A 2DM may carry a surface mesh (`E3T`/`E4Q`/`E6T`), a 1D network (`E2L`), or both. The two are
+named separately, so `mesh_names` tells you what a file holds and `mesh_name=` picks one:
+
+```python
+from pyramids.netcdf.ugrid import Network1d, UgridDataset
+
+UgridDataset.mesh_names("domain.2dm")            # ['mesh2d', 'network1d']
+mesh = UgridDataset.read_file("domain.2dm")      # the surface mesh
+channels = Network1d.read_file("domain.2dm", mesh_name="network1d")   # the 1D network
+```
+
+Reading the surface of a file that also holds `E2L` elements warns that the network is not in
+that result and names this route. The `E2L` elements are a separate 1D topology, not the surface
+mesh's edges, so they are never folded into `edge_node_connectivity`.
 
 ## What it reads
 
@@ -48,13 +65,19 @@ Every one of these is deliberate; none is a silent approximation.
 - **`E6T` is kept as a six-node face.** Its node order is corner, mid-side, corner,
   mid-side, corner, mid-side, so the hexagon through those points *is* the element
   outline; it is not demoted to its corner triangle.
-- **A file holding both faces and `E2L` elements returns the faces only**, with a
-  warning. A mixed-dimension file is reached through
-  [`Network1d`][pyramids.netcdf.ugrid.Network1d]; `UgridDataset` and `Network1d` are
-  separate types and one read returns one of them.
-- **No elevation coordinate.** The pyramids mesh model is planar, so `z` survives as a
-  node-located `node_z` variable. Anything consuming the mesh *geometry* sees the planar
-  projection.
+- **One read returns one topology.** `UgridDataset` and `Network1d` are separate types, so a
+  file holding both is read twice, once per `mesh_name` (see above). Reading either half warns
+  about what the other half leaves behind rather than omitting it silently.
+- **No elevation coordinate.** The pyramids mesh model is planar, so on the **surface** path `z`
+  survives as a node-located `node_z` variable. Anything consuming the mesh *geometry* sees the
+  planar projection.
+- **A 1D read cannot carry `z`, variables or global attributes at all.**
+  [`Network1d`][pyramids.netcdf.ugrid.Network1d] holds a topology and a CRS and has no parameter
+  for data, so reading the network half of a file reports each of those by name in a warning and
+  returns without them. This is a `pyramids-gis` limitation, not a decision of this driver: it
+  will be carried properly once `Network1d` has somewhere to put it.
+- **No elevation is invented.** If no `ND` record carries a z column, `node_z` is omitted
+  entirely rather than filled with zeros a consumer could not tell from a real zero datum.
 - **No CRS.** 2DM carries none, so `crs` is always `None`; it is never inferred from the
   coordinate magnitudes.
 - **Read-only for now.** `write_mesh` arrives with the 2DM writer (task W1).

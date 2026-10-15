@@ -6,6 +6,7 @@ any file format in the way.
 """
 
 import gc
+import warnings
 
 import pyramids  # noqa: F401  # isort:skip
 
@@ -188,6 +189,52 @@ def test_edges_become_edge_connectivity_on_a_2d_mesh():
     edge_connectivity = dataset.mesh.edge_node_connectivity
     assert edge_connectivity is not None
     np.testing.assert_array_equal(edge_connectivity.data, [[0, 1], [1, 2]])
+
+
+def test_network_construction_warns_about_what_it_cannot_carry():
+    """A 1D build names everything ``Network1d`` has no room for, instead of dropping it.
+
+    ``Network1d`` takes a topology and a CRS only, so variables, node elevation and
+    global attributes cannot come along. The loss is unavoidable until upstream grows
+    somewhere to put them; being silent about it is not.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 2.0]),
+        node_y=np.array([0.0, 0.0, 0.0]),
+        faces=None,
+        edges=np.array([[0, 1], [1, 2]], dtype=np.int64),
+        node_z=np.array([5.0, 6.0, 7.0]),
+        variables={
+            "wl": ParsedVariable(location="node", shape=(3,), values=np.zeros(3))
+        },
+        global_attributes={"source": "test"},
+        topology_dimension=1,
+    )
+
+    with pytest.warns(UserWarning, match="node_z") as record:
+        result = _StubDriver(parsed).read("channels.stub")
+
+    assert isinstance(result, Network1d)
+    message = str(record[0].message)
+    assert "wl" in message
+    assert "global_attributes" in message
+
+
+def test_network_construction_is_quiet_when_there_is_nothing_to_drop():
+    """A bare 1D topology carries everything it had, so nothing is warned about."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0]),
+        node_y=np.array([0.0, 0.0]),
+        faces=None,
+        edges=np.array([[0, 1]], dtype=np.int64),
+        topology_dimension=1,
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = _StubDriver(parsed).read("channels.stub")
+
+    assert result.n_edge == 1
 
 
 def test_temporal_variable_carries_time_values_and_dimensions():

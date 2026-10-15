@@ -70,8 +70,16 @@ class TwoDmDriver(BaseDriver):
           treating a mid-side or centre node as a corner would silently distort the
           element.
         - ``E6T`` is read as a real six-node face, not demoted to its corner triangle.
-        - A file holding both faces and ``E2L`` line elements returns the faces only,
-          with a warning: a mixed-dimension file is reached through ``Network1d``.
+        - A file may hold a surface mesh, an ``E2L`` network, or both. They are named
+          separately (``mesh_names`` -> ``["mesh2d", "network1d"]``), so one read
+          returns one topology and the caller picks with ``mesh_name``. Reading either
+          half warns about what the other leaves behind. ``E2L`` elements are a
+          separate 1D topology, never folded into the surface's edge connectivity.
+        - A 1D read carries no ``node_z``, variables or global attributes:
+          ``Network1d`` has no parameter for them. Each is named in a warning rather
+          than dropped quietly. That is a ``pyramids-gis`` limitation to fix upstream.
+        - ``node_z`` is omitted entirely when no ``ND`` record carries a z column,
+          rather than fabricated as zeros.
         - 2DM carries no CRS, so ``crs`` is always ``None``; it is never guessed from
           the coordinate magnitudes.
 
@@ -140,7 +148,40 @@ class TwoDmDriver(BaseDriver):
     long_name = "SMS/TUFLOW 2DM mesh"
     suffixes = (".2dm",)
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh", "read_data"})
+    capabilities = frozenset({"read_mesh", "read_data", "multi_mesh"})
+
+    def mesh_names(self, path: str) -> list[str]:
+        """List the topologies the file holds, in surface-then-network order.
+
+        A 2DM may carry a surface mesh (``E3T``/``E4Q``/``E6T``), a 1D network
+        (``E2L``), or both. Naming them separately is what lets a caller pick one with
+        ``mesh_name``, which is the only way to reach the 1D half of a mixed file.
+
+        Args:
+            path: The 2DM file to inspect.
+
+        Returns:
+            list[str]: ``["mesh2d"]``, ``["network1d"]``, or both. A file whose
+                elements cannot be read at all reports the surface name, leaving the
+                error to ``read``.
+        """
+        has_faces = False
+        has_lines = False
+        try:
+            for keyword, _ in iter_records(path, comment=_COMMENT):
+                upper = keyword.upper()
+                if upper in _FACE_NODE_COUNTS:
+                    has_faces = True
+                elif upper == _LINE_ELEMENT:
+                    has_lines = True
+        except OSError:
+            return [self._default_mesh_name]
+        names = []
+        if has_faces:
+            names.append(self._default_mesh_name)
+        if has_lines:
+            names.append(self.network_mesh_name)
+        return names or [self._default_mesh_name]
 
     def _sniff(self, path: str) -> bool:
         """Report whether the first significant line is the ``MESH2D`` header.
@@ -235,6 +276,10 @@ class _Scan:
         self.face_extras: list[list[str]] = []
         self.edge_vertices: list[list[int]] = []
         self.materials_per_element = 1
+        # Whether any ND record actually carried a z column. A file without one gets no
+        # node_z at all rather than a column of zeros, which a consumer could not tell
+        # from a real zero datum.
+        self.saw_elevation = False
 
     def run(self, path: str) -> None:
         """Stream the file once, collecting records without resolving any ids.
@@ -295,7 +340,11 @@ class _Scan:
         self.node_ids.append(int(fields[0]))
         self.node_x.append(float(fields[1]))
         self.node_y.append(float(fields[2]))
-        self.node_z.append(float(fields[3]) if len(fields) > 3 else 0.0)
+        if len(fields) > 3:
+            self.saw_elevation = True
+            self.node_z.append(float(fields[3]))
+        else:
+            self.node_z.append(0.0)
 
     def _add_face(self, upper: str, fields: list[str], path: str) -> None:
         """Collect one face record, keeping its trailing columns unsliced.
@@ -341,13 +390,6 @@ class _Scan:
         native_id_map(self.face_ids)  # rejects duplicate element ids
         faces = self._resolve_faces(node_map, path)
         edges = self._resolve_edges(node_map, path)
-        if faces is not None and edges is not None:
-            warnings.warn(
-                f"{path!r} holds both faces and E2L line elements; only the faces "
-                f"were returned. Read the 1D elements with Network1d.read_file",
-                stacklevel=2,
-            )
-            edges = None
         return self._assemble(path, faces, edges)
 
     def _resolve_faces(self, node_map: dict[int, int], path: str) -> np.ndarray | None:
@@ -382,14 +424,18 @@ class _Scan:
             node_x=np.array(self.node_x, dtype=np.float64),
             node_y=np.array(self.node_y, dtype=np.float64),
             faces=faces,
-            edges=edges,
+            # E2L elements are a separate 1D topology, not this surface's edges, so
+            # they never reach `Mesh2d.edge_node_connectivity`.
+            network_edges=edges,
             fill_value=-1,
             # Connectivity is already 0-based: it was resolved through the id map, so
             # there is nothing for the validator to subtract. The file's own 1-based
             # numbering is recorded separately so a writer can restore it.
             start_index=0,
             original_start_index=1,
-            node_z=np.array(self.node_z, dtype=np.float64) if self.node_z else None,
+            node_z=(
+                np.array(self.node_z, dtype=np.float64) if self.saw_elevation else None
+            ),
             crs=None,
             variables=variables,
             global_attributes={"Conventions": "UGRID-1.0", "source": "SMS 2DM"},

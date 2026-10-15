@@ -15,12 +15,14 @@ See ``planning/design.md`` sections 3, 6, 17 and 19. Implemented by task S2.
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import numpy as np
 
 from pyramids.netcdf.ugrid import (
+    MESH_DRIVER_API_VERSION,
     Connectivity,
     Mesh2d,
     MeshVariable,
@@ -97,7 +99,14 @@ class ParsedMesh:
         node_y: Node y-coordinates, shape ``(n_node,)``.
         faces: Face-node connectivity, ``(n_face, max_nodes)``, fill-padded; ``None``
             for a pure 1D network.
-        edges: Edge-node connectivity, ``(n_edge, 2)``; set by 1D formats.
+        edges: This mesh's own edge-node connectivity, ``(n_edge, 2)``, as
+            ``Mesh2d.edge_node_connectivity`` -- what edge-located data is indexed by.
+        network_edges: A **separate 1D topology's** edges, ``(n_edge, 2)``. Kept apart
+            from ``edges`` because they are different things: 2DM's ``E2L`` elements are
+            channel elements, not the edges of the surface mesh, and feeding them to
+            ``Mesh2d.edge_node_connectivity`` would silently mislabel them. A file
+            holding both names its topologies separately, and the caller picks one with
+            ``mesh_name``.
         fill_value: The pad value the file used for short face rows.
         start_index: The base ``validate_and_normalise`` subtracts from connectivity.
             It is the file's own base for a format whose ids are contiguous; a driver
@@ -127,6 +136,7 @@ class ParsedMesh:
     node_y: np.ndarray
     faces: np.ndarray | None = None
     edges: np.ndarray | None = None
+    network_edges: np.ndarray | None = None
     fill_value: int = -1
     start_index: int = 0
     original_start_index: int | None = None
@@ -159,8 +169,13 @@ class BaseDriver:
     name: str = ""
     long_name: str = ""
     suffixes: tuple[str, ...] = ()
-    api_version: int = 1
+    api_version: int = MESH_DRIVER_API_VERSION
     capabilities: frozenset[str] = frozenset()
+
+    # The name under which a separate 1D topology is offered. A format carrying both a
+    # surface and a network names them separately, and the caller selects one through
+    # `mesh_name`; this is the 1D half of that pair.
+    network_mesh_name: str = "network1d"
 
     def can_open(self, path: str) -> bool:
         """Report whether this driver recognises the file, without ever raising.
@@ -325,19 +340,68 @@ class BaseDriver:
         Returns:
             UgridDataset | Network1d: A network for a 1D topology, else a dataset.
         """
-        name = mesh_name or parsed.mesh_name
         node_x = np.asarray(parsed.node_x, dtype=np.float64)
         node_y = np.asarray(parsed.node_y, dtype=np.float64)
-        if parsed.topology_dimension == 1:
+        if self._wants_network(parsed, mesh_name):
             return self._construct_network(parsed, node_x, node_y)
+        name = mesh_name or parsed.mesh_name
         return self._construct_dataset(parsed, node_x, node_y, name=name, path=path)
+
+    def _wants_network(self, parsed: ParsedMesh, mesh_name: str | None) -> bool:
+        """Decide whether this read builds the 1D topology rather than the surface.
+
+        A purely one-dimensional parse always does. A file holding both offers the
+        network under :attr:`network_mesh_name`, so the caller selects it explicitly.
+
+        Args:
+            parsed: The validated mesh.
+            mesh_name: The topology the caller asked for, if any.
+
+        Returns:
+            bool: ``True`` to build a ``Network1d``.
+
+        Raises:
+            ValueError: If the network was asked for but the file holds no 1D edges.
+        """
+        if mesh_name == self.network_mesh_name:
+            if self._network_edges(parsed) is None:
+                raise ValueError(
+                    f"{self.name!r} was asked for the {mesh_name!r} topology, but this "
+                    f"file holds no 1D elements; it carries only "
+                    f"{parsed.mesh_name!r}"
+                )
+            return True
+        return parsed.topology_dimension == 1
+
+    @staticmethod
+    def _network_edges(parsed: ParsedMesh) -> np.ndarray | None:
+        """Return the 1D topology's edges, whichever field a driver put them in.
+
+        A format that is only ever one-dimensional has nothing to disambiguate and puts
+        its edges in ``edges``; one carrying a surface mesh as well uses
+        ``network_edges`` so the two are never confused.
+        """
+        if parsed.network_edges is not None:
+            return parsed.network_edges
+        if parsed.faces is None:
+            return parsed.edges
+        return None
 
     def _construct_network(
         self, parsed: ParsedMesh, node_x: np.ndarray, node_y: np.ndarray
     ) -> Network1d:
-        """Build a :class:`~pyramids.netcdf.ugrid.Network1d` from a 1D parse."""
+        """Build a :class:`~pyramids.netcdf.ugrid.Network1d` from a 1D parse.
+
+        ``Network1d`` carries a topology and a CRS and nothing else -- it has no
+        parameter for data variables, node elevation or global attributes -- so anything
+        the file carried beside the topology cannot come along. Rather than drop it
+        silently, each omission is warned about by name. Carrying it properly needs
+        ``Network1d`` to grow somewhere to put it, which is upstream work in
+        ``pyramids-gis``, not something to fake here.
+        """
+        self._warn_network_drops(parsed)
         edge_conn = Connectivity(
-            data=np.asarray(parsed.edges),
+            data=np.asarray(self._network_edges(parsed)),
             fill_value=-1,
             cf_role="edge_node_connectivity",
             original_start_index=_recorded_start_index(parsed),
@@ -355,7 +419,20 @@ class BaseDriver:
         name: str,
         path: str,
     ) -> UgridDataset:
-        """Build a :class:`~pyramids.netcdf.ugrid.UgridDataset` from a 2D parse."""
+        """Build a :class:`~pyramids.netcdf.ugrid.UgridDataset` from a 2D parse.
+
+        When the file also holds a separate 1D topology, this result is only its surface
+        half, so the other half is named rather than quietly left out. The warning
+        belongs here and not in ``_parse``: only at construction is it known which
+        topology the caller actually asked for.
+        """
+        if parsed.network_edges is not None:
+            warnings.warn(
+                f"this file also holds a {self.network_mesh_name!r} topology, which is "
+                f"not in this result; read it with "
+                f"Network1d.read_file(path, mesh_name={self.network_mesh_name!r})",
+                stacklevel=4,
+            )
         face_conn = Connectivity(
             data=np.asarray(parsed.faces),
             fill_value=-1,
@@ -388,6 +465,28 @@ class BaseDriver:
             topology_info=None,
             crs_wkt=crs_wkt,
             file_name=str(path),
+        )
+
+    @staticmethod
+    def _warn_network_drops(parsed: ParsedMesh) -> None:
+        """Warn by name about anything a ``Network1d`` cannot carry.
+
+        Args:
+            parsed: The validated mesh about to become a network.
+        """
+        dropped: list[str] = []
+        if parsed.node_z is not None:
+            dropped.append("node_z")
+        dropped.extend(sorted(parsed.variables))
+        if parsed.global_attributes:
+            dropped.append("global_attributes")
+        if not dropped:
+            return
+        warnings.warn(
+            f"Network1d carries a topology and a CRS only, so {', '.join(dropped)} "
+            f"could not be attached to this 1D mesh and {'is' if len(dropped) == 1 else 'are'} "
+            f"not in the result",
+            stacklevel=3,
         )
 
     def _build_variables(
