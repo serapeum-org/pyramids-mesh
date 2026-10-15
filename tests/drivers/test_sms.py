@@ -296,3 +296,154 @@ def test_2dm_has_no_crs(tmp_path):
 
     assert dataset.crs_wkt is None
     assert dataset.mesh.crs is None
+
+
+def test_2dm_header_may_follow_blank_and_comment_lines(tmp_path):
+    """Leading blank and comment lines do not hide the MESH2D header."""
+    text = "\n\n# written by some tool\n" + _UNIT_SQUARE
+    path = _write(tmp_path, text)
+
+    assert TwoDmDriver().can_open(path) is True
+    assert TwoDmDriver().read(path).mesh.n_face == 2
+
+
+def test_2dm_empty_file_is_refused(tmp_path):
+    """A file with no significant records is refused, naming the missing header."""
+    path = _write(tmp_path, "\n\n# nothing but comments\n")
+
+    with pytest.raises(FileFormatNotSupportedError, match="is empty"):
+        TwoDmDriver().read(path)
+
+
+def test_2dm_file_without_elements_is_refused(tmp_path):
+    """Nodes alone are not a mesh, so a file with no elements is refused."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="declares no elements"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_unknown_keywords_are_ignored(tmp_path):
+    """Records this driver does not model are skipped, not treated as an error.
+
+    A real 2DM carries parameter blocks and metadata beside the topology; MDAL
+    ignores what it does not recognise and so does this driver.
+    """
+    text = """MESH2D
+MESHNAME "my mesh"
+BEGPARAMDEF
+GM "Mesh"
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 1
+ENDPARAMDEF
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.n_node == 3
+    assert dataset.mesh.n_face == 1
+
+
+def test_2dm_duplicate_node_id_is_refused(tmp_path):
+    """Two ND records sharing an id make the connectivity ambiguous, so it raises."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 1 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 1 3 1
+"""
+    with pytest.raises(ValueError, match="duplicate native id"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_truncated_node_record_is_refused(tmp_path):
+    """An ND record missing its coordinates is reported as a format error."""
+    text = """MESH2D
+ND 1 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 1
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="ND"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_truncated_element_record_is_refused(tmp_path):
+    """An element record short of its vertex ids is reported as a format error."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="E3T"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_node_without_elevation_defaults_to_zero(tmp_path):
+    """An ND record with no z still reads, with the elevation defaulting to zero."""
+    text = """MESH2D
+ND 1 0.0 0.0
+ND 2 1.0 0.0
+ND 3 1.0 1.0
+E3T 1 1 2 3 1
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("node_z").data, [0.0, 0.0, 0.0])
+
+
+def test_2dm_face_without_material_defaults_to_zero(tmp_path):
+    """An element record carrying no material column still reads."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("material").data, [0.0])
+
+
+def test_2dm_aux_columns_do_not_shift_the_material(tmp_path):
+    """Trailing aux columns are ignored; the material is indexed from the start."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 5 111 222 333
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("material").data, [5.0])
+    assert "material_2" not in dataset.data_variable_names
+
+
+def test_2dm_mesh_names_is_a_single_entry(tmp_path):
+    """2DM holds one topology, so ``mesh_names`` returns one name."""
+    assert TwoDmDriver().mesh_names(_write(tmp_path, _UNIT_SQUARE)) == ["mesh2d"]
+
+
+def test_2dm_is_reachable_through_read_file(tmp_path):
+    """The registered entry point dispatches a .2dm path to this driver."""
+    dataset = UgridDataset.read_file(_write(tmp_path, _UNIT_SQUARE))
+
+    assert isinstance(dataset, UgridDataset)
+    assert dataset.mesh.n_face == 2
+
+
+def test_2dm_network_is_reachable_through_network_read_file(tmp_path):
+    """An E2L-only file is read through ``Network1d.read_file``."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+E2L 1 1 2 1
+"""
+    network = Network1d.read_file(_write(tmp_path, text))
+
+    assert isinstance(network, Network1d)
+    assert network.n_edge == 1

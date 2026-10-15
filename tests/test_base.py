@@ -10,6 +10,7 @@ import gc
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
+import pytest
 
 from pyramids.netcdf.ugrid import Network1d, UgridDataset
 
@@ -126,3 +127,89 @@ def test_topology_info_is_none_for_non_netcdf():
     dataset = _StubDriver(_unit_square()).read("mesh.stub")
 
     assert dataset._topology_info is None
+
+
+class _RaisingSniffDriver(_StubDriver):
+    """A driver whose content sniff hits an unreadable file."""
+
+    def _sniff(self, path: str) -> bool:
+        raise OSError("the file could not be read")
+
+
+def test_can_open_swallows_os_error_from_sniff(tmp_path):
+    """``can_open`` answers False when the sniff cannot read the file, never raises.
+
+    A raising ``can_open`` would abort driver dispatch for every other driver, so the
+    base class contains the failure.
+    """
+    path = tmp_path / "unreadable.stub"
+    path.write_text("anything", encoding="utf-8")
+
+    assert _RaisingSniffDriver(_unit_square()).can_open(str(path)) is False
+
+
+def test_can_open_accepts_a_matching_suffix_by_default(tmp_path):
+    """The default ``_sniff`` accepts any file whose suffix the driver claims."""
+    path = tmp_path / "mesh.stub"
+    path.write_text("content is not inspected by the default sniff", encoding="utf-8")
+
+    assert _StubDriver(_unit_square()).can_open(str(path)) is True
+
+
+def test_can_open_rejects_a_foreign_suffix(tmp_path):
+    """A file the driver does not claim is declined on the suffix alone."""
+    path = tmp_path / "mesh.other"
+    path.write_text("content", encoding="utf-8")
+
+    assert _StubDriver(_unit_square()).can_open(str(path)) is False
+
+
+def test_mesh_names_defaults_to_one_entry():
+    """A single-mesh format reports exactly one topology name."""
+    assert BaseDriver().mesh_names("anything.stub") == ["mesh2d"]
+
+
+def test_base_parse_is_abstract():
+    """``BaseDriver`` is abstract: it is never registered and cannot parse."""
+    with pytest.raises(NotImplementedError, match="must implement _parse"):
+        BaseDriver()._parse("mesh.stub", lazy=True)
+
+
+def test_edges_become_edge_connectivity_on_a_2d_mesh():
+    """Edges supplied beside faces are carried as ``edge_node_connectivity``.
+
+    Edge-located data needs this; a driver giving both gets both, rather than the
+    edges being silently dropped.
+    """
+    parsed = _unit_square(edges=np.array([[0, 1], [1, 2]], dtype=np.int64))
+
+    dataset = _StubDriver(parsed).read("mesh.stub")
+
+    edge_connectivity = dataset.mesh.edge_node_connectivity
+    assert edge_connectivity is not None
+    np.testing.assert_array_equal(edge_connectivity.data, [[0, 1], [1, 2]])
+
+
+def test_temporal_variable_carries_time_values_and_dimensions():
+    """A variable with a time coordinate records it and names a time dimension."""
+    parsed = _unit_square(
+        variables={
+            "wl": ParsedVariable(
+                location="face",
+                shape=(2, 2),
+                values=np.array([[0.1, 0.2], [0.3, 0.4]]),
+                time_values=np.array([0.0, 1.0]),
+                units="m",
+                standard_name="sea_surface_height",
+                nodata=-999.0,
+            )
+        }
+    )
+
+    variable = _StubDriver(parsed).read("mesh.stub").get("wl")
+
+    assert variable.dimensions == ("time", "n_face")
+    assert variable.units == "m"
+    assert variable.standard_name == "sea_surface_height"
+    assert variable.nodata == -999.0
+    np.testing.assert_allclose(variable.attributes["time_values"], [0.0, 1.0])

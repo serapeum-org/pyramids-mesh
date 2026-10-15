@@ -176,6 +176,49 @@ def test_to_zero_based_and_repad_helpers():
     np.testing.assert_array_equal(repadded, np.array([[0, 1, -1], [2, 3, -1]]))
 
 
+def test_unknown_variable_location_raises():
+    """A location that is not node/face/edge is rejected, not silently ignored."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        variables={"t": ParsedVariable(location="volume", shape=(1,))},
+    )
+
+    with pytest.raises(ValueError, match="unknown location"):
+        check_shapes(parsed)
+
+
+def test_winding_skips_rows_with_fewer_than_three_real_vertices():
+    """A row holding fewer than three real nodes is not a polygon, so it is skipped."""
+    faces = np.array([[0, 1, -1]], dtype=np.int64)
+    node_x = np.array([0.0, 1.0, 1.0])
+    node_y = np.array([0.0, 0.0, 1.0])
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    np.testing.assert_array_equal(fixed, faces)
+    assert reversed_count == 0
+    assert degenerate_count == 0
+
+
+def test_validate_leaves_the_input_untouched():
+    """Normalisation returns a corrected copy; the driver's own arrays are unchanged."""
+    faces = np.array([[1, 2, 3]], dtype=np.int64)
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=faces,
+        start_index=1,
+    )
+
+    result = validate_and_normalise(parsed)
+
+    np.testing.assert_array_equal(faces, [[1, 2, 3]])
+    assert result.faces is not faces
+    assert result.fill_value == -1
+
+
 def test_check_shapes_accepts_temporal_variable():
     """A temporal variable's shape is ``(len(time), element_count)``."""
     parsed = ParsedMesh(

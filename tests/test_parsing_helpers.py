@@ -100,6 +100,103 @@ def test_read_record_ints_and_floats(tmp_path):
     assert got_ints[0] == 99
 
 
+def test_detect_endianness_rejects_a_file_too_short_for_a_header(tmp_path):
+    """A file shorter than one length word cannot carry a Fortran record."""
+    path = tmp_path / "stub.slf"
+    path.write_bytes(b"\x50\x00")
+
+    with pytest.raises(ValueError, match="too short"):
+        detect_endianness(str(path))
+
+
+def test_truncated_payload_raises(tmp_path):
+    """A record declaring more bytes than the file holds is an error, not a short read."""
+    path = tmp_path / "short.slf"
+    path.write_bytes(np.array([32], dtype="<i4").tobytes() + b"only eight")
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="truncated Fortran record"):
+            next(iter_fortran_records(handle, "<"))
+
+
+def test_missing_trailing_length_word_raises(tmp_path):
+    """A record whose trailing length word was never written is rejected."""
+    path = tmp_path / "notail.slf"
+    path.write_bytes(np.array([4], dtype="<i4").tobytes() + b"abcd")
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="trailing length word"):
+            next(iter_fortran_records(handle, "<"))
+
+
+def test_truncated_header_raises(tmp_path):
+    """A trailing fragment too small to be a length word is an error, not an end."""
+    path = tmp_path / "fragment.slf"
+    path.write_bytes(_record(b"abcd", "<") + b"\x01\x02")
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="ends inside a Fortran record header"):
+            list(iter_fortran_records(handle, "<"))
+
+
+def test_negative_record_length_raises(tmp_path):
+    """A negative declared length is nonsense and is refused."""
+    path = tmp_path / "negative.slf"
+    path.write_bytes(np.array([-8], dtype="<i4").tobytes() + b"12345678")
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="negative Fortran record length"):
+            next(iter_fortran_records(handle, "<"))
+
+
+def test_typed_read_at_end_of_file_raises(tmp_path):
+    """Asking for a record when the file is exhausted is an error, not an empty array."""
+    path = tmp_path / "empty.slf"
+    path.write_bytes(b"")
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="found end of file"):
+            read_record_ints(handle, "<", 1)
+
+
+def test_read_record_floats_single_precision(tmp_path):
+    """Single-precision records decode when ``double`` is False (plain SERAFIN)."""
+    values = np.array([1.5, -2.25], dtype="<f4")
+    path = tmp_path / "single.slf"
+    path.write_bytes(_record(values.tobytes(), "<"))
+
+    with open(path, "rb") as handle:
+        got = read_record_floats(handle, "<", 2, double=False)
+
+    np.testing.assert_allclose(got, [1.5, -2.25])
+
+
+def test_record_offsets_rejects_a_truncated_header(tmp_path):
+    """The offset index refuses a file ending inside a length word."""
+    path = tmp_path / "bad_index.slf"
+    path.write_bytes(_record(b"abcd", "<") + b"\x07")
+
+    with pytest.raises(ValueError, match="ends inside a Fortran record header"):
+        record_offsets(str(path), "<")
+
+
+def test_record_offsets_rejects_a_negative_length(tmp_path):
+    """The offset index refuses a negative declared record length."""
+    path = tmp_path / "negative_index.slf"
+    path.write_bytes(np.array([-4], dtype="<i4").tobytes() + b"abcd")
+
+    with pytest.raises(ValueError, match="negative record length"):
+        record_offsets(str(path), "<")
+
+
+def test_iter_records_honours_a_custom_comment_marker(tmp_path):
+    """The comment marker is configurable, for formats that use something else."""
+    path = tmp_path / "custom.txt"
+    path.write_text("! skipped\nKEY value\n", encoding="utf-8")
+
+    assert list(iter_records(str(path), comment="!")) == [("KEY", ["value"])]
+
+
 def test_native_id_map_handles_gaps_and_reordering():
     """Native ids map to contiguous indices by order of appearance, gaps and all."""
     assert native_id_map([10, 5, 7]) == {10: 0, 5: 1, 7: 2}
