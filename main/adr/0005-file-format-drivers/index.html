@@ -1300,11 +1300,17 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in <
   results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
   <code>read_mesh</code>, <code>needs_mesh</code>, <code>write_mesh</code> and <code>write_data</code> gate behaviour upstream; <code>read_data</code>,
   <code>lazy_data</code> and <code>multi_mesh</code> are <strong>declarative</strong> and require no method of their own.</li>
-<li>Dependency-backed drivers live behind extras — <code>[dhi]</code> (<code>mikeio</code>), <code>[interchange]</code> (<code>meshio</code>),
-  <code>[hdf]</code> (<code>h5py</code>) — and a driver whose extra is absent is skipped at discovery, so a bare install
-  stays small and useful.</li>
-<li>Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
-  <code>MANIFEST.in</code>'s <code>prune tests</code>. Vendor sample
+<li>The one dependency-backed driver family lives behind an extra — <code>[dhi]</code> (<code>mikeio</code>) — and a
+  driver whose extra is absent is skipped at discovery, so a bare install stays small and useful.
+  Mesh reading itself is never delegated to a third-party mesh library: that is <code>pyramids-gis</code>'s,
+  and a generic capability missing there is added there. The <code>[interchange]</code> extra (<code>meshio</code>) was
+  dropped for this reason; PLY and the TIN formats are parsed here. <code>[hdf]</code> (<code>h5py</code>) went the
+  same way: HDF5 is read through the GDAL multidimensional API over the GDAL vendored in the
+  <code>pyramids-gis</code> wheel, which supplies group traversal, attributes and typed reads. <code>mikeio</code>
+  remains because DFSU and DFS2 are proprietary DHI containers with no portable alternative.</li>
+<li>Test fixtures are hand-built minimal files, committed, and kept out of the built
+  distribution. Nothing special is needed for that: setuptools' sdist does not collect
+  <code>tests/data/*</code>, and the wheel is built from <code>src/</code> only. Vendor sample
   files are fetched in CI behind a marker, never committed.</li>
 </ul>
 <h2 id="the-boundary-carried-over-from-adr-0003-unchanged"><a class="toclink" href="#the-boundary-carried-over-from-adr-0003-unchanged">The boundary (carried over from ADR-0003 unchanged)</a><a class="headerlink" href="#the-boundary-carried-over-from-adr-0003-unchanged" title="Permanent link">#</a></h2>
