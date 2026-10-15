@@ -15,9 +15,14 @@ here once this package is installed. Dependency-backed drivers sit behind extras
 (`[dhi]`, `[interchange]`, `[hdf]`) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.
 
-The public surface is empty at `0.1.0` — this release is the repository scaffold
-(packaging, CI, docs) plus `__version__`. Every name added later is re-exported
-here, so `from pyramids_mesh import ...` stays the import worth using.
+The package root deliberately re-exports nothing: it carries `__version__` and the
+import contract that activates the vendored osgeo bindings, and that is all. What this
+package publishes is drivers, registered with `pyramids-gis` through the
+`pyramids.mesh_drivers` entry-point group, so installing it is the whole integration —
+`UgridDataset.read_file("domain.2dm")` then resolves to the driver that claims the
+suffix, with nothing imported from here. A driver class is reachable by its module path
+(`pyramids_mesh.drivers.sms.TwoDmDriver`, which is how its entry point names it) for the
+rare case of wanting one directly.
 
 Examples:
     - The installed version string:

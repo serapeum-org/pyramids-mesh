@@ -138,13 +138,13 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             warnings.warn(
                 f"{reversed_count} clockwise face(s) were reversed to "
                 f"counter-clockwise; a writer will emit the corrected order",
-                stacklevel=3,
+                stacklevel=2,
             )
         if degenerate_count:
             warnings.warn(
                 f"{degenerate_count} degenerate face(s) have no winding and were "
                 f"left unchanged",
-                stacklevel=3,
+                stacklevel=2,
             )
     writer_base = parsed.start_index
     if parsed.original_start_index is not None:

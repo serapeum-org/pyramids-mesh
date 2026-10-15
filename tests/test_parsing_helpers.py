@@ -129,6 +129,19 @@ def test_read_record_ints_and_floats(tmp_path):
     assert got_ints[0] == 99
 
 
+def test_detect_endianness_refuses_a_byte_palindromic_probe(tmp_path):
+    """A header reading the same both ways cannot identify the order, so it raises.
+
+    Returning the first match would be a guess presented as a detection. The default
+    probe (80) is asymmetric, so this only reaches a caller passing its own value.
+    """
+    path = tmp_path / "palindrome.slf"
+    path.write_bytes(b"\x01\x00\x00\x01" + b"x" * 8)
+
+    with pytest.raises(ValueError, match="byte-palindrome"):
+        detect_endianness(str(path), expect_first_record=0x01000001)
+
+
 def test_detect_endianness_rejects_a_file_too_short_for_a_header(tmp_path):
     """A file shorter than one length word cannot carry a Fortran record."""
     path = tmp_path / "stub.slf"

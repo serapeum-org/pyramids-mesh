@@ -224,9 +224,13 @@ class BaseDriver:
         """Report whether this driver recognises the file, without ever raising.
 
         The default is a suffix match followed by ``_sniff``. An empty file, a file of
-        another format, a directory or a missing path all answer ``False``. Nothing
-        raises -- a ``_sniff`` that fails for any reason is reported as a warning and
-        the file declined -- so a broken candidate cannot abort driver dispatch.
+        another format, a directory or a missing path all answer ``False``, and a
+        ``_sniff`` that fails for any reason is reported as a warning and the file
+        declined, so a broken candidate cannot abort driver dispatch.
+
+        The path checks sit outside that guard: a ``TypeError`` from being handed
+        something that is not a path is the caller's mistake, not a verdict about a
+        file, so it propagates.
 
         Args:
             path: The filesystem path to test.
@@ -234,11 +238,13 @@ class BaseDriver:
         Returns:
             bool: ``True`` only when the suffix matches and ``_sniff`` accepts the file.
         """
+        # Outside the guard on purpose: a bad argument type is the caller's error, not a
+        # verdict about a file, so it propagates rather than becoming a warning.
+        if not os.path.isfile(path):
+            return False
+        if not self._has_suffix(path):
+            return False
         try:
-            if not os.path.isfile(path):
-                return False
-            if not self._has_suffix(path):
-                return False
             return self._sniff(path)
         except Exception as error:  # noqa: BLE001 - the contract is never to raise
             # Narrower than this (OSError alone) left the guarantee false for a _sniff
@@ -573,7 +579,7 @@ class BaseDriver:
                 f"this file also holds a {self.network_mesh_name!r} topology, which is "
                 f"not in this result; read it with "
                 f"Network1d.read_file(path, mesh_name={self.network_mesh_name!r})",
-                stacklevel=4,
+                stacklevel=2,
             )
         face_conn = Connectivity(
             data=np.asarray(parsed.faces),
@@ -617,6 +623,11 @@ class BaseDriver:
         this result. Beyond that, ``Network1d`` carries a topology and a CRS only, so
         node elevation, variables and global attributes have nowhere to go at all.
 
+        Every warning in this package uses ``stacklevel=2``, which blames the frame that
+        called into the driver. No constant can blame the user's own line: a direct
+        ``driver.read()`` and a dispatched ``UgridDataset.read_file()`` are different
+        depths, so a value tuned for one points inside the other.
+
         Args:
             parsed: The validated mesh about to become a network.
         """
@@ -624,8 +635,7 @@ class BaseDriver:
             warnings.warn(
                 f"this file also holds a {parsed.mesh_name!r} surface mesh, which is "
                 f"not in this result; read it with UgridDataset.read_file(path)",
-                # _warn_network_drops -> _construct_network -> _construct -> read
-                stacklevel=5,
+                stacklevel=2,
             )
         dropped: list[str] = []
         if parsed.node_z is not None:
@@ -639,7 +649,7 @@ class BaseDriver:
             f"Network1d carries a topology and a CRS only, so {', '.join(dropped)} "
             f"could not be attached to this 1D mesh and "
             f"{'is' if len(dropped) == 1 else 'are'} not in the result",
-            stacklevel=5,
+            stacklevel=2,
         )
 
     def _build_variables(

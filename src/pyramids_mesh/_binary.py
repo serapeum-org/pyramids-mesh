@@ -81,6 +81,14 @@ def detect_endianness(
         head = handle.read(_LENGTH_WORD)
     if len(head) < _LENGTH_WORD:
         raise ValueError(f"{path!r} is too short to hold a Fortran record header")
+    if head == head[::-1]:
+        # A probe value whose four bytes read the same both ways cannot distinguish the
+        # orders, so answering "<" would be a guess dressed as a detection. 80 is
+        # asymmetric, so this only bites a caller passing its own value.
+        raise ValueError(
+            f"{path!r} opens with the byte-palindrome {head!r}, which reads identically "
+            f"in both orders; it cannot identify the byte order"
+        )
     for endian in ("<", ">"):
         if _as_int32(head, endian) == expect_first_record:
             return endian
