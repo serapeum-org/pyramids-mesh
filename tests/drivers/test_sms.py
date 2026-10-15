@@ -50,6 +50,69 @@ def test_2dm_requires_mesh2d_header(tmp_path):
         TwoDmDriver().read(path)
 
 
+@pytest.mark.parametrize(
+    "first_line, expected", [("MESH2D", True), ("MESH2DX", False), ("MESH3D", False)]
+)
+def test_2dm_sniff_and_parser_agree_on_the_header(tmp_path, first_line, expected):
+    """``can_open`` accepts exactly the headers ``read`` accepts, and no others.
+
+    A sniff looser than the parser turns an unreadable file into a confusing error
+    instead of a clean decline; a stricter one hides a readable file from dispatch.
+    """
+    path = _write(tmp_path, _UNIT_SQUARE.replace("MESH2D", first_line, 1))
+
+    assert TwoDmDriver().can_open(path) is expected
+    if expected:
+        assert TwoDmDriver().read(path).mesh.n_face == 2
+    else:
+        with pytest.raises(FileFormatNotSupportedError, match="MESH2D"):
+            TwoDmDriver().read(path)
+
+
+@pytest.mark.parametrize(
+    "text, match",
+    [
+        ("MESH2D\nND 1 x 0.0 0.0\nND 2 1 0 0\nND 3 1 1 0\nE3T 1 1 2 3 1\n", "ND"),
+        (
+            "MESH2D\nNUM_MATERIALS_PER_ELEM abc\nND 1 0 0 0\nND 2 1 0 0\n"
+            "ND 3 1 1 0\nE3T 1 1 2 3 1\n",
+            "NUM_MATERIALS_PER_ELEM",
+        ),
+        ("MESH2D\nND 1 0 0 0\nND 2 1 0 0\nND 3 1 1 0\nE3T 1 1 2 3 clay\n", "clay"),
+        ("MESH2D\nND 1 0 0 0\nND 2 1 0 0\nND 3 1 1 0\nE3T x 1 2 3 1\n", "E3T"),
+    ],
+)
+def test_2dm_non_numeric_field_names_the_file_and_record(tmp_path, text, match):
+    """A malformed numeric field is reported with its file and record, not raw."""
+    with pytest.raises(FileFormatNotSupportedError, match=match):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_zero_material_columns_is_refused(tmp_path):
+    """``NUM_MATERIALS_PER_ELEM 0`` is a malformed header, not a silent clamp to 1."""
+    text = """MESH2D
+NUM_MATERIALS_PER_ELEM 0
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 5
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="not a usable column count"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_duplicate_line_element_id_is_refused(tmp_path):
+    """Two E2L records sharing an id is refused, as two faces sharing one already was."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+E2L 1 1 2 1
+E2L 1 2 1 1
+"""
+    with pytest.raises(ValueError, match="duplicate native id"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
 def test_2dm_reads_nodes_and_triangles(tmp_path):
     """Nodes and triangular faces arrive with the right counts and coordinates."""
     dataset = TwoDmDriver().read(_write(tmp_path, _UNIT_SQUARE))

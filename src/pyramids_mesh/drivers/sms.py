@@ -203,7 +203,10 @@ class TwoDmDriver(BaseDriver):
         for line in head.decode("utf-8", errors="replace").splitlines():
             stripped = line.strip()
             if stripped and not stripped.startswith(_COMMENT):
-                return stripped.upper().startswith(_HEADER)
+                # Compare the first token for equality, exactly as the parser does. A
+                # `startswith` here accepted MESH2DX, which the parser then refused:
+                # the sniff must not be looser than the parser either.
+                return stripped.split()[0].upper() == _HEADER
         return False
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
@@ -223,8 +226,12 @@ class TwoDmDriver(BaseDriver):
 
         Raises:
             FileFormatNotSupportedError: If the ``MESH2D`` header is missing, an
-                unsupported element type appears, or the file declares no elements.
-            ValueError: If an element references a node id the file never defined.
+                unsupported element type appears, the file declares no elements, a
+                record is short of the fields its keyword requires, a numeric field is
+                not a number, or ``NUM_MATERIALS_PER_ELEM`` declares fewer than one
+                column.
+            ValueError: If an element references a node id the file never defined, or
+                two nodes, two faces or two line elements share an id.
         """
         scan = _Scan()
         scan.run(path)
@@ -272,6 +279,7 @@ class _Scan:
         self.face_ids: list[int] = []
         self.face_vertices: list[list[int]] = []
         self.face_extras: list[list[str]] = []
+        self.edge_ids: list[int] = []
         self.edge_vertices: list[list[int]] = []
         self.materials_per_element = 1
         # Whether any ND record actually carried a z column. A file without one gets no
@@ -314,14 +322,23 @@ class _Scan:
             )
         if upper == _MATERIALS_TAG:
             _require_fields(upper, fields, 1, path)
-            self.materials_per_element = max(1, int(fields[0]))
+            declared = _as_int(fields[0], upper, path)
+            if declared < 1:
+                raise FileFormatNotSupportedError(
+                    f"{path!r} declares {upper} {declared}, which is not a usable "
+                    f"column count"
+                )
+            self.materials_per_element = declared
         elif upper == _NODE:
             self._add_node(fields, path)
         elif upper in _FACE_NODE_COUNTS:
             self._add_face(upper, fields, path)
         elif upper == _LINE_ELEMENT:
             _require_fields(upper, fields, 3, path)
-            self.edge_vertices.append([int(value) for value in fields[1:3]])
+            self.edge_ids.append(_as_int(fields[0], upper, path))
+            self.edge_vertices.append(
+                [_as_int(value, upper, path) for value in fields[1:3]]
+            )
 
     def _add_node(self, fields: list[str], path: str) -> None:
         """Collect one ``ND <id> <x> <y> <z>`` record.
@@ -335,12 +352,12 @@ class _Scan:
                 coordinates.
         """
         _require_fields(_NODE, fields, 3, path)
-        self.node_ids.append(int(fields[0]))
-        self.node_x.append(float(fields[1]))
-        self.node_y.append(float(fields[2]))
+        self.node_ids.append(_as_int(fields[0], _NODE, path))
+        self.node_x.append(_as_float(fields[1], _NODE, path))
+        self.node_y.append(_as_float(fields[2], _NODE, path))
         if len(fields) > 3:
             self.saw_elevation = True
-            self.node_z.append(float(fields[3]))
+            self.node_z.append(_as_float(fields[3], _NODE, path))
         else:
             self.node_z.append(0.0)
 
@@ -363,8 +380,10 @@ class _Scan:
         """
         count = _FACE_NODE_COUNTS[upper]
         _require_fields(upper, fields, 1 + count, path)
-        self.face_ids.append(int(fields[0]))
-        self.face_vertices.append([int(value) for value in fields[1 : 1 + count]])
+        self.face_ids.append(_as_int(fields[0], upper, path))
+        self.face_vertices.append(
+            [_as_int(value, upper, path) for value in fields[1 : 1 + count]]
+        )
         self.face_extras.append(fields[1 + count :])
 
     def build(self, path: str) -> ParsedMesh:
@@ -385,7 +404,11 @@ class _Scan:
                 f"{path!r} declares no elements: no E3T/E4Q/E6T face and no E2L line"
             )
         node_map = native_id_map(self.node_ids)
-        native_id_map(self.face_ids)  # rejects duplicate element ids
+        # Built for their duplicate-id check only: nothing in a 2DM references an
+        # element by id, but two elements sharing one means a malformed file, and a
+        # face and a line element are held to the same standard.
+        native_id_map(self.face_ids)
+        native_id_map(self.edge_ids)
         faces = self._resolve_faces(node_map, path)
         edges = self._resolve_edges(node_map, path)
         return self._assemble(path, faces, edges)
@@ -417,7 +440,7 @@ class _Scan:
         """Build the :class:`ParsedMesh` from resolved connectivity."""
         variables: dict[str, ParsedVariable] = {}
         if faces is not None:
-            variables.update(self._material_variables(len(faces)))
+            variables.update(self._material_variables(len(faces), path))
         return ParsedMesh(
             node_x=np.array(self.node_x, dtype=np.float64),
             node_y=np.array(self.node_y, dtype=np.float64),
@@ -441,12 +464,28 @@ class _Scan:
             mesh_name="mesh2d",
         )
 
-    def _material_variables(self, n_face: int) -> dict[str, ParsedVariable]:
-        """Split the trailing columns into one face variable per material column."""
+    def _material_variables(self, n_face: int, path: str) -> dict[str, ParsedVariable]:
+        """Split the trailing columns into one face variable per material column.
+
+        An element short of the declared material columns contributes ``0.0`` for the
+        missing ones rather than failing the read, since a writer omitting a trailing
+        column is common and the alternative is refusing an otherwise sound file.
+
+        The columns are float64 even though a material is an integer id: the id is
+        exact in float64, writers are not consistent about emitting ``7`` rather than
+        ``7.0``, and refusing a file over that spelling would be worse than carrying it.
+
+        Args:
+            n_face: The face count, for each variable's shape.
+            path: The source path, for error messages.
+
+        Returns:
+            dict[str, ParsedVariable]: ``material`` plus ``material_2``.. as declared.
+        """
         variables: dict[str, ParsedVariable] = {}
         for index in range(self.materials_per_element):
             column = [
-                float(extras[index]) if len(extras) > index else 0.0
+                (_as_float(extras[index], "E**", path) if len(extras) > index else 0.0)
                 for extras in self.face_extras
             ]
             name = "material" if index == 0 else f"material_{index + 1}"
@@ -456,6 +495,52 @@ class _Scan:
                 values=np.array(column, dtype=np.float64),
             )
         return variables
+
+
+def _as_int(value: str, keyword: str, path: str) -> int:
+    """Parse one field as an integer, naming the record and file if it is not one.
+
+    Args:
+        value: The field text.
+        keyword: The record's keyword, for the error message.
+        path: The source path, for the error message.
+
+    Returns:
+        int: The parsed value.
+
+    Raises:
+        FileFormatNotSupportedError: If the field is not an integer.
+    """
+    try:
+        return int(value)
+    except ValueError as error:
+        raise FileFormatNotSupportedError(
+            f"{path!r} has a malformed {keyword} record: expected an integer, found "
+            f"{value!r}"
+        ) from error
+
+
+def _as_float(value: str, keyword: str, path: str) -> float:
+    """Parse one field as a float, naming the record and file if it is not one.
+
+    Args:
+        value: The field text.
+        keyword: The record's keyword, for the error message.
+        path: The source path, for the error message.
+
+    Returns:
+        float: The parsed value.
+
+    Raises:
+        FileFormatNotSupportedError: If the field is not a number.
+    """
+    try:
+        return float(value)
+    except ValueError as error:
+        raise FileFormatNotSupportedError(
+            f"{path!r} has a malformed {keyword} record: expected a number, found "
+            f"{value!r}"
+        ) from error
 
 
 def _require_fields(keyword: str, fields: list[str], needed: int, path: str) -> None:
