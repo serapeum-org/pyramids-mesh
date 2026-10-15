@@ -1,5 +1,5 @@
 site_name: pyramids-mesh
-site_description: Mesh file-format drivers for pyramids: 2DM, Selafin, DFSU, XMDF, PLY and more
+site_description: "Mesh file-format drivers for pyramids: 2DM, Selafin, DFSU, XMDF, PLY and more"
 site_url: https://serapeum-org.github.io/pyramids-mesh/
 repo_url: https://github.com/serapeum-org/pyramids-mesh
 repo_name: serapeum-org/pyramids-mesh

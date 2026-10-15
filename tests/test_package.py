@@ -48,5 +48,3 @@ def test_unit_square_mesh_fixture(unit_square_mesh):
 
     assert node_x.shape == node_y.shape == (4,)
     assert face_node_connectivity.shape == (2, 3)
-
-
