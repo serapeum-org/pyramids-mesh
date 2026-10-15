@@ -327,6 +327,100 @@ def test_network_construction_is_quiet_when_there_is_nothing_to_drop():
     assert result.n_edge == 1
 
 
+def test_network_drop_warning_is_singular_for_a_single_omission():
+    """One omission reads "is not in the result", not "are".
+
+    The plural is chosen by a conditional expression inside the f-string, which no
+    branch report can see: the message is built on every 1D read, so a wrong agreement
+    would be executed by the whole suite and caught by none of it.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0]),
+        node_y=np.array([0.0, 0.0]),
+        faces=None,
+        edges=np.array([[0, 1]], dtype=np.int64),
+        global_attributes={"source": "test"},
+        topology_dimension=1,
+    )
+
+    with pytest.warns(UserWarning) as record:
+        _StubDriver(parsed).read("channels.stub")
+
+    message = str(record[0].message)
+    assert "so global_attributes could not be attached" in message
+    assert "and is not in the result" in message
+    assert "are not in the result" not in message
+
+
+def test_edge_located_variable_names_the_edge_dimension():
+    """An edge-located variable is built against ``n_edge``, not a face or node axis.
+
+    ``_LOCATION_DIMENSION`` carries three entries and the suite only ever built the
+    first two, so an edge variable mislabelled as ``n_face`` would have gone unnoticed.
+    """
+    parsed = _unit_square(
+        edges=np.array([[0, 1], [1, 2]], dtype=np.int64),
+        variables={
+            "flux": ParsedVariable(
+                location="edge", shape=(2,), values=np.array([1.0, 2.0])
+            )
+        },
+    )
+
+    variable = _StubDriver(parsed).read("mesh.stub").get("flux")
+
+    assert variable.location == "edge"
+    assert variable.dimensions == ("n_edge",)
+
+
+def test_static_variable_names_only_its_location_dimension():
+    """A variable with no time coordinate carries one dimension and no time values."""
+    parsed = _unit_square(
+        variables={
+            "material": ParsedVariable(
+                location="face", shape=(2,), values=np.array([1.0, 2.0])
+            )
+        }
+    )
+
+    variable = _StubDriver(parsed).read("mesh.stub").get("material")
+
+    assert variable.dimensions == ("n_face",)
+    assert "time_values" not in variable.attributes
+
+
+def test_mesh_name_argument_names_the_built_topology():
+    """``mesh_name`` selects the name every variable is built under, not just a label.
+
+    A variable whose ``mesh_name`` does not match the mesh it belongs to cannot be
+    resolved back to its topology, and nothing else in the suite pins the argument to
+    the variables it reaches.
+    """
+    parsed = _unit_square(
+        variables={
+            "material": ParsedVariable(
+                location="face", shape=(2,), values=np.array([1.0, 2.0])
+            )
+        }
+    )
+
+    dataset = _StubDriver(parsed).read("mesh.stub", mesh_name="my_grid")
+
+    assert dataset.get("material").mesh_name == "my_grid"
+
+
+def test_suffix_matching_ignores_case(tmp_path):
+    """A suffix the operating system upper-cased is still claimed.
+
+    ``_has_suffix`` lower-cases the path for exactly this, and every other test feeds
+    it an already-lowercase name, so the folding was executed but never proved.
+    """
+    path = tmp_path / "MESH.STUB"
+    path.write_text("content", encoding="utf-8")
+
+    assert _StubDriver(_unit_square()).can_open(str(path)) is True
+
+
 def test_temporal_variable_carries_time_values_and_dimensions():
     """A variable with a time coordinate records it and names a time dimension."""
     parsed = _unit_square(

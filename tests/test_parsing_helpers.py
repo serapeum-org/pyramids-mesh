@@ -249,6 +249,44 @@ def test_typed_read_rejects_a_count_the_record_cannot_hold(tmp_path, count):
             read_record_ints(handle, "<", count)
 
 
+def test_detect_endianness_honours_a_custom_first_record_length(tmp_path):
+    """``expect_first_record`` is the probe value, not a fixed 80.
+
+    A relative of Selafin with a different leading record is detected by passing its
+    own length; the parameter existed and nothing ever supplied it, so a probe hard-wired
+    to 80 would have read as working.
+    """
+    path = tmp_path / "custom.slf"
+    path.write_bytes(_record(b"x" * 12, ">"))
+
+    assert detect_endianness(str(path), expect_first_record=12) == ">"
+    with pytest.raises(ValueError, match="80-byte first record"):
+        detect_endianness(str(path))
+
+
+def test_float_read_rejects_a_count_the_record_cannot_hold(tmp_path):
+    """The float path checks the record length too, and names the type it needed.
+
+    The integer path was covered; a float read that silently returned the first two of
+    three values would be a plausible-looking array taken from the wrong slab.
+    """
+    payload = np.array([1.0, 2.0, 3.0], dtype="<f8")
+    path = tmp_path / "floats.slf"
+    path.write_bytes(_record(payload.tobytes(), "<"))
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match=r"2 values of <f8 need 16"):
+            read_record_floats(handle, "<", 2, double=True)
+
+
+def test_record_offsets_of_an_empty_file_is_empty(tmp_path):
+    """A zero-byte file indexes to no records rather than raising."""
+    path = tmp_path / "empty.slf"
+    path.write_bytes(b"")
+
+    assert record_offsets(str(path), "<") == []
+
+
 def test_iter_records_honours_a_custom_comment_marker(tmp_path):
     """The comment marker is configurable, for formats that use something else."""
     path = tmp_path / "custom.txt"

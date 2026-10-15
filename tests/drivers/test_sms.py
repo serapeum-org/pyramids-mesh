@@ -88,10 +88,15 @@ def test_2dm_non_numeric_field_names_the_file_and_record(tmp_path, text, match):
         TwoDmDriver().read(_write(tmp_path, text))
 
 
-def test_2dm_zero_material_columns_is_refused(tmp_path):
-    """``NUM_MATERIALS_PER_ELEM 0`` is a malformed header, not a silent clamp to 1."""
-    text = """MESH2D
-NUM_MATERIALS_PER_ELEM 0
+@pytest.mark.parametrize("declared", [0, -1])
+def test_2dm_unusable_material_column_count_is_refused(tmp_path, declared):
+    """A non-positive ``NUM_MATERIALS_PER_ELEM`` is malformed, not a silent clamp to 1.
+
+    Zero and a negative both reach the same guard, and a negative is the one that would
+    otherwise pass straight through ``range()`` and yield no material variable at all.
+    """
+    text = f"""MESH2D
+NUM_MATERIALS_PER_ELEM {declared}
 ND 1 0.0 0.0 0.0
 ND 2 1.0 0.0 0.0
 ND 3 1.0 1.0 0.0
@@ -316,6 +321,38 @@ def test_2dm_mixed_file_1d_elements_reachable_through_network_read_file(tmp_path
 
     assert isinstance(network, Network1d)
     assert network.n_edge == 2
+
+
+def test_2dm_e2l_elements_never_become_the_surface_edges(tmp_path):
+    """E2L is a separate 1D topology, so it never reaches ``edge_node_connectivity``.
+
+    This is the whole point of keeping ``network_edges`` apart from ``edges``: feeding
+    channel elements to ``Mesh2d.edge_node_connectivity`` would silently relabel them as
+    the surface mesh's own edges, and every edge-located quantity derived from the mesh
+    would then be indexed by the wrong topology. The mixed-file tests asserted the face
+    count and the warning, but nothing asserted the mislabelling had not happened.
+    """
+    with pytest.warns(UserWarning, match="Network1d"):
+        dataset = TwoDmDriver().read(_write(tmp_path, _MIXED))
+
+    assert isinstance(dataset, UgridDataset)
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.edge_node_connectivity is None
+
+
+def test_2dm_network_records_the_file_base_for_a_writer(tmp_path):
+    """The 1D half records base 1 too, so a writer restores the file's numbering.
+
+    ``original_start_index`` means "the base a writer should emit", and the surface half
+    was pinned to 1 while the network half -- built through a different code path -- was
+    not checked at all.
+    """
+    with pytest.warns(UserWarning, match="Network1d carries a topology"):
+        network = TwoDmDriver().read(_write(tmp_path, _MIXED), mesh_name="network1d")
+
+    connectivity = network.edge_node_connectivity
+    assert connectivity.original_start_index == 1
+    np.testing.assert_array_equal(connectivity.data, [[0, 1], [1, 2]])
 
 
 def test_2dm_requesting_a_network_from_a_faces_only_file_raises(tmp_path):
@@ -564,6 +601,102 @@ E3T 1 1 2 3 5 111 222 333
 
     np.testing.assert_allclose(dataset.get("material").data, [5.0])
     assert "material_2" not in dataset.data_variable_names
+
+
+def test_2dm_keywords_are_matched_case_insensitively(tmp_path):
+    """A file written in lower case reads, and is sniffed, exactly as upper case does.
+
+    Every keyword is folded with ``.upper()`` in the sniff, the record loop and the
+    element dispatch alike, and every other fixture is upper case, so a fold dropped
+    from any one of the three would read as working.
+    """
+    path = _write(tmp_path, _UNIT_SQUARE.lower(), name="lower.2dm")
+
+    assert TwoDmDriver().can_open(path) is True
+    dataset = TwoDmDriver().read(path)
+
+    assert dataset.mesh.n_face == 2
+    np.testing.assert_array_equal(
+        dataset.mesh.face_node_connectivity.data, [[0, 1, 2], [0, 2, 3]]
+    )
+
+
+def test_2dm_num_materials_per_elem_may_follow_the_elements(tmp_path):
+    """The tag applies to elements already read, which is why the split is deferred.
+
+    Face columns are stored verbatim and only divided once the whole file has been
+    seen, precisely so a writer that puts the tag at the end is read correctly. Every
+    existing fixture declares it first, so the deferral itself was untested.
+    """
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 7 9
+NUM_MATERIALS_PER_ELEM 2
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("material").data, [7.0])
+    np.testing.assert_allclose(dataset.get("material_2").data, [9.0])
+
+
+def test_2dm_element_short_of_a_declared_material_column_defaults_to_zero(tmp_path):
+    """A missing trailing column contributes 0.0 rather than failing the read.
+
+    Writers omit a trailing column routinely, and refusing an otherwise sound file over
+    it would be worse than carrying the gap.
+    """
+    text = """MESH2D
+NUM_MATERIALS_PER_ELEM 2
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 7
+"""
+    dataset = TwoDmDriver().read(_write(tmp_path, text))
+
+    np.testing.assert_allclose(dataset.get("material").data, [7.0])
+    np.testing.assert_allclose(dataset.get("material_2").data, [0.0])
+
+
+def test_2dm_duplicate_face_id_is_refused(tmp_path):
+    """Two E3T records sharing an id is refused, exactly as two nodes or two E2L are.
+
+    Nothing references an element by id, so the check exists only to refuse a malformed
+    file; the node and line-element halves were tested and the face half was not.
+    """
+    text = _UNIT_SQUARE.replace("E3T 2 1 3 4 1", "E3T 1 1 3 4 1")
+
+    with pytest.raises(ValueError, match="duplicate native id 1"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_truncated_line_element_record_is_refused(tmp_path):
+    """An E2L record short of its two vertex ids is reported with its keyword."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+E2L 1 1
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="malformed E2L record"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_crlf_line_endings_read(tmp_path):
+    """A file written on Windows reads: the carriage return is stripped, not parsed.
+
+    Left in place it would ride along on the last field of every record and turn each
+    numeric parse into a format error.
+    """
+    path = tmp_path / "crlf.2dm"
+    path.write_bytes(_UNIT_SQUARE.replace("\n", "\r\n").encode("utf-8"))
+
+    assert TwoDmDriver().can_open(str(path)) is True
+    dataset = TwoDmDriver().read(str(path))
+
+    assert dataset.mesh.n_face == 2
+    np.testing.assert_allclose(dataset.get("material").data, [1.0, 1.0])
 
 
 def test_2dm_mesh_names_is_a_single_entry(tmp_path):

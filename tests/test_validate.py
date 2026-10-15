@@ -372,6 +372,99 @@ def test_validate_leaves_the_input_untouched():
     assert result.fill_value == -1
 
 
+@pytest.mark.parametrize("label", ["edges", "network_edges"])
+def test_out_of_range_error_names_the_array_at_fault(label):
+    """The range check names which connectivity is wrong, not always "faces".
+
+    All three arrays share one checker, so a label threaded through the wrong argument
+    would send a driver author looking at the faces of a file whose edges are broken.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        **{label: np.array([[0, 9]], dtype=np.int64)},
+    )
+
+    with pytest.raises(ValueError, match=f"{label} index out of range"):
+        validate_and_normalise(parsed)
+
+
+@pytest.mark.parametrize("label", ["edges", "network_edges"])
+def test_ragged_error_names_the_array_at_fault(label):
+    """Rectangularity is checked on all three arrays, each named for itself."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        **{label: [[0, 1], [1]]},
+    )
+
+    with pytest.raises(ValueError, match=f"{label} connectivity must be a rectangular"):
+        validate_and_normalise(parsed)
+
+
+def test_edge_located_variable_shape_is_checked_against_the_edge_count():
+    """An edge variable is sized against the edges, not the faces or the nodes.
+
+    ``check_shapes`` counts all three locations; only the node and face counts were
+    ever exercised, so an edge variable compared against the wrong count would pass.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        edges=np.array([[0, 1], [1, 2]], dtype=np.int64),
+        variables={
+            "flux": ParsedVariable(location="edge", shape=(5,), values=np.zeros(5))
+        },
+    )
+
+    with pytest.raises(ValueError, match=r"its edge count: expected \(2,\)"):
+        check_shapes(parsed)
+
+
+def test_an_explicit_zero_writer_base_is_not_overwritten():
+    """``original_start_index=0`` is a declared base, not a missing one.
+
+    The resolution must test ``is not None``; a truthiness test would treat a declared
+    0-based writer base as unset and record the file's own 1 instead, which is the one
+    value where "the base a writer should emit" and "the base the file used" differ and
+    nothing else in the suite distinguishes them.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[1, 2, 3]], dtype=np.int64),
+        start_index=1,
+        original_start_index=0,
+    )
+
+    result = validate_and_normalise(parsed)
+
+    np.testing.assert_array_equal(result.faces, [[0, 1, 2]])
+    assert result.start_index == 0
+    assert result.original_start_index == 0
+
+
+@pytest.mark.parametrize("origin", [0.0, 1e3, 1e6, 1e7])
+def test_an_ordinary_face_at_projected_coordinates_is_still_wound(origin):
+    """The degeneracy tolerance scales with the coordinates but must not swallow a face.
+
+    The tolerance is ``8 * eps * scale ** 2``, so at projected-coordinate magnitudes it
+    is no longer negligible. A real 100 m element offset to a UTM-sized origin has to
+    keep being reversed rather than reported as having no winding at all.
+    """
+    node_x = np.array([0.0, 100.0, 100.0]) + origin
+    node_y = np.array([0.0, 100.0, 0.0]) + origin
+    faces = np.array([[0, 1, 2]], dtype=np.int64)
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    np.testing.assert_array_equal(fixed, [[2, 1, 0]])
+    assert reversed_count == 1
+    assert degenerate_count == 0
+
+
 def test_check_shapes_accepts_temporal_variable():
     """A temporal variable's shape is ``(len(time), element_count)``."""
     parsed = ParsedMesh(
