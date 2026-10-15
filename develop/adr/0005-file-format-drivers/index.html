@@ -1291,15 +1291,20 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in <
 <li><strong>Generation, quality and refinement are dropped</strong>, not deferred. They were not an intended scope.
   If mesh generation is wanted later it gets its own package and its own argument.</li>
 <li>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> <strong>entry-point group</strong>.
-  This package depends on <code>pyramids-gis</code>; <code>pyramids-gis</code> never imports this package. Nothing is
-  registered until the pyramids release that ships that registry.</li>
+  This package depends on <code>pyramids-gis</code>; <code>pyramids-gis</code> never imports this package. That registry
+  shipped in <code>pyramids-gis 0.68.0</code>, which is this package's floor, so registered drivers are
+  discovered and dispatched to.</li>
 <li>Each driver is a class declaring <code>name</code>, <code>long_name</code>, <code>suffixes</code>, <code>api_version</code> and a
-  <code>capabilities</code> set, implementing <code>can_open</code> plus either <code>read</code> (a format carrying topology) or
-  <code>read_data</code> (a results-only format such as DAT, XMDF or XDMF, which carries values but no mesh).</li>
+  <code>capabilities</code> set, implementing <code>can_open</code> and <code>mesh_names</code> — which pyramids calls on every
+  driver whatever it declares — plus either <code>read</code> (a format carrying topology) or <code>read_data</code> (a
+  results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
+  <code>read_mesh</code>, <code>needs_mesh</code>, <code>write_mesh</code> and <code>write_data</code> gate behaviour upstream; <code>read_data</code>,
+  <code>lazy_data</code> and <code>multi_mesh</code> are <strong>declarative</strong> and require no method of their own.</li>
 <li>Dependency-backed drivers live behind extras — <code>[dhi]</code> (<code>mikeio</code>), <code>[interchange]</code> (<code>meshio</code>),
   <code>[hdf]</code> (<code>h5py</code>) — and a driver whose extra is absent is skipped at discovery, so a bare install
   stays small and useful.</li>
-<li>Test fixtures are hand-built minimal files, committed, and excluded from the sdist. Vendor sample
+<li>Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
+  <code>MANIFEST.in</code>'s <code>prune tests</code>. Vendor sample
   files are fetched in CI behind a marker, never committed.</li>
 </ul>
 <h2 id="the-boundary-carried-over-from-adr-0003-unchanged"><a class="toclink" href="#the-boundary-carried-over-from-adr-0003-unchanged">The boundary (carried over from ADR-0003 unchanged)</a><a class="headerlink" href="#the-boundary-carried-over-from-adr-0003-unchanged" title="Permanent link">#</a></h2>
