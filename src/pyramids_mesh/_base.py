@@ -459,34 +459,45 @@ class BaseDriver:
         """
         node_x = np.asarray(parsed.node_x, dtype=np.float64)
         node_y = np.asarray(parsed.node_y, dtype=np.float64)
-        if self._wants_network(parsed, mesh_name):
+        if self._wants_network(parsed, mesh_name, path):
             return self._construct_network(parsed, node_x, node_y)
         name = mesh_name or parsed.mesh_name
         return self._construct_dataset(parsed, node_x, node_y, name=name, path=path)
 
-    def _wants_network(self, parsed: ParsedMesh, mesh_name: str | None) -> bool:
+    def _wants_network(
+        self, parsed: ParsedMesh, mesh_name: str | None, path: str
+    ) -> bool:
         """Decide whether this read builds the 1D topology rather than the surface.
 
         A purely one-dimensional parse always does. A file holding both offers the
         network under :attr:`network_mesh_name`, so the caller selects it explicitly.
 
+        A name the driver does not offer is refused rather than ignored. For a
+        ``multi_mesh`` driver ``mesh_name`` is the only way to choose a half, so
+        quietly returning a different topology than the one asked for is the single
+        failure the naming scheme exists to prevent -- and asking for a network that is
+        not there already raised, so ignoring a typo was the asymmetry.
+
         Args:
             parsed: The validated mesh.
             mesh_name: The topology the caller asked for, if any.
+            path: The file being read, so the offered names can be listed.
 
         Returns:
             bool: ``True`` to build a ``Network1d``.
 
         Raises:
-            ValueError: If the network was asked for but the file holds no 1D edges.
+            ValueError: If ``mesh_name`` is not one of the topologies this file offers.
         """
+        if mesh_name is None:
+            return parsed.topology_dimension == 1
+        offered = self.mesh_names(path)
+        if mesh_name not in offered:
+            raise ValueError(
+                f"{self.name or type(self).__name__} does not offer a {mesh_name!r} "
+                f"topology in {path!r}; it offers {offered!r}"
+            )
         if mesh_name == self.network_mesh_name:
-            if self._network_edges(parsed) is None:
-                raise ValueError(
-                    f"{self.name!r} was asked for the {mesh_name!r} topology, but this "
-                    f"file holds no 1D elements; it carries only "
-                    f"{parsed.mesh_name!r}"
-                )
             return True
         return parsed.topology_dimension == 1
 
@@ -516,9 +527,16 @@ class BaseDriver:
         ``Network1d`` to grow somewhere to put it, which is upstream work in
         ``pyramids-gis``, not something to fake here.
         """
+        edges = self._network_edges(parsed)
+        if edges is None:
+            raise ValueError(
+                f"{self.name or type(self).__name__} offered a "
+                f"{self.network_mesh_name!r} topology for this file but parsed no 1D "
+                f"edges for it; mesh_names and _parse disagree"
+            )
         self._warn_network_drops(parsed)
         edge_conn = Connectivity(
-            data=np.asarray(self._network_edges(parsed)),
+            data=np.asarray(edges),
             fill_value=-1,
             cf_role="edge_node_connectivity",
             original_start_index=_recorded_start_index(parsed),

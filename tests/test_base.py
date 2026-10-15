@@ -445,9 +445,31 @@ def test_mesh_name_argument_names_the_built_topology():
         }
     )
 
-    dataset = _StubDriver(parsed).read("mesh.stub", mesh_name="my_grid")
+    dataset = _StubDriver(parsed).read("mesh.stub", mesh_name="mesh2d")
 
-    assert dataset.get("material").mesh_name == "my_grid"
+    assert dataset.get("material").mesh_name == "mesh2d"
+
+
+def test_an_unoffered_mesh_name_is_refused():
+    """A topology the driver does not offer is refused, not quietly swapped.
+
+    Asking for a network that is not in the file already raised, so silently honouring
+    a typo by returning a different topology was the asymmetry -- and for a multi_mesh
+    driver ``mesh_name`` is the only way to choose a half.
+    """
+    with pytest.raises(ValueError, match="does not offer a 'not-a-topology'"):
+        _StubDriver(_unit_square()).read("mesh.stub", mesh_name="not-a-topology")
+
+
+def test_a_driver_whose_mesh_names_lies_is_reported():
+    """A driver offering a network it did not parse is named as the bug it is."""
+
+    class _LyingDriver(_StubDriver):
+        def mesh_names(self, path: str) -> list[str]:
+            return ["mesh2d", "network1d"]
+
+    with pytest.raises(ValueError, match="mesh_names and _parse disagree"):
+        _LyingDriver(_unit_square()).read("mesh.stub", mesh_name="network1d")
 
 
 def test_suffix_matching_ignores_case(tmp_path):
