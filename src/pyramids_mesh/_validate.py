@@ -225,6 +225,7 @@ def check_shapes(parsed: "ParsedMesh") -> None:
                 f"variable {var_name!r} has unknown location {var.location!r}"
             )
         element_count = counts[var.location]
+        expected: tuple[int, ...]
         if var.time_values is not None:
             expected = (int(np.asarray(var.time_values).shape[0]), element_count)
         else:

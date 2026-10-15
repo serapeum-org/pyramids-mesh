@@ -38,6 +38,10 @@ _LINE_ELEMENT = "E2L"
 _NODE = "ND"
 _MATERIALS_TAG = "NUM_MATERIALS_PER_ELEM"
 
+# Kept in step with ``iter_records``' default: the header sniff and the parser must
+# skip the same lines, or one accepts a file the other refuses.
+_COMMENT = "#"
+
 # ``can_open`` must not read the whole file, so the header sniff looks at a bounded
 # prefix. A binary file decodes to replacement characters rather than raising.
 _SNIFF_BYTES = 4096
@@ -87,14 +91,19 @@ class TwoDmDriver(BaseDriver):
         Args:
             path: The file to inspect.
 
+        Blank and comment lines are skipped, exactly as
+        :func:`~pyramids_mesh._text.iter_records` skips them while parsing. The two must
+        agree: a sniff stricter than the parser would decline a file this driver can
+        read, and dispatch would then hand it to nobody.
+
         Returns:
-            bool: ``True`` when the first non-blank line starts with ``MESH2D``.
+            bool: ``True`` when the first significant line starts with ``MESH2D``.
         """
         with open(path, "rb") as handle:
             head = handle.read(_SNIFF_BYTES)
         for line in head.decode("utf-8", errors="replace").splitlines():
             stripped = line.strip()
-            if stripped:
+            if stripped and not stripped.startswith(_COMMENT):
                 return stripped.upper().startswith(_HEADER)
         return False
 
@@ -157,7 +166,7 @@ class _Scan:
             FileFormatNotSupportedError: On a missing header or an unsupported element.
         """
         header_seen = False
-        for keyword, fields in iter_records(path):
+        for keyword, fields in iter_records(path, comment=_COMMENT):
             upper = keyword.upper()
             if not header_seen:
                 if upper != _HEADER:
@@ -181,30 +190,52 @@ class _Scan:
                 f"refuses such a file rather than guessing a node mapping"
             )
         if upper == _MATERIALS_TAG:
+            _require_fields(upper, fields, 1, path)
             self.materials_per_element = max(1, int(fields[0]))
         elif upper == _NODE:
-            self._add_node(fields)
+            self._add_node(fields, path)
         elif upper in _FACE_NODE_COUNTS:
-            self._add_face(upper, fields)
+            self._add_face(upper, fields, path)
         elif upper == _LINE_ELEMENT:
+            _require_fields(upper, fields, 3, path)
             self.edge_vertices.append([int(value) for value in fields[1:3]])
 
-    def _add_node(self, fields: list[str]) -> None:
-        """Collect one ``ND <id> <x> <y> <z>`` record."""
+    def _add_node(self, fields: list[str], path: str) -> None:
+        """Collect one ``ND <id> <x> <y> <z>`` record.
+
+        Args:
+            fields: The record's fields, without the keyword.
+            path: The source path, for the error message.
+
+        Raises:
+            FileFormatNotSupportedError: If the record is short of an id and both
+                coordinates.
+        """
+        _require_fields(_NODE, fields, 3, path)
         self.node_ids.append(int(fields[0]))
         self.node_x.append(float(fields[1]))
         self.node_y.append(float(fields[2]))
         self.node_z.append(float(fields[3]) if len(fields) > 3 else 0.0)
 
-    def _add_face(self, upper: str, fields: list[str]) -> None:
+    def _add_face(self, upper: str, fields: list[str], path: str) -> None:
         """Collect one face record, keeping its trailing columns unsliced.
 
         The material and aux columns are stored verbatim because
         ``NUM_MATERIALS_PER_ELEM`` may appear after the elements it applies to; the
         split happens once the whole file has been read. Fields are only ever indexed
         from the start, since the column count varies with the aux columns.
+
+        Args:
+            upper: The element keyword, upper-cased.
+            fields: The record's fields, without the keyword.
+            path: The source path, for the error message.
+
+        Raises:
+            FileFormatNotSupportedError: If the record carries fewer vertex ids than
+                the element type declares.
         """
         count = _FACE_NODE_COUNTS[upper]
+        _require_fields(upper, fields, 1 + count, path)
         self.face_ids.append(int(fields[0]))
         self.face_vertices.append([int(value) for value in fields[1 : 1 + count]])
         self.face_extras.append(fields[1 + count :])
@@ -301,6 +332,28 @@ class _Scan:
                 values=np.array(column, dtype=np.float64),
             )
         return variables
+
+
+def _require_fields(keyword: str, fields: list[str], needed: int, path: str) -> None:
+    """Check a record carries at least the fields its keyword requires.
+
+    Without this a truncated line fails with a bare ``IndexError`` deep in the parser,
+    which says nothing about which record of which file is malformed.
+
+    Args:
+        keyword: The record's keyword, for the error message.
+        fields: The record's fields, without the keyword.
+        needed: The minimum number of fields the keyword requires.
+        path: The source path, for the error message.
+
+    Raises:
+        FileFormatNotSupportedError: If fewer than ``needed`` fields are present.
+    """
+    if len(fields) < needed:
+        raise FileFormatNotSupportedError(
+            f"{path!r} has a malformed {keyword} record: expected at least {needed} "
+            f"fields after the keyword, found {len(fields)}"
+        )
 
 
 def _index_of(native: int, node_map: dict[int, int], path: str) -> int:
