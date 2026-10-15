@@ -1116,14 +1116,40 @@
 <h1 id="reference"><a class="toclink" href="#reference">Reference</a><a class="headerlink" href="#reference" title="Permanent link">#</a></h1>
 <p>The API surface of <code>pyramids_mesh</code>, generated from the docstrings by
 <a href="https://mkdocstrings.github.io/">mkdocstrings</a>.</p>
-<p><code>0.1.0</code> publishes no mesh API — the package root carries <code>__version__</code> and the import contract that
-activates the vendored osgeo bindings. Each module added later gets its own page under this section,
-and the names it exports are re-exported from the package root, so <code>from pyramids_mesh import ...</code>
-stays the import worth using.</p>
-<p>For the mesh data model itself — <code>Mesh2d</code>, <code>UgridDataset</code>, connectivity, graph algorithms,
-regridding, mesh ↔ vector — see the
+<p>What this package publishes is <strong>drivers</strong>, not an API you call directly. A driver is registered
+with <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> entry-point group, so installing this
+package is the whole integration: <code>pyramids</code> then dispatches a read of a format it does not handle
+itself to the driver that claims it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>   <span class="c1"># resolved to this package's 2dm driver</span>
+</code></pre></div>
+<p>So the entry points below are the surface that matters, and each driver has its own page listing
+its suffixes, capabilities and documented limitations:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Format</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2dm</code></td>
+<td>SMS / TUFLOW 2DM mesh frame</td>
+<td><a href="2dm/">2DM</a></td>
+</tr>
+</tbody>
+</table>
+<p>The package root deliberately re-exports nothing (<code>__all__</code> is empty): it carries <code>__version__</code> and
+the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
+module path — <code>pyramids_mesh.drivers.sms.TwoDmDriver</code> — which is also how their entry points name
+them, though normal use goes through <code>pyramids</code> rather than importing them at all.</p>
+<p>For the mesh data model itself — <code>Mesh2d</code>, <code>Network1d</code>, <code>UgridDataset</code>, connectivity, graph
+algorithms, regridding, mesh ↔ vector — see the
 <a href="https://serapeum-org.github.io/pyramids/latest/">pyramids UGRID reference</a>. The split between the
-two is <a href="../adr/0003-scope-boundary/">ADR-0003</a>.</p>
+two is <a href="../adr/0005-file-format-drivers/">ADR-0005</a>, which supersedes ADR-0003 in full.</p>
 
 
 <div class="doc doc-object doc-module">
