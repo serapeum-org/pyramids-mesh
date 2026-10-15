@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -633,6 +633,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#files-holding-both-a-surface-and-a-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files holding both a surface and a network
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1139,6 +1150,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#files-holding-both-a-surface-and-a-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files holding both a surface and a network
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1214,7 +1236,7 @@ other driver in this package follows.</p>
 </tr>
 <tr>
 <td>Capabilities</td>
-<td><code>read_mesh</code>, <code>read_data</code></td>
+<td><code>read_mesh</code>, <code>read_data</code>, <code>multi_mesh</code></td>
 </tr>
 <tr>
 <td>Extra required</td>
@@ -1222,7 +1244,7 @@ other driver in this package follows.</p>
 </tr>
 <tr>
 <td>Returns</td>
-<td><code>UgridDataset</code>, or <code>Network1d</code> for a file of only <code>E2L</code> elements</td>
+<td><code>UgridDataset</code> for the surface mesh, <code>Network1d</code> for the <code>E2L</code> network</td>
 </tr>
 </tbody>
 </table>
@@ -1230,6 +1252,18 @@ other driver in this package follows.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>
 </code></pre></div>
+<h2 id="files-holding-both-a-surface-and-a-network"><a class="toclink" href="#files-holding-both-a-surface-and-a-network">Files holding both a surface and a network</a><a class="headerlink" href="#files-holding-both-a-surface-and-a-network" title="Permanent link">#</a></h2>
+<p>A 2DM may carry a surface mesh (<code>E3T</code>/<code>E4Q</code>/<code>E6T</code>), a 1D network (<code>E2L</code>), or both. The two are
+named separately, so <code>mesh_names</code> tells you what a file holds and <code>mesh_name=</code> picks one:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">Network1d</span><span class="p">,</span> <span class="n">UgridDataset</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">UgridDataset</span><span class="o">.</span><span class="n">mesh_names</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>            <span class="c1"># ['mesh2d', 'network1d']</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>      <span class="c1"># the surface mesh</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">channels</span> <span class="o">=</span> <span class="n">Network1d</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">,</span> <span class="n">mesh_name</span><span class="o">=</span><span class="s2">"network1d"</span><span class="p">)</span>   <span class="c1"># the 1D network</span>
+</code></pre></div>
+<p>Reading the surface of a file that also holds <code>E2L</code> elements warns that the network is not in
+that result and names this route. The <code>E2L</code> elements are a separate 1D topology, not the surface
+mesh's edges, so they are never folded into <code>edge_node_connectivity</code>.</p>
 <h2 id="what-it-reads"><a class="toclink" href="#what-it-reads">What it reads</a><a class="headerlink" href="#what-it-reads" title="Permanent link">#</a></h2>
 <table>
 <thead>
@@ -1285,13 +1319,19 @@ records, never the highest id.</p>
 <li><strong><code>E6T</code> is kept as a six-node face.</strong> Its node order is corner, mid-side, corner,
   mid-side, corner, mid-side, so the hexagon through those points <em>is</em> the element
   outline; it is not demoted to its corner triangle.</li>
-<li><strong>A file holding both faces and <code>E2L</code> elements returns the faces only</strong>, with a
-  warning. A mixed-dimension file is reached through
-  [<code>Network1d</code>][pyramids.netcdf.ugrid.Network1d]; <code>UgridDataset</code> and <code>Network1d</code> are
-  separate types and one read returns one of them.</li>
-<li><strong>No elevation coordinate.</strong> The pyramids mesh model is planar, so <code>z</code> survives as a
-  node-located <code>node_z</code> variable. Anything consuming the mesh <em>geometry</em> sees the planar
-  projection.</li>
+<li><strong>One read returns one topology.</strong> <code>UgridDataset</code> and <code>Network1d</code> are separate types, so a
+  file holding both is read twice, once per <code>mesh_name</code> (see above). Reading either half warns
+  about what the other half leaves behind rather than omitting it silently.</li>
+<li><strong>No elevation coordinate.</strong> The pyramids mesh model is planar, so on the <strong>surface</strong> path <code>z</code>
+  survives as a node-located <code>node_z</code> variable. Anything consuming the mesh <em>geometry</em> sees the
+  planar projection.</li>
+<li><strong>A 1D read cannot carry <code>z</code>, variables or global attributes at all.</strong>
+  [<code>Network1d</code>][pyramids.netcdf.ugrid.Network1d] holds a topology and a CRS and has no parameter
+  for data, so reading the network half of a file reports each of those by name in a warning and
+  returns without them. This is a <code>pyramids-gis</code> limitation, not a decision of this driver: it
+  will be carried properly once <code>Network1d</code> has somewhere to put it.</li>
+<li><strong>No elevation is invented.</strong> If no <code>ND</code> record carries a z column, <code>node_z</code> is omitted
+  entirely rather than filled with zeros a consumer could not tell from a real zero datum.</li>
 <li><strong>No CRS.</strong> 2DM carries none, so <code>crs</code> is always <code>None</code>; it is never inferred from the
   coordinate magnitudes.</li>
 <li><strong>Read-only for now.</strong> <code>write_mesh</code> arrives with the 2DM writer (task W1).</li>
