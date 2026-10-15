@@ -1239,6 +1239,10 @@ other driver in this package follows.</p>
 <td><code>read_mesh</code>, <code>read_data</code>, <code>multi_mesh</code></td>
 </tr>
 <tr>
+<td></td>
+<td><code>read_data</code> and <code>multi_mesh</code> are <strong>declarative</strong> — they describe the driver in <code>info(drivers=True)</code> and require no method. There is no <code>read_data()</code> to call: <code>read_data</code> here means the file carries values (material, elevation) that <code>read</code> returns alongside the topology. A results-only format declares <code>needs_mesh</code> instead and <em>does</em> implement the method.</td>
+</tr>
+<tr>
 <td>Extra required</td>
 <td>none</td>
 </tr>
