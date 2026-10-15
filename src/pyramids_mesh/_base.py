@@ -505,9 +505,10 @@ class BaseDriver:
             return
         warnings.warn(
             f"Network1d carries a topology and a CRS only, so {', '.join(dropped)} "
-            f"could not be attached to this 1D mesh and {'is' if len(dropped) == 1 else 'are'} "
-            f"not in the result",
-            stacklevel=3,
+            f"could not be attached to this 1D mesh and "
+            f"{'is' if len(dropped) == 1 else 'are'} not in the result",
+            # _warn_network_drops -> _construct_network -> _construct -> read -> caller
+            stacklevel=5,
         )
 
     def _build_variables(

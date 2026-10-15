@@ -33,8 +33,6 @@ import numpy as np
 if TYPE_CHECKING:  # pragma: no cover - type hints only, avoids a circular import
     from pyramids_mesh._base import ParsedMesh
 
-_ELEMENT_COUNT_SOURCE = {"node": "node", "face": "face", "edge": "edge"}
-
 
 def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
     """Enforce every pyramids invariant, returning a corrected copy.
@@ -130,11 +128,20 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
         faces, reversed_count, degenerate_count = fix_winding(
             faces, np.asarray(parsed.node_x), np.asarray(parsed.node_y), -1
         )
+        if reversed_count:
+            # Reversal is mandatory normalisation, but it changes the vertex order a
+            # writer would emit, so the file that comes back out is not byte-identical
+            # to the one read. That is worth saying rather than doing quietly.
+            warnings.warn(
+                f"{reversed_count} clockwise face(s) were reversed to "
+                f"counter-clockwise; a writer will emit the corrected order",
+                stacklevel=3,
+            )
         if degenerate_count:
             warnings.warn(
                 f"{degenerate_count} degenerate face(s) have no winding and were "
                 f"left unchanged",
-                stacklevel=2,
+                stacklevel=3,
             )
     writer_base = parsed.start_index
     if parsed.original_start_index is not None:
@@ -297,8 +304,13 @@ def fix_winding(
 
     The signed area is the shoelace sum over a face's **real** vertices only; padding
     is sliced off first, or a ``-1`` entry poisons the sign and reverses a correct face.
-    A degenerate face (zero signed area: collinear or a repeated node) has no winding,
-    so it is neither reversed nor rejected, matching pyramids' own handling.
+    A degenerate face -- one whose area is zero to within a tolerance scaled by its own
+    coordinates: collinear, or a repeated node -- has no winding, so it is neither
+    reversed nor rejected, matching pyramids' own handling.
+
+    Reversal rewrites the leading run of a row, which assumes UGRID's convention that
+    padding is a trailing run. A row padded between real vertices is rejected rather
+    than silently relaid.
 
     Args:
         faces: The 0-based, fill-padded face-node connectivity.
@@ -309,6 +321,9 @@ def fix_winding(
     Returns:
         tuple[np.ndarray, int, int]: The corrected faces, the number of faces reversed,
             and the number of degenerate faces found.
+
+    Raises:
+        ValueError: If a row pads between real vertices.
 
     Examples:
         - A clockwise triangle is reversed and counted:
@@ -356,16 +371,42 @@ def fix_winding(
     reversed_count = 0
     degenerate_count = 0
     for row in out:
-        real = row[row != fill_value]
-        if real.size < 3:
+        vertices = row[row != fill_value]
+        if vertices.size < 3:
             continue
-        area2 = _signed_area_2(node_x[real], node_y[real])
-        if area2 < 0:
-            row[: real.size] = real[::-1]
-            reversed_count += 1
-        elif area2 == 0:
+        pad_positions = np.flatnonzero(row == fill_value)
+        if pad_positions.size and int(pad_positions.min()) < vertices.size:
+            raise ValueError(
+                f"face row {row.tolist()} pads between real vertices; UGRID pads only "
+                f"the tail of a row, and reversing this one would move the padding"
+            )
+        xs, ys = node_x[vertices], node_y[vertices]
+        area2 = _signed_area_2(xs, ys)
+        if abs(area2) <= _area_tolerance(xs, ys):
             degenerate_count += 1
+        elif area2 < 0:
+            row[: vertices.size] = vertices[::-1]
+            reversed_count += 1
     return out, reversed_count, degenerate_count
+
+
+def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
+    """Return the area below which a face counts as degenerate.
+
+    Degeneracy is a geometric property, not an exact float. Scaled to the face's own
+    coordinate magnitude -- area grows with the square of length -- so a sliver whose
+    shoelace sum lands on a few ULP either side of zero is reported as degenerate
+    instead of being "reversed" on the strength of its sign bit.
+
+    Args:
+        xs: The face's vertex x-coordinates.
+        ys: The face's vertex y-coordinates.
+
+    Returns:
+        float: The absolute signed-area threshold for this face.
+    """
+    scale = max(float(np.abs(xs).max()), float(np.abs(ys).max()), 1.0)
+    return 8.0 * float(np.finfo(np.float64).eps) * scale * scale
 
 
 def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:

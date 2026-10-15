@@ -133,6 +133,45 @@ def test_degenerate_face_is_counted_not_reversed_not_raised():
     assert degenerate_count == 1
 
 
+def test_numerically_degenerate_sliver_is_not_reversed():
+    """A sliver whose area is zero to within rounding is degenerate, not clockwise.
+
+    An exact ``area2 == 0`` test decided such a face on its sign bit alone, reversing
+    one that landed a few ULP below zero and leaving its mirror image alone.
+    """
+    node_x = np.array([0.0, 1.0, 2.0])
+    node_y = np.array([0.0, 1e-17, 0.0])
+    faces = np.array([[0, 1, 2]], dtype=np.int64)
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    np.testing.assert_array_equal(fixed, faces)
+    assert reversed_count == 0
+    assert degenerate_count == 1
+
+
+def test_padding_between_real_vertices_raises():
+    """Interior padding breaks the trailing-pad convention, so it is refused."""
+    faces = np.array([[0, -1, 1, 2]], dtype=np.int64)
+    node_x = np.array([0.0, 1.0, 1.0])
+    node_y = np.array([0.0, 0.0, 1.0])
+
+    with pytest.raises(ValueError, match="pads between real vertices"):
+        fix_winding(faces, node_x, node_y, -1)
+
+
+def test_reversing_a_face_is_reported():
+    """A reversal changes what a writer emits, so it is warned about, not silent."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 1.0, 0.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+    )
+
+    with pytest.warns(UserWarning, match="clockwise face"):
+        validate_and_normalise(parsed)
+
+
 def test_shape_mismatch_raises_without_loading_values():
     """A wrong shape is caught from ``shape`` alone, without touching the loader."""
     loaded = []
