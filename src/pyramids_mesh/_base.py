@@ -213,6 +213,55 @@ class BaseDriver:
 
         Returns:
             UgridDataset | Network1d: The built mesh, or a network for a 1D topology.
+
+        Examples:
+            - A driver implements ``_parse`` and inherits everything else. Here the
+              file is 1-based and its single face is wound clockwise; the template
+              method re-bases the connectivity and reverses the face, so neither
+              mistake can reach the caller:
+
+                >>> import numpy as np
+                >>> from pyramids_mesh._base import BaseDriver, ParsedMesh
+                >>> class TinyDriver(BaseDriver):
+                ...     name = "tiny"
+                ...     suffixes = (".tiny",)
+                ...     capabilities = frozenset({"read_mesh"})
+                ...
+                ...     def _parse(self, path, *, lazy):
+                ...         return ParsedMesh(
+                ...             node_x=np.array([0.0, 1.0, 1.0]),
+                ...             node_y=np.array([0.0, 1.0, 0.0]),
+                ...             faces=np.array([[1, 2, 3]]),
+                ...             start_index=1,
+                ...         )
+                >>> dataset = TinyDriver().read("anything.tiny")
+                >>> dataset.mesh.n_node, dataset.mesh.n_face
+                (3, 1)
+                >>> dataset.mesh.face_node_connectivity.data.tolist()
+                [[2, 1, 0]]
+
+            - A ``_parse`` reporting a one-dimensional topology builds a network
+              instead, which is a separate type with edges rather than faces:
+
+                >>> import numpy as np
+                >>> from pyramids_mesh._base import BaseDriver, ParsedMesh
+                >>> class TinyNetworkDriver(BaseDriver):
+                ...     name = "tiny1d"
+                ...     suffixes = (".tiny",)
+                ...     capabilities = frozenset({"read_mesh"})
+                ...
+                ...     def _parse(self, path, *, lazy):
+                ...         return ParsedMesh(
+                ...             node_x=np.array([0.0, 1.0, 2.0]),
+                ...             node_y=np.array([0.0, 0.0, 0.0]),
+                ...             edges=np.array([[0, 1], [1, 2]]),
+                ...             topology_dimension=1,
+                ...         )
+                >>> network = TinyNetworkDriver().read("channels.tiny")
+                >>> network.n_node, network.n_edge
+                (3, 2)
+                >>> network.edge_node_connectivity.data.tolist()
+                [[0, 1], [1, 2]]
         """
         parsed = self._parse(path, lazy=lazy)
         parsed = validate_and_normalise(parsed)

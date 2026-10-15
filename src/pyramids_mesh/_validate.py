@@ -49,6 +49,54 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
         ValueError: On an out-of-range index, a ragged connectivity array, a fill value
             that collides with a valid index, or a variable whose shape does not match
             its element and time counts.
+
+    Examples:
+        - A 1-based file becomes 0-based, while ``start_index`` still records the
+          base the file used so a writer can restore it:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh
+            >>> parsed = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[1, 2, 3]]),
+            ...     start_index=1,
+            ... )
+            >>> result = validate_and_normalise(parsed)
+            >>> result.faces.tolist()
+            [[0, 1, 2]]
+            >>> result.start_index
+            1
+
+        - A clockwise face is reversed, because area, centroid and ``polygonize``
+          all assume counter-clockwise winding:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh
+            >>> clockwise = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 1.0, 0.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ... )
+            >>> validate_and_normalise(clockwise).faces.tolist()
+            [[2, 1, 0]]
+
+        - A fill value that a real index could also take is unrecoverable, so it
+          raises rather than guessing which entries are padding:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh
+            >>> colliding = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ...     fill_value=0,
+            ... )
+            >>> try:
+            ...     validate_and_normalise(colliding)
+            ... except ValueError as error:
+            ...     print(str(error).split(";")[0])
+            faces fill_value 0 collides with a valid index (base 0, 3 nodes)
     """
     check_shapes(parsed)
     n_node = int(np.asarray(parsed.node_x).shape[0])
@@ -132,6 +180,21 @@ def to_zero_based(conn: np.ndarray, start_index: int, fill_value: int) -> np.nda
 
     Returns:
         np.ndarray: An integer array with real entries re-based to 0 and padding ``-1``.
+
+    Examples:
+        - Re-base a 1-based array whose short rows are padded with ``0``. The pad
+          becomes ``-1`` rather than being shifted to ``-1`` by the subtraction:
+
+            >>> import numpy as np
+            >>> conn = np.array([[1, 2, 3, 0], [1, 3, 4, 0]])
+            >>> to_zero_based(conn, start_index=1, fill_value=0).tolist()
+            [[0, 1, 2, -1], [0, 2, 3, -1]]
+
+        - An array that is already 0-based is unchanged apart from its padding:
+
+            >>> import numpy as np
+            >>> to_zero_based(np.array([[0, 1, 2]]), 0, -1).tolist()
+            [[0, 1, 2]]
     """
     array = np.asarray(conn)
     out = np.full(array.shape, -1, dtype=np.int64)
@@ -150,6 +213,19 @@ def repad(conn: np.ndarray, old_fill: int, new_fill: int = -1) -> np.ndarray:
 
     Returns:
         np.ndarray: A copy with ``old_fill`` entries rewritten to ``new_fill``.
+
+    Examples:
+        - Rewrite a format's own pad value to the ``-1`` pyramids expects:
+
+            >>> import numpy as np
+            >>> repad(np.array([[0, 1, 9], [2, 3, 9]]), old_fill=9).tolist()
+            [[0, 1, -1], [2, 3, -1]]
+
+        - Real entries are left alone, so a row with no padding is untouched:
+
+            >>> import numpy as np
+            >>> repad(np.array([[0, 1, 2]]), old_fill=9).tolist()
+            [[0, 1, 2]]
     """
     out = np.asarray(conn).copy()
     out[out == old_fill] = new_fill
@@ -178,6 +254,48 @@ def fix_winding(
     Returns:
         tuple[np.ndarray, int, int]: The corrected faces, the number of faces reversed,
             and the number of degenerate faces found.
+
+    Examples:
+        - A clockwise triangle is reversed and counted:
+
+            >>> import numpy as np
+            >>> faces = np.array([[0, 1, 2]])
+            >>> node_x = np.array([0.0, 1.0, 1.0])
+            >>> node_y = np.array([0.0, 1.0, 0.0])
+            >>> fixed, reversed_count, degenerate = fix_winding(
+            ...     faces, node_x, node_y, -1
+            ... )
+            >>> fixed.tolist()
+            [[2, 1, 0]]
+            >>> reversed_count
+            1
+
+        - Padding is sliced off before the shoelace sum, so a padded
+          counter-clockwise face is left alone instead of being flipped:
+
+            >>> import numpy as np
+            >>> padded = np.array([[0, 1, 2, -1]])
+            >>> node_x = np.array([0.0, 1.0, 1.0])
+            >>> node_y = np.array([0.0, 0.0, 1.0])
+            >>> fixed, reversed_count, degenerate = fix_winding(
+            ...     padded, node_x, node_y, -1
+            ... )
+            >>> fixed.tolist()
+            [[0, 1, 2, -1]]
+            >>> reversed_count
+            0
+
+        - A collinear face has no winding, so it is counted rather than reversed:
+
+            >>> import numpy as np
+            >>> flat = np.array([[0, 1, 2]])
+            >>> node_x = np.array([0.0, 1.0, 2.0])
+            >>> node_y = np.array([0.0, 0.0, 0.0])
+            >>> _, reversed_count, degenerate = fix_winding(
+            ...     flat, node_x, node_y, -1
+            ... )
+            >>> reversed_count, degenerate
+            (0, 1)
     """
     out = np.asarray(faces).copy()
     reversed_count = 0

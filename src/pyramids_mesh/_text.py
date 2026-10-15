@@ -31,6 +31,36 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
     Yields:
         tuple[str, list[str]]: The keyword and the remaining whitespace-separated
             fields of each significant line.
+
+    Examples:
+        - Read the records of a tiny 2DM file, with a comment and a blank line
+          dropped along the way:
+
+            >>> import os
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "mesh.2dm")
+            ...     with open(path, "w", encoding="utf-8") as handle:
+            ...         print("MESH2D", file=handle)
+            ...         print("", file=handle)
+            ...         print("# written by some tool", file=handle)
+            ...         print("ND 1 0.0 0.0 1.0", file=handle)
+            ...     list(iter_records(path))
+            [('MESH2D', []), ('ND', ['1', '0.0', '0.0', '1.0'])]
+
+        - The keyword is separated from its fields, so a driver can switch on it:
+
+            >>> import os
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "elements.2dm")
+            ...     with open(path, "w", encoding="utf-8") as handle:
+            ...         print("E3T 1 1 2 3 7", file=handle)
+            ...     keyword, fields = next(iter_records(path))
+            >>> keyword
+            'E3T'
+            >>> fields[1:4]
+            ['1', '2', '3']
     """
     with open(path, "r", encoding="utf-8", errors="replace") as handle:
         for line in handle:
@@ -59,6 +89,28 @@ def native_id_map(ids: Sequence[int]) -> dict[int, int]:
     Raises:
         ValueError: If an id appears more than once, which a well-formed file never
             does and which would make the mapping ambiguous.
+
+    Examples:
+        - Gapped ids become contiguous indices in order of appearance:
+
+            >>> native_id_map([1, 5, 9, 12])
+            {1: 0, 5: 1, 9: 2, 12: 3}
+
+        - Ids out of file order map to their position, not their value, which is
+          what keeps a renumbered mesh wired correctly:
+
+            >>> mapping = native_id_map([7, 3, 5])
+            >>> mapping[7]
+            0
+            >>> [mapping[native] for native in (7, 3, 5)]
+            [0, 1, 2]
+
+        - A repeated id is ambiguous and refused:
+
+            >>> native_id_map([4, 4])
+            Traceback (most recent call last):
+                ...
+            ValueError: duplicate native id 4 at position 1
     """
     mapping: dict[int, int] = {}
     for index, native in enumerate(ids):

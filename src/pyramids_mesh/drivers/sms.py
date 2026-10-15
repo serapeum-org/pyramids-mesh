@@ -74,6 +74,66 @@ class TwoDmDriver(BaseDriver):
           with a warning: a mixed-dimension file is reached through ``Network1d``.
         - 2DM carries no CRS, so ``crs`` is always ``None``; it is never guessed from
           the coordinate magnitudes.
+
+    Examples:
+        - Write the smallest valid 2DM and read it back. The file numbers its nodes
+          from 1, and the connectivity arrives 0-based with the file's base still
+          recorded for a writer to restore:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import (
+            ...     TwoDmDriver,
+            ...     build_minimal_fixture,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "domain.2dm")
+            ...     build_minimal_fixture(path)
+            ...     dataset = TwoDmDriver().read(path)
+            >>> dataset.mesh.n_node, dataset.mesh.n_face
+            (4, 2)
+            >>> dataset.mesh.face_node_connectivity.data.tolist()
+            [[0, 1, 2], [0, 2, 3]]
+            >>> dataset.mesh.face_node_connectivity.original_start_index
+            1
+
+        - Elevation and the material id come back as variables, because the mesh
+          model is planar and carries neither as a coordinate:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import (
+            ...     TwoDmDriver,
+            ...     build_minimal_fixture,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "domain.2dm")
+            ...     build_minimal_fixture(path)
+            ...     dataset = TwoDmDriver().read(path)
+            >>> sorted(dataset.data_variable_names)
+            ['material', 'node_z']
+            >>> dataset.get("node_z").location
+            'node'
+            >>> dataset.get("material").data.tolist()
+            [1.0, 1.0]
+
+        - Dispatch checks the suffix and sniffs the header, so the right content
+          under a suffix this driver does not claim is still declined:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import (
+            ...     TwoDmDriver,
+            ...     build_minimal_fixture,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     claimed = os.path.join(directory, "domain.2dm")
+            ...     foreign = os.path.join(directory, "domain.txt")
+            ...     build_minimal_fixture(claimed)
+            ...     build_minimal_fixture(foreign)
+            ...     driver = TwoDmDriver()
+            ...     (driver.can_open(claimed), driver.can_open(foreign))
+            (True, False)
     """
 
     name = "2dm"
@@ -137,6 +197,26 @@ def build_minimal_fixture(path: str) -> None:
 
     Args:
         path: Where to write the file.
+
+    Examples:
+        - The fixture is the unit square split into two counter-clockwise
+          triangles -- four nodes and two elements, the smallest thing that is
+          still a mesh:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import build_minimal_fixture
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "minimal.2dm")
+            ...     build_minimal_fixture(path)
+            ...     with open(path, encoding="utf-8") as handle:
+            ...         lines = handle.read().splitlines()
+            >>> lines[0]
+            'MESH2D'
+            >>> len([line for line in lines if line.startswith("ND")])
+            4
+            >>> [line for line in lines if line.startswith("E3T")]
+            ['E3T 1 1 2 3 1', 'E3T 2 1 3 4 1']
     """
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(_MINIMAL_FIXTURE)

@@ -48,6 +48,34 @@ def detect_endianness(
     Raises:
         ValueError: If the file is shorter than one length word, or declares the
             expected length in neither byte order.
+
+    Examples:
+        - A little-endian file announces its 80-byte title record in the low byte:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     word = np.array([80], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + b"T" * 80 + word)
+            ...     detect_endianness(path)
+            '<'
+
+        - The same file written big-endian is detected by retrying the swapped
+          order, which is the only way to tell: Selafin never declares it:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     word = np.array([80], dtype=">i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + b"T" * 80 + word)
+            ...     detect_endianness(path)
+            '>'
     """
     with open(path, "rb") as handle:
         head = handle.read(_LENGTH_WORD)
@@ -75,6 +103,43 @@ def iter_fortran_records(handle: BinaryIO, endian: str) -> Iterator[bytes]:
     Raises:
         ValueError: On a truncated record, or when the trailing length word does not
             match the leading one.
+
+    Examples:
+        - Walk two records, getting the payloads without their length words:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> def record(payload):
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     return word + payload + word
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(record(b"abcd") + record(b"wxyz"))
+            ...     with open(path, "rb") as handle:
+            ...         payloads = list(iter_fortran_records(handle, "<"))
+            >>> payloads
+            [b'abcd', b'wxyz']
+
+        - A trailing length word disagreeing with the leading one means a corrupt
+          file or the wrong byte order, and is never read past:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "corrupt.slf")
+            ...     leading = np.array([4], dtype="<i4").tobytes()
+            ...     trailing = np.array([5], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(leading + b"abcd" + trailing)
+            ...     with open(path, "rb") as handle:
+            ...         try:
+            ...             next(iter_fortran_records(handle, "<"))
+            ...         except ValueError as error:
+            ...             print(str(error).split(";")[0])
+            Fortran record length mismatch: leading 4, trailing 5
     """
     while True:
         payload = _read_record(handle, endian)
@@ -137,6 +202,41 @@ def record_offsets(path: str, endian: str) -> list[tuple[int, int]]:
 
     Raises:
         ValueError: On a truncated or length-mismatched record.
+
+    Examples:
+        - Index a two-record file. The first payload starts after its 4-byte length
+          word, and the second after the first record's trailing word:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> def record(payload):
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     return word + payload + word
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(record(b"T" * 80) + record(b"abcd"))
+            ...     offsets = record_offsets(path, "<")
+            >>> offsets
+            [(4, 80), (92, 4)]
+
+        - The index is what a lazy loader seeks into, so a variable is read without
+          rescanning the file:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     word = np.array([4], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + b"wxyz" + word)
+            ...     offset, length = record_offsets(path, "<")[0]
+            ...     with open(path, "rb") as handle:
+            ...         _ = handle.seek(offset)
+            ...         handle.read(length)
+            b'wxyz'
     """
     offsets: list[tuple[int, int]] = []
     with open(path, "rb") as handle:
