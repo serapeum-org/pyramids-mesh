@@ -55,13 +55,15 @@ def _as_float_array(values: np.ndarray | None) -> np.ndarray | None:
 
 
 def _recorded_start_index(parsed: "ParsedMesh") -> int:
-    """Return the connectivity base to record on ``Connectivity`` for a round trip.
+    """Return the connectivity base to record on ``Connectivity`` for a writer to emit.
 
     Args:
         parsed: The validated mesh.
 
     Returns:
-        int: ``original_start_index`` when the driver set one, else ``start_index``.
+        int: ``original_start_index`` when it is set -- which it always is after
+            ``validate_and_normalise``, since normalisation resolves it -- else
+            ``start_index``, for a mesh handed over unvalidated.
     """
     if parsed.original_start_index is None:
         return parsed.start_index
@@ -108,8 +110,9 @@ class ParsedMesh:
     Coordinates and connectivity are as the file gave them: ``faces``/``edges`` use the
     file's own base (``start_index``) and pad value (``fill_value``) until
     ``validate_and_normalise`` rewrites them to the 0-based, ``-1``-padded,
-    counter-clockwise form pyramids assumes. ``start_index`` is preserved through
-    validation so a writer can restore the file's base.
+    counter-clockwise form pyramids assumes. Validation then sets ``start_index`` to
+    ``0``, because the re-basing is done, and leaves the base a writer should emit in
+    ``original_start_index`` -- so the two fields never contradict each other.
 
     Attributes:
         node_x: Node x-coordinates, shape ``(n_node,)``.
@@ -181,6 +184,9 @@ class BaseDriver:
         suffixes: The lowercase, dot-prefixed suffixes this driver claims.
         api_version: Must equal pyramids' ``MESH_DRIVER_API_VERSION``.
         capabilities: The capability tokens this driver declares.
+        network_mesh_name: The name a separate 1D topology is offered under. A format
+            carrying both a surface and a network lists the two separately from
+            ``mesh_names``, and ``read(path, mesh_name=...)`` selects one.
     """
 
     name: str = ""
@@ -236,6 +242,17 @@ class BaseDriver:
 
         Returns:
             list[str]: The configured mesh name, as a one-item list.
+
+        Examples:
+            - A single-mesh driver names one topology, so the list it returns is the
+              set of values ``read``'s ``mesh_name`` will accept:
+
+                >>> from pyramids_mesh._base import BaseDriver
+                >>> class TinyDriver(BaseDriver):
+                ...     name = "tiny"
+                ...     suffixes = (".tiny",)
+                >>> TinyDriver().mesh_names("anything.tiny")
+                ['mesh2d']
         """
         return [self._default_mesh_name]
 
@@ -311,6 +328,56 @@ class BaseDriver:
                 (3, 2)
                 >>> network.edge_node_connectivity.data.tolist()
                 [[0, 1], [1, 2]]
+
+            - A file holding both a surface and a 1D network puts the latter in
+              ``network_edges``, and ``mesh_name`` picks which of the two this read
+              returns. Each read warns about the half it leaves behind:
+
+                >>> import numpy as np
+                >>> import warnings
+                >>> from pyramids_mesh._base import BaseDriver, ParsedMesh
+                >>> class TinyMixedDriver(BaseDriver):
+                ...     name = "tinymixed"
+                ...     suffixes = (".tiny",)
+                ...     capabilities = frozenset({"read_mesh", "multi_mesh"})
+                ...
+                ...     def _parse(self, path, *, lazy):
+                ...         return ParsedMesh(
+                ...             node_x=np.array([0.0, 1.0, 1.0, 2.0]),
+                ...             node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...             faces=np.array([[0, 1, 2]]),
+                ...             network_edges=np.array([[2, 3]]),
+                ...         )
+                >>> driver = TinyMixedDriver()
+                >>> with warnings.catch_warnings():
+                ...     warnings.simplefilter("ignore")
+                ...     surface = driver.read("both.tiny")
+                ...     channels = driver.read("both.tiny", mesh_name="network1d")
+                >>> surface.mesh.face_node_connectivity.data.tolist()
+                [[0, 1, 2]]
+                >>> channels.edge_node_connectivity.data.tolist()
+                [[2, 3]]
+
+            - Asking for the 1D topology of a file that has none is an error rather
+              than an empty network:
+
+                >>> import numpy as np
+                >>> from pyramids_mesh._base import BaseDriver, ParsedMesh
+                >>> class SurfaceOnlyDriver(BaseDriver):
+                ...     name = "surfaceonly"
+                ...     suffixes = (".tiny",)
+                ...
+                ...     def _parse(self, path, *, lazy):
+                ...         return ParsedMesh(
+                ...             node_x=np.array([0.0, 1.0, 1.0]),
+                ...             node_y=np.array([0.0, 0.0, 1.0]),
+                ...             faces=np.array([[0, 1, 2]]),
+                ...         )
+                >>> try:
+                ...     SurfaceOnlyDriver().read("flat.tiny", mesh_name="network1d")
+                ... except ValueError as error:
+                ...     print(str(error).split(",")[0])
+                'surfaceonly' was asked for the 'network1d' topology
         """
         parsed = self._parse(path, lazy=lazy)
         parsed = validate_and_normalise(parsed)

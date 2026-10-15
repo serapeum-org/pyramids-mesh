@@ -153,6 +153,24 @@ class TwoDmDriver(BaseDriver):
             ...     driver = TwoDmDriver()
             ...     (driver.can_open(claimed), driver.can_open(foreign))
             (True, False)
+
+        - A file whose ``ND`` records carry only x and y gets no ``node_z`` at all,
+          rather than a column of zeros a consumer could not tell from a real datum:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import TwoDmDriver
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "flat.2dm")
+            ...     with open(path, "w", encoding="utf-8") as handle:
+            ...         print("MESH2D", file=handle)
+            ...         print("ND 1 0.0 0.0", file=handle)
+            ...         print("ND 2 1.0 0.0", file=handle)
+            ...         print("ND 3 1.0 1.0", file=handle)
+            ...         print("E3T 1 1 2 3 1", file=handle)
+            ...     dataset = TwoDmDriver().read(path)
+            >>> sorted(dataset.data_variable_names)
+            ['material']
     """
 
     name = "2dm"
@@ -175,6 +193,54 @@ class TwoDmDriver(BaseDriver):
             list[str]: ``["mesh2d"]``, ``["network1d"]``, or both. A file whose
                 elements cannot be read at all reports the surface name, leaving the
                 error to ``read``.
+
+        Examples:
+            - A file carrying both an ``E3T`` face and an ``E2L`` line element names
+              two topologies, and either name may then be passed to ``read``:
+
+                >>> import os
+                >>> import tempfile
+                >>> import warnings
+                >>> from pyramids_mesh.drivers.sms import TwoDmDriver
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     path = os.path.join(directory, "mixed.2dm")
+                ...     with open(path, "w", encoding="utf-8") as handle:
+                ...         print("MESH2D", file=handle)
+                ...         print("ND 1 0.0 0.0 0.0", file=handle)
+                ...         print("ND 2 1.0 0.0 0.0", file=handle)
+                ...         print("ND 3 1.0 1.0 0.0", file=handle)
+                ...         print("ND 4 0.0 1.0 0.0", file=handle)
+                ...         print("E3T 1 1 2 3 1", file=handle)
+                ...         print("E2L 1 3 4 1", file=handle)
+                ...     driver = TwoDmDriver()
+                ...     names = driver.mesh_names(path)
+                ...     with warnings.catch_warnings():
+                ...         warnings.simplefilter("ignore")
+                ...         surface = driver.read(path)
+                ...         channels = driver.read(path, mesh_name="network1d")
+                >>> names
+                ['mesh2d', 'network1d']
+                >>> surface.mesh.face_node_connectivity.data.tolist()
+                [[0, 1, 2]]
+                >>> channels.n_edge
+                1
+                >>> channels.edge_node_connectivity.data.tolist()
+                [[2, 3]]
+
+            - A file with faces and no ``E2L`` names only the surface, which is the
+              answer a caller needs before asking for a topology that is not there:
+
+                >>> import os
+                >>> import tempfile
+                >>> from pyramids_mesh.drivers.sms import (
+                ...     TwoDmDriver,
+                ...     build_minimal_fixture,
+                ... )
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     path = os.path.join(directory, "domain.2dm")
+                ...     build_minimal_fixture(path)
+                ...     TwoDmDriver().mesh_names(path)
+                ['mesh2d']
         """
         has_faces = False
         has_lines = False
@@ -198,15 +264,17 @@ class TwoDmDriver(BaseDriver):
         """Report whether the first significant line is the ``MESH2D`` header.
 
         Reads a bounded prefix and decodes it leniently, so a binary or empty file
-        answers ``False`` instead of raising.
-
-        Args:
-            path: The file to inspect.
+        answers ``False`` instead of raising. A byte-order mark is dropped, and blocks
+        are read until the first significant line or ``_SNIFF_LIMIT`` bytes, so a file
+        whose comment header runs long is not declined for that alone.
 
         Blank and comment lines are skipped, exactly as
         :func:`~pyramids_mesh._text.iter_records` skips them while parsing. The two must
         agree: a sniff stricter than the parser would decline a file this driver can
         read, and dispatch would then hand it to nobody.
+
+        Args:
+            path: The file to inspect.
 
         Returns:
             bool: ``True`` when the first significant line starts with ``MESH2D``.
@@ -266,7 +334,6 @@ def build_minimal_fixture(path: str) -> None:
     invariant suite by being registered rather than by anyone writing new tests. It
     writes the same seven lines as the committed ``tests/data/minimal.2dm``, and a test
     asserts the two match so neither can drift.
-
 
     Args:
         path: Where to write the file.

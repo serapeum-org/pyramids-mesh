@@ -151,6 +151,10 @@ def iter_fortran_records(handle: BinaryIO, endian: str) -> Iterator[bytes]:
 def read_record_ints(handle: BinaryIO, endian: str, count: int) -> np.ndarray:
     """Read one record and interpret its payload as ``int32`` values.
 
+    ``count`` is checked against the record's own length before anything is decoded, so
+    a count taken from a misread header fails here rather than returning the right
+    number of values read from the wrong part of the file.
+
     Args:
         handle: A binary file object positioned at a record boundary.
         endian: ``"<"`` or ``">"``.
@@ -160,7 +164,48 @@ def read_record_ints(handle: BinaryIO, endian: str, count: int) -> np.ndarray:
         np.ndarray: A writable array of ``count`` integers.
 
     Raises:
-        ValueError: If the record is missing, truncated, or length-mismatched.
+        ValueError: If the record is missing, truncated, length-mismatched, or does not
+            hold exactly ``count`` ``int32`` values.
+
+    Examples:
+        - Read a two-integer record, such as Selafin's node and element counts. The
+          array is a copy, so it can be written to:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     payload = np.array([3, 4], dtype="<i4").tobytes()
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + payload + word)
+            ...     with open(path, "rb") as handle:
+            ...         counts = read_record_ints(handle, "<", 2)
+            >>> counts.tolist()
+            [3, 4]
+            >>> counts[0] = 99
+            >>> counts.tolist()
+            [99, 4]
+
+        - A ``count`` the record cannot hold is refused instead of decoded from
+          whatever follows:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     payload = np.array([3, 4], dtype="<i4").tobytes()
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + payload + word)
+            ...     with open(path, "rb") as handle:
+            ...         try:
+            ...             read_record_ints(handle, "<", 5)
+            ...         except ValueError as error:
+            ...             print(str(error).split(";")[0])
+            Fortran record holds 8 bytes but 5 values of <i4 need 20
     """
     return _read_typed(handle, endian, count, "i4")
 
@@ -169,6 +214,11 @@ def read_record_floats(
     handle: BinaryIO, endian: str, count: int, *, double: bool
 ) -> np.ndarray:
     """Read one record and interpret its payload as floating-point values.
+
+    ``count`` is checked against the record's own length before anything is decoded, and
+    the check is what distinguishes a ``float32`` slab from a ``float64`` one of the
+    same element count -- reading the wrong width would otherwise succeed and return
+    nonsense.
 
     Args:
         handle: A binary file object positioned at a record boundary.
@@ -181,7 +231,45 @@ def read_record_floats(
         np.ndarray: A writable array of ``count`` floats.
 
     Raises:
-        ValueError: If the record is missing, truncated, or length-mismatched.
+        ValueError: If the record is missing, truncated, length-mismatched, or does not
+            hold exactly ``count`` values of the requested width.
+
+    Examples:
+        - Read a single-precision coordinate record:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     payload = np.array([0.0, 1.0, 1.0], dtype="<f4").tobytes()
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + payload + word)
+            ...     with open(path, "rb") as handle:
+            ...         node_x = read_record_floats(handle, "<", 3, double=False)
+            >>> node_x.tolist()
+            [0.0, 1.0, 1.0]
+
+        - Asking for ``float64`` from a ``float32`` record is caught by the length
+          check, which is the only thing standing between a wrong width and a
+          plausible-looking array of nonsense:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     payload = np.array([0.0, 1.0, 1.0], dtype="<f4").tobytes()
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + payload + word)
+            ...     with open(path, "rb") as handle:
+            ...         try:
+            ...             read_record_floats(handle, "<", 3, double=True)
+            ...         except ValueError as error:
+            ...             print(str(error).split(";")[0])
+            Fortran record holds 12 bytes but 3 values of <f8 need 24
     """
     return _read_typed(handle, endian, count, "f8" if double else "f4")
 
@@ -201,7 +289,9 @@ def record_offsets(path: str, endian: str) -> list[tuple[int, int]]:
             where ``offset`` is the payload's byte position.
 
     Raises:
-        ValueError: On a truncated or length-mismatched record.
+        ValueError: On a header that declares a negative length, a record truncated
+            against the file's real size, or a trailing length word that disagrees with
+            the leading one.
 
     Examples:
         - Index a two-record file. The first payload starts after its 4-byte length

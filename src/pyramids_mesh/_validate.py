@@ -3,7 +3,8 @@
 One shared implementation, because every one of these failures is **silent**: a driver
 that forgets one produces wrong numbers rather than an error.
 
-1. Connectivity is 0-indexed -- ``original_start_index`` only records the file's base.
+1. Connectivity is 0-indexed -- ``original_start_index`` only records the base a writer
+   should emit.
 2. Faces are fill-padded to a rectangular array, never ragged.
 3. The fill value does not collide with a valid index (``-1``).
 4. Face winding is counter-clockwise -- area, centroid, ``polygonize`` and ``voronoi``
@@ -51,8 +52,10 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
 
     Raises:
         ValueError: On an out-of-range index, a ragged connectivity array, a fill value
-            that collides with a valid index, or a variable whose shape does not match
-            its element and time counts.
+            that collides with a valid index, a per-node or per-face array whose length
+            disagrees with the topology, a variable carrying both or neither of
+            ``values``/``loader``, a variable whose shape does not match its element and
+            time counts, or a face row padded between its real vertices.
 
     Examples:
         - A 1-based file becomes 0-based. The copy then says so -- ``start_index`` is
@@ -171,7 +174,7 @@ def _normalise_connectivity(
         start_index: The file's connectivity base.
         fill_value: The pad value the file used.
         n_node: The node count, for the range check.
-        label: ``"faces"`` or ``"edges"``, used in error messages.
+        label: ``"faces"``, ``"edges"`` or ``"network_edges"``, used in error messages.
 
     Returns:
         np.ndarray | None: The 0-based, ``-1``-padded array, or ``None`` if ``conn``
@@ -305,8 +308,8 @@ def fix_winding(
     The signed area is the shoelace sum over a face's **real** vertices only; padding
     is sliced off first, or a ``-1`` entry poisons the sign and reverses a correct face.
     A degenerate face -- one whose area is zero to within a tolerance scaled by its own
-    coordinates: collinear, or a repeated node -- has no winding, so it is neither
-    reversed nor rejected, matching pyramids' own handling.
+    span: collinear, or a repeated node -- has no winding, so it is neither reversed nor
+    rejected, matching pyramids' own handling.
 
     Reversal rewrites the leading run of a row, which assumes UGRID's convention that
     padding is a trailing run. A row padded between real vertices is rejected rather
@@ -415,7 +418,10 @@ def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
 
 
 def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
-    """Check every per-node array is as long as ``node_x``.
+    """Check every per-node and per-face array is as long as the topology it describes.
+
+    ``node_y`` and ``node_z`` are measured against ``node_x``; ``face_x`` and ``face_y``
+    against the face count, and only when the parse has faces at all.
 
     Without this a short ``node_y`` surfaces as an ``IndexError`` from inside the
     shoelace sum, which never mentions the mismatch and does not fire at all on a parse
@@ -423,11 +429,11 @@ def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
     whose declared shape contradicts its data.
 
     Args:
-        parsed: The mesh whose node arrays to check.
+        parsed: The mesh whose node and face-centre arrays to check.
         n_node: The node count, taken from ``node_x``.
 
     Raises:
-        ValueError: If any per-node array has a different length.
+        ValueError: If any per-node or per-face array has a different length.
     """
     for label in ("node_y", "node_z"):
         array = getattr(parsed, label)
@@ -490,6 +496,82 @@ def check_shapes(parsed: "ParsedMesh") -> None:
             a variable carries both or neither of ``values``/``loader``, its location is
             unknown, or its shape does not equal ``(element_count,)`` (static) or
             ``(len(time_values), element_count)`` (temporal).
+
+    Examples:
+        - A sound mesh passes silently; the check returns nothing and reads no values,
+          so a lazy variable is validated without being loaded:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh, ParsedVariable
+            >>> parsed = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ...     variables={
+            ...         "depth": ParsedVariable(
+            ...             location="face",
+            ...             shape=(1,),
+            ...             loader=lambda: np.array([2.5]),
+            ...         )
+            ...     },
+            ... )
+            >>> print(check_shapes(parsed))
+            None
+
+        - A shape that disagrees with the element count is named along with the count
+          it should have matched:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh, ParsedVariable
+            >>> mismatched = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ...     variables={
+            ...         "depth": ParsedVariable(
+            ...             location="face",
+            ...             shape=(3,),
+            ...             values=np.array([1.0, 2.0, 3.0]),
+            ...         )
+            ...     },
+            ... )
+            >>> try:
+            ...     check_shapes(mismatched)
+            ... except ValueError as error:
+            ...     print(error)
+            variable 'depth' shape (3,) does not match its face count: expected (1,)
+
+        - A per-node array shorter than ``node_x`` is caught here rather than much
+          later, inside the shoelace sum:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh
+            >>> short = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0]),
+            ... )
+            >>> try:
+            ...     check_shapes(short)
+            ... except ValueError as error:
+            ...     print(str(error).split(";")[0])
+            node_y has 2 values but node_x has 3
+
+        - A variable must carry exactly one of an eager array or a lazy loader;
+          carrying neither leaves nothing to read:
+
+            >>> import numpy as np
+            >>> from pyramids_mesh._base import ParsedMesh, ParsedVariable
+            >>> empty = ParsedMesh(
+            ...     node_x=np.array([0.0, 1.0, 1.0]),
+            ...     node_y=np.array([0.0, 0.0, 1.0]),
+            ...     faces=np.array([[0, 1, 2]]),
+            ...     variables={"depth": ParsedVariable(location="face", shape=(1,))},
+            ... )
+            >>> try:
+            ...     check_shapes(empty)
+            ... except ValueError as error:
+            ...     print(str(error).split("; ")[1])
+            it carries neither
     """
     n_node = int(np.asarray(parsed.node_x).shape[0])
     _check_node_arrays(parsed, n_node)

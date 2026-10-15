@@ -23,6 +23,10 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
     in file order. Record-based text formats (2DM, DAT, Mike21, FLO-2D) are all read
     through this.
 
+    The file is decoded as ``utf-8-sig``, so a leading byte-order mark -- which Windows
+    editors write routinely -- is dropped rather than glued onto the first keyword, and
+    undecodable bytes are replaced rather than raising.
+
     Args:
         path: Path to the text file to read.
         comment: Line-comment marker. A line whose first non-blank character is this
@@ -61,6 +65,21 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
             'E3T'
             >>> fields[1:4]
             ['1', '2', '3']
+
+        - A byte-order mark is dropped, so the first keyword of a file a Windows
+          editor saved still reads as itself:
+
+            >>> import os
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "bom.2dm")
+            ...     with open(path, "w", encoding="utf-8-sig") as handle:
+            ...         print("MESH2D", file=handle)
+            ...     keyword, fields = next(iter_records(path))
+            >>> keyword
+            'MESH2D'
+            >>> fields
+            []
     """
     # `utf-8-sig` drops a leading byte-order mark. Windows editors write one routinely,
     # and without this the first keyword of an otherwise valid file reads as
