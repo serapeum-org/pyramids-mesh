@@ -519,9 +519,12 @@ def test_2dm_can_open_declines_a_file_that_is_only_comments(tmp_path):
 def test_2dm_sniff_gives_up_at_its_limit(tmp_path, monkeypatch):
     """The sniff stops after its byte limit rather than reading an unbounded file.
 
-    The limit is lowered here instead of writing a 256 KiB fixture; the behaviour under
-    test is that the loop ends at the limit, not the size of the constant.
+    Both the block size and the limit are lowered here instead of writing a 256 KiB
+    fixture; the behaviour under test is that the loop ends at the limit, not the size of
+    either constant. The block must be smaller than the limit, or the very first read
+    would swallow the whole file before the limit is ever consulted.
     """
+    monkeypatch.setattr(sms, "_SNIFF_BLOCK", 16)
     monkeypatch.setattr(sms, "_SNIFF_LIMIT", 64)
     path = _write(tmp_path, "# padding padding padding\n" * 20 + _UNIT_SQUARE)
 
