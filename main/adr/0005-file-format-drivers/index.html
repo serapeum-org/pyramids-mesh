@@ -503,6 +503,8 @@
           
         
       
+        
+      
     
     
     
@@ -539,6 +541,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
@@ -552,6 +559,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/2dm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2DM (SMS/TUFLOW)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -1256,15 +1291,20 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in <
 <li><strong>Generation, quality and refinement are dropped</strong>, not deferred. They were not an intended scope.
   If mesh generation is wanted later it gets its own package and its own argument.</li>
 <li>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> <strong>entry-point group</strong>.
-  This package depends on <code>pyramids-gis</code>; <code>pyramids-gis</code> never imports this package. Nothing is
-  registered until the pyramids release that ships that registry.</li>
+  This package depends on <code>pyramids-gis</code>; <code>pyramids-gis</code> never imports this package. That registry
+  shipped in <code>pyramids-gis 0.68.0</code>, which is this package's floor, so registered drivers are
+  discovered and dispatched to.</li>
 <li>Each driver is a class declaring <code>name</code>, <code>long_name</code>, <code>suffixes</code>, <code>api_version</code> and a
-  <code>capabilities</code> set, implementing <code>can_open</code> plus either <code>read</code> (a format carrying topology) or
-  <code>read_data</code> (a results-only format such as DAT, XMDF or XDMF, which carries values but no mesh).</li>
+  <code>capabilities</code> set, implementing <code>can_open</code> and <code>mesh_names</code> — which pyramids calls on every
+  driver whatever it declares — plus either <code>read</code> (a format carrying topology) or <code>read_data</code> (a
+  results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
+  <code>read_mesh</code>, <code>needs_mesh</code>, <code>write_mesh</code> and <code>write_data</code> gate behaviour upstream; <code>read_data</code>,
+  <code>lazy_data</code> and <code>multi_mesh</code> are <strong>declarative</strong> and require no method of their own.</li>
 <li>Dependency-backed drivers live behind extras — <code>[dhi]</code> (<code>mikeio</code>), <code>[interchange]</code> (<code>meshio</code>),
   <code>[hdf]</code> (<code>h5py</code>) — and a driver whose extra is absent is skipped at discovery, so a bare install
   stays small and useful.</li>
-<li>Test fixtures are hand-built minimal files, committed, and excluded from the sdist. Vendor sample
+<li>Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
+  <code>MANIFEST.in</code>'s <code>prune tests</code>. Vendor sample
   files are fetched in CI behind a marker, never committed.</li>
 </ul>
 <h2 id="the-boundary-carried-over-from-adr-0003-unchanged"><a class="toclink" href="#the-boundary-carried-over-from-adr-0003-unchanged">The boundary (carried over from ADR-0003 unchanged)</a><a class="headerlink" href="#the-boundary-carried-over-from-adr-0003-unchanged" title="Permanent link">#</a></h2>
@@ -1285,9 +1325,10 @@ full. Only its three-concerns decision was wrong.</p>
 </ul>
 <h2 id="consequences"><a class="toclink" href="#consequences">Consequences</a><a class="headerlink" href="#consequences" title="Permanent link">#</a></h2>
 <ul>
-<li>The <code>pyramids-gis</code> floor becomes an API floor on the <strong>registry</strong>, not on the mesh model. Until
-  that release exists the floor is provisional and this package's entry points are inert: it
-  installs and is never dispatched to. It must not be published to PyPI before then.</li>
+<li>The <code>pyramids-gis</code> floor is an API floor on the <strong>registry</strong>, not on the mesh model. The registry
+  shipped in <code>pyramids-gis 0.68.0</code>, so the floor is now <code>&gt;= 0.68.0</code> and this package's entry points
+  are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
+  while the registry was unreleased and the entry points inert — is lifted.</li>
 <li>Three concerns MDAL supports and <code>pyramids-gis</code> does not — ragged vertical levels
   (<code>DataOnVolumes</code>), per-timestep active/dry flags, and a dataset reference time — are <strong>upstream</strong>
   work. A driver meeting them carries the value through without fabricating data: it raises on a

@@ -16,7 +16,7 @@
         <link rel="prev" href="../installation/">
       
       
-        <link rel="next" href="../change-log/">
+        <link rel="next" href="2dm/">
       
       
         
@@ -507,6 +507,8 @@
           
         
       
+        
+      
     
     
     
@@ -544,6 +546,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
@@ -557,6 +564,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="2dm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2DM (SMS/TUFLOW)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -1081,14 +1116,40 @@
 <h1 id="reference"><a class="toclink" href="#reference">Reference</a><a class="headerlink" href="#reference" title="Permanent link">#</a></h1>
 <p>The API surface of <code>pyramids_mesh</code>, generated from the docstrings by
 <a href="https://mkdocstrings.github.io/">mkdocstrings</a>.</p>
-<p><code>0.1.0</code> publishes no mesh API — the package root carries <code>__version__</code> and the import contract that
-activates the vendored osgeo bindings. Each module added later gets its own page under this section,
-and the names it exports are re-exported from the package root, so <code>from pyramids_mesh import ...</code>
-stays the import worth using.</p>
-<p>For the mesh data model itself — <code>Mesh2d</code>, <code>UgridDataset</code>, connectivity, graph algorithms,
-regridding, mesh ↔ vector — see the
+<p>What this package publishes is <strong>drivers</strong>, not an API you call directly. A driver is registered
+with <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> entry-point group, so installing this
+package is the whole integration: <code>pyramids</code> then dispatches a read of a format it does not handle
+itself to the driver that claims it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>   <span class="c1"># resolved to this package's 2dm driver</span>
+</code></pre></div>
+<p>So the entry points below are the surface that matters, and each driver has its own page listing
+its suffixes, capabilities and documented limitations:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Format</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2dm</code></td>
+<td>SMS / TUFLOW 2DM mesh frame</td>
+<td><a href="2dm/">2DM</a></td>
+</tr>
+</tbody>
+</table>
+<p>The package root deliberately re-exports nothing (<code>__all__</code> is empty): it carries <code>__version__</code> and
+the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
+module path — <code>pyramids_mesh.drivers.sms.TwoDmDriver</code> — which is also how their entry points name
+them, though normal use goes through <code>pyramids</code> rather than importing them at all.</p>
+<p>For the mesh data model itself — <code>Mesh2d</code>, <code>Network1d</code>, <code>UgridDataset</code>, connectivity, graph
+algorithms, regridding, mesh ↔ vector — see the
 <a href="https://serapeum-org.github.io/pyramids/latest/">pyramids UGRID reference</a>. The split between the
-two is <a href="../adr/0003-scope-boundary/">ADR-0003</a>.</p>
+two is <a href="../adr/0005-file-format-drivers/">ADR-0005</a>, which supersedes ADR-0003 in full.</p>
 
 
 <div class="doc doc-object doc-module">
@@ -1117,21 +1178,41 @@ entry-point group, so <code>UgridDataset.read_file("model.slf")</code> resolves 
 here once this package is installed. Dependency-backed drivers sit behind extras
 (<code>[dhi]</code>, <code>[interchange]</code>, <code>[hdf]</code>) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.</p>
-<p>The public surface is empty at <code>0.1.0</code> — this release is the repository scaffold
-(packaging, CI, docs) plus <code>__version__</code>. Every name added later is re-exported
-here, so <code>from pyramids_mesh import ...</code> stays the import worth using.</p>
+<p>The package root deliberately re-exports nothing: it carries <code>__version__</code> and the
+import contract that activates the vendored osgeo bindings, and that is all. Installing
+the package is the whole integration, so nothing here needs importing. A driver class is
+still reachable by its module path (<code>pyramids_mesh.drivers.sms.TwoDmDriver</code>, which is how
+its entry point names it) for the rare case of wanting one directly.</p>
 
 
 <p><span class="doc-section-title">Examples:</span></p>
     <ul>
 <li>
-<p>The installed version string:</p>
+<p>The root carries the installed version and nothing else. <code>__all__</code> is empty
+  because there is deliberately nothing to re-export:</p>
 <blockquote>
 <blockquote>
 <blockquote>
 <p>import pyramids_mesh
-isinstance(pyramids_mesh.<strong>version</strong>, str)
-True</p>
+pyramids_mesh.<strong>version</strong>.split(".")[0].isdigit()
+True
+pyramids_mesh.<strong>all</strong>
+[]</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+<li>
+<p>A driver is reached by its module path, not from the root, and reports the
+  suffixes it claims:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>from pyramids_mesh.drivers.sms import TwoDmDriver
+TwoDmDriver.name
+'2dm'
+TwoDmDriver.suffixes
+('.2dm',)</p>
 </blockquote>
 </blockquote>
 </blockquote>
@@ -1217,13 +1298,13 @@ True</p>
         
         
           
-          <a href="../change-log/" class="md-footer__link md-footer__link--next" aria-label="Next: Change-log">
+          <a href="2dm/" class="md-footer__link md-footer__link--next" aria-label="Next: 2DM (SMS/TUFLOW)">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Change-log
+                2DM (SMS/TUFLOW)
               </div>
             </div>
             <div class="md-footer__button md-icon">
