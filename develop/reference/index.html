@@ -1176,7 +1176,7 @@ files; that is this package's job, and its only job.</p>
 <p>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code>
 entry-point group, so <code>UgridDataset.read_file("model.slf")</code> resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
-(<code>[dhi]</code>, <code>[interchange]</code>, <code>[hdf]</code>) and are skipped at discovery when their extra
+(<code>[dhi]</code>) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.</p>
 <p>The package root deliberately re-exports nothing: it carries <code>__version__</code> and the
 import contract that activates the vendored osgeo bindings, and that is all. Installing
