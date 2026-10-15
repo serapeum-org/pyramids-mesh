@@ -15,6 +15,10 @@ value indistinguishable from a real index); check 4 corrects what it can and lea
 genuinely degenerate face alone with a warning; check 5 reads ``shape`` only, never the
 values, so it never defeats a lazy load.
 
+Normalisation also settles the two index bases: ``start_index`` becomes ``0`` (the
+re-basing is done) and ``original_start_index`` becomes the base a writer should emit,
+so the returned object never contradicts itself and re-validating it changes nothing.
+
 See ``planning/design.md`` section 17.3. Implemented by task S3.
 """
 
@@ -35,9 +39,11 @@ _ELEMENT_COUNT_SOURCE = {"node": "node", "face": "face", "edge": "edge"}
 def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
     """Enforce every pyramids invariant, returning a corrected copy.
 
-    The copy is 0-based, ``-1``-padded and counter-clockwise; ``start_index`` is
-    preserved so a writer can still restore the file's base. The input is left
-    untouched.
+    The copy is 0-based, ``-1``-padded and counter-clockwise, and it describes its own
+    state: ``start_index`` is ``0`` because there is nothing left to subtract, while
+    ``original_start_index`` carries the base a **writer** should emit. Because the copy
+    is self-consistent, validating it again is a no-op rather than a second re-basing.
+    The input is left untouched.
 
     Args:
         parsed: The mesh as a driver's ``_parse`` produced it.
@@ -51,8 +57,9 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             its element and time counts.
 
     Examples:
-        - A 1-based file becomes 0-based, while ``start_index`` still records the
-          base the file used so a writer can restore it:
+        - A 1-based file becomes 0-based. The copy then says so -- ``start_index`` is
+          ``0`` because the re-basing is done -- while ``original_start_index``
+          carries the base a writer should emit:
 
             >>> import numpy as np
             >>> from pyramids_mesh._base import ParsedMesh
@@ -65,8 +72,8 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
             >>> result = validate_and_normalise(parsed)
             >>> result.faces.tolist()
             [[0, 1, 2]]
-            >>> result.start_index
-            1
+            >>> result.start_index, result.original_start_index
+            (0, 1)
 
         - A clockwise face is reversed, because area, centroid and ``polygonize``
           all assume counter-clockwise winding:
@@ -116,7 +123,17 @@ def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
                 f"left unchanged",
                 stacklevel=2,
             )
-    return replace(parsed, faces=faces, edges=edges, fill_value=-1)
+    writer_base = parsed.start_index
+    if parsed.original_start_index is not None:
+        writer_base = parsed.original_start_index
+    return replace(
+        parsed,
+        faces=faces,
+        edges=edges,
+        fill_value=-1,
+        start_index=0,
+        original_start_index=writer_base,
+    )
 
 
 def _normalise_connectivity(

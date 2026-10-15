@@ -28,7 +28,7 @@ def _signed_area2(nodes_x, nodes_y, face):
 
 
 def test_one_based_input_becomes_zero_based():
-    """A 1-based file is re-based to 0, while ``start_index`` is kept for a writer."""
+    """A 1-based file is re-based to 0, and the base a writer emits is kept."""
     parsed = ParsedMesh(
         node_x=np.array([0.0, 1.0, 1.0]),
         node_y=np.array([0.0, 0.0, 1.0]),
@@ -39,7 +39,7 @@ def test_one_based_input_becomes_zero_based():
     result = validate_and_normalise(parsed)
 
     np.testing.assert_array_equal(result.faces, np.array([[0, 1, 2]]))
-    assert result.start_index == 1
+    assert result.original_start_index == 1
 
 
 def test_fill_is_not_shifted_by_start_index():
@@ -174,6 +174,55 @@ def test_to_zero_based_and_repad_helpers():
 
     repadded = repad(np.array([[0, 1, 9], [2, 3, 9]]), old_fill=9, new_fill=-1)
     np.testing.assert_array_equal(repadded, np.array([[0, 1, -1], [2, 3, -1]]))
+
+
+def test_validation_leaves_the_copy_self_consistent():
+    """After re-basing, ``start_index`` is 0 -- the copy describes its own state."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[1, 2, 3]], dtype=np.int64),
+        start_index=1,
+    )
+
+    result = validate_and_normalise(parsed)
+
+    np.testing.assert_array_equal(result.faces, [[0, 1, 2]])
+    assert result.start_index == 0
+    assert result.original_start_index == 1
+
+
+def test_validation_is_idempotent():
+    """Validating an already-validated mesh is a no-op, not a double re-basing."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[1, 2, 3]], dtype=np.int64),
+        start_index=1,
+    )
+
+    once = validate_and_normalise(parsed)
+    twice = validate_and_normalise(once)
+
+    np.testing.assert_array_equal(twice.faces, once.faces)
+    assert twice.start_index == 0
+    assert twice.original_start_index == 1
+
+
+def test_explicit_writer_base_survives_validation():
+    """A driver that resolved ids itself keeps the base it declared for a writer."""
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        start_index=0,
+        original_start_index=1,
+    )
+
+    result = validate_and_normalise(parsed)
+
+    assert result.start_index == 0
+    assert result.original_start_index == 1
 
 
 def test_unknown_variable_location_raises():

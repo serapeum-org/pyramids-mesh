@@ -102,11 +102,15 @@ class ParsedMesh:
         start_index: The base ``validate_and_normalise`` subtracts from connectivity.
             It is the file's own base for a format whose ids are contiguous; a driver
             that resolves ids through ``_text.native_id_map`` has already produced
-            0-based indices and leaves this ``0``.
-        original_start_index: The base the **file** used, recorded on ``Connectivity``
-            so a writer can restore it. Defaults to ``start_index`` when ``None``; set
-            it explicitly when connectivity was resolved through an id map, so the
-            file's base survives even though ``start_index`` is ``0``.
+            0-based indices and leaves this ``0``. Validation sets it to ``0`` on its
+            output, since by then there is nothing left to subtract.
+        original_start_index: The base a **writer** should emit, recorded on
+            ``Connectivity``. It is deliberately *not* "the base the file used": a
+            format whose ids are renumbered or gapped has no single base, so there is
+            nothing to round-trip -- what a writer needs is the numbering the format
+            specifies. Defaults to ``start_index`` when ``None``, so a driver whose
+            ids are contiguous need not set it; an id-mapping driver sets it to the
+            base its format writes.
         node_z: Node elevation, carried as a node variable rather than a coordinate
             (see design section 6); ``None`` when the format has none.
         face_x: Face-centre x-coordinates, if the file provides them.
