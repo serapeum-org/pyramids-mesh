@@ -393,10 +393,15 @@ def fix_winding(
 def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
     """Return the area below which a face counts as degenerate.
 
-    Degeneracy is a geometric property, not an exact float. Scaled to the face's own
-    coordinate magnitude -- area grows with the square of length -- so a sliver whose
-    shoelace sum lands on a few ULP either side of zero is reported as degenerate
-    instead of being "reversed" on the strength of its sign bit.
+    Degeneracy is a geometric property, not an exact float, so a sliver whose shoelace
+    sum lands a few ULP either side of zero is reported as degenerate rather than
+    "reversed" on the strength of its sign bit.
+
+    The threshold scales with the face's own **span**, not its distance from the origin.
+    Using the absolute coordinate magnitude made the tolerance a function of where the
+    mesh sits: at a projected northing of 7e6 it reached ~0.09, declaring every element
+    smaller than that degenerate and leaving real clockwise faces unreversed. A span is
+    translation-invariant, which is what a geometric property must be.
 
     Args:
         xs: The face's vertex x-coordinates.
@@ -405,8 +410,8 @@ def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
     Returns:
         float: The absolute signed-area threshold for this face.
     """
-    scale = max(float(np.abs(xs).max()), float(np.abs(ys).max()), 1.0)
-    return 8.0 * float(np.finfo(np.float64).eps) * scale * scale
+    span = max(float(np.ptp(xs)), float(np.ptp(ys)))
+    return 8.0 * float(np.finfo(np.float64).eps) * span * span
 
 
 def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
@@ -447,8 +452,26 @@ def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
 
 
 def _signed_area_2(xs: np.ndarray, ys: np.ndarray) -> float:
-    """Twice the signed polygon area via the shoelace formula (positive is CCW)."""
-    return float(np.dot(xs, np.roll(ys, -1)) - np.dot(ys, np.roll(xs, -1)))
+    """Return twice the signed polygon area by the shoelace formula (positive is CCW).
+
+    The vertices are translated to the first one before the sum. Over absolute projected
+    coordinates the products reach ~1e13 while the area of a metre-scale element is
+    ~1e-2, so the subtraction cancels and the result is noise: a real face reads as
+    degenerate and a clockwise one is never reversed. Translating first keeps every
+    product the size of the element itself, and the shoelace sum is invariant under it.
+
+    Args:
+        xs: The vertex x-coordinates, in file order.
+        ys: The vertex y-coordinates, in file order.
+
+    Returns:
+        float: Twice the signed area; positive counter-clockwise.
+    """
+    local_x = xs - xs[0]
+    local_y = ys - ys[0]
+    return float(
+        np.dot(local_x, np.roll(local_y, -1)) - np.dot(local_y, np.roll(local_x, -1))
+    )
 
 
 def check_shapes(parsed: "ParsedMesh") -> None:

@@ -150,6 +150,35 @@ def test_numerically_degenerate_sliver_is_not_reversed():
     assert degenerate_count == 1
 
 
+def test_small_clockwise_face_at_projected_coordinates_is_reversed():
+    """A metre-scale element far from the origin is wound, not called degenerate.
+
+    This is the realistic case: hydraulic meshes live in projected coordinates. Summing
+    the shoelace over absolute coordinates cancels (products ~1e13 against an area of
+    ~1e-2), and a tolerance scaled by absolute magnitude reached ~0.09 at a northing of
+    7e6 -- so a real clockwise 0.1 m element was declared degenerate and left clockwise.
+    """
+    node_x = np.array([0.0, 0.1, 0.1])
+    node_y = np.array([7.0e6, 7.0e6 + 0.1, 7.0e6])
+    faces = np.array([[0, 1, 2]], dtype=np.int64)
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    assert (reversed_count, degenerate_count) == (1, 0)
+    assert _signed_area2(node_x, node_y, fixed[0]) > 0
+
+
+def test_area_is_measured_the_same_wherever_the_mesh_sits():
+    """The signed area of a face does not change when the mesh is translated."""
+    xs = np.array([0.0, 1.0, 1.0])
+    ys = np.array([0.0, 1.0, 0.0])
+
+    at_origin = fix_winding(np.array([[0, 1, 2]]), xs, ys, -1)
+    far_away = fix_winding(np.array([[0, 1, 2]]), xs + 5.0e5, ys + 7.0e6, -1)
+
+    assert at_origin[1:] == far_away[1:] == (1, 0)
+
+
 def test_padding_between_real_vertices_raises():
     """Interior padding breaks the trailing-pad convention, so it is refused."""
     faces = np.array([[0, -1, 1, 2]], dtype=np.int64)
