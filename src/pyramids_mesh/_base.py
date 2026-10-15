@@ -198,8 +198,9 @@ class BaseDriver:
         """Report whether this driver recognises the file, without ever raising.
 
         The default is a suffix match followed by ``_sniff``. An empty file, a file of
-        another format, a directory or a missing path all answer ``False``; they never
-        raise, so a broken candidate cannot abort driver dispatch.
+        another format, a directory or a missing path all answer ``False``. Nothing
+        raises -- a ``_sniff`` that fails for any reason is reported as a warning and
+        the file declined -- so a broken candidate cannot abort driver dispatch.
 
         Args:
             path: The filesystem path to test.
@@ -213,7 +214,15 @@ class BaseDriver:
             if not self._has_suffix(path):
                 return False
             return self._sniff(path)
-        except OSError:
+        except Exception as error:  # noqa: BLE001 - the contract is never to raise
+            # Narrower than this (OSError alone) left the guarantee false for a _sniff
+            # that hit a decoding or parsing error. Declining is the right answer, but
+            # a driver whose sniff raises is a bug, so it is named rather than hidden.
+            warnings.warn(
+                f"{self.name or type(self).__name__} failed to sniff {path!r} and is "
+                f"treated as declining it: {type(error).__name__}: {error}",
+                stacklevel=2,
+            )
             return False
 
     def mesh_names(self, path: str) -> list[str]:

@@ -14,6 +14,7 @@ change that registers its entry point.
 import pyramids  # noqa: F401  # isort:skip
 
 from pyramids.netcdf.ugrid import (
+    CAPABILITIES,
     MESH_DRIVER_API_VERSION,
     RESERVED_NAMES,
     mesh_drivers,
@@ -46,7 +47,12 @@ def test_every_registered_driver_is_structurally_valid():
         assert driver.api_version == MESH_DRIVER_API_VERSION, name
         capabilities = set(driver.capabilities)
         assert ("read_mesh" in capabilities) ^ ("needs_mesh" in capabilities), name
-        assert driver.suffixes, name
+        # A driver inherits empty defaults for these from BaseDriver, so a subclass
+        # that forgets one would otherwise register nameless or suffixless.
+        assert driver.name, f"{name} registered with no name"
+        assert driver.long_name, f"{name} registered with no long_name"
+        assert driver.suffixes, f"{name} registered with no suffixes"
         for suffix in driver.suffixes:
             assert suffix == suffix.lower(), suffix
             assert suffix.startswith("."), suffix
+        assert capabilities <= set(CAPABILITIES), name

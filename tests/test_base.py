@@ -201,16 +201,25 @@ class _RaisingSniffDriver(_StubDriver):
         raise OSError("the file could not be read")
 
 
-def test_can_open_swallows_os_error_from_sniff(tmp_path):
-    """``can_open`` answers False when the sniff cannot read the file, never raises.
+class _BadSniffDriver(_StubDriver):
+    """A driver whose content sniff has a bug unrelated to the filesystem."""
+
+    def _sniff(self, path: str) -> bool:
+        raise UnicodeDecodeError("utf-8", b"", 0, 1, "contrived")
+
+
+@pytest.mark.parametrize("driver_class", [_RaisingSniffDriver, _BadSniffDriver])
+def test_can_open_never_raises_whatever_the_sniff_does(tmp_path, driver_class):
+    """``can_open`` declines and warns for any sniff failure, not just ``OSError``.
 
     A raising ``can_open`` would abort driver dispatch for every other driver, so the
-    base class contains the failure.
+    base class contains the failure -- but names it, since a sniff that raises is a bug.
     """
     path = tmp_path / "unreadable.stub"
     path.write_text("anything", encoding="utf-8")
 
-    assert _RaisingSniffDriver(_unit_square()).can_open(str(path)) is False
+    with pytest.warns(UserWarning, match="failed to sniff"):
+        assert driver_class(_unit_square()).can_open(str(path)) is False
 
 
 def test_can_open_accepts_a_matching_suffix_by_default(tmp_path):
