@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -677,6 +677,8 @@
           
         
       
+        
+      
     
     
     
@@ -713,6 +715,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
@@ -726,6 +733,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/2dm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2DM (SMS/TUFLOW)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -1397,7 +1432,7 @@ release to install from. Use the from-source route below.</p>
 <h2 id="dependencies"><a class="toclink" href="#dependencies">Dependencies</a><a class="headerlink" href="#dependencies" title="Permanent link">#</a></h2>
 <h3 id="runtime"><a class="toclink" href="#runtime">Runtime</a><a class="headerlink" href="#runtime" title="Permanent link">#</a></h3>
 <ul>
-<li><code>pyramids-gis &gt;= 0.66.0</code> (provides the <code>pyramids</code> import; pulled from PyPI)</li>
+<li><code>pyramids-gis &gt;= 0.68.0</code> (provides the <code>pyramids</code> import and the mesh-driver registry; pulled from PyPI)</li>
 <li><code>numpy &gt;= 2.0.0</code></li>
 </ul>
 <p>GDAL is deliberately absent from that list. It is not a dependency of this package: the

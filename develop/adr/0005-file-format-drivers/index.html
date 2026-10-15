@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -503,6 +503,8 @@
           
         
       
+        
+      
     
     
     
@@ -539,6 +541,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
@@ -552,6 +559,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/2dm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2DM (SMS/TUFLOW)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -1285,9 +1320,10 @@ full. Only its three-concerns decision was wrong.</p>
 </ul>
 <h2 id="consequences"><a class="toclink" href="#consequences">Consequences</a><a class="headerlink" href="#consequences" title="Permanent link">#</a></h2>
 <ul>
-<li>The <code>pyramids-gis</code> floor becomes an API floor on the <strong>registry</strong>, not on the mesh model. Until
-  that release exists the floor is provisional and this package's entry points are inert: it
-  installs and is never dispatched to. It must not be published to PyPI before then.</li>
+<li>The <code>pyramids-gis</code> floor is an API floor on the <strong>registry</strong>, not on the mesh model. The registry
+  shipped in <code>pyramids-gis 0.68.0</code>, so the floor is now <code>&gt;= 0.68.0</code> and this package's entry points
+  are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
+  while the registry was unreleased and the entry points inert — is lifted.</li>
 <li>Three concerns MDAL supports and <code>pyramids-gis</code> does not — ragged vertical levels
   (<code>DataOnVolumes</code>), per-timestep active/dry flags, and a dataset reference time — are <strong>upstream</strong>
   work. A driver meeting them carries the value through without fabricating data: it raises on a
