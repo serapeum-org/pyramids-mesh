@@ -107,6 +107,47 @@ def test_active_sibling_inherits_its_parent_location():
     assert sibling.shape == (4,)
 
 
+def test_wrongly_sized_active_mask_raises():
+    """A mask that does not describe its parent's elements is refused.
+
+    The sibling is synthesised after ``check_shapes`` and is not in
+    ``parsed.variables``, so nothing downstream would ever question its shape.
+    """
+    parsed = _unit_square(
+        variables={
+            "depth": ParsedVariable(
+                location="face",
+                shape=(2,),
+                values=np.zeros(2),
+                active=np.array([1, 0, 1, 0, 1], dtype=np.int8),
+            )
+        }
+    )
+
+    with pytest.raises(ValueError, match="active mask of 'depth'"):
+        _StubDriver(parsed).read("mesh.stub")
+
+
+def test_active_sibling_carries_the_parents_dimensions():
+    """A per-step mask is labelled with the same dimensions as the variable it masks."""
+    parsed = _unit_square(
+        variables={
+            "wl": ParsedVariable(
+                location="face",
+                shape=(2, 2),
+                values=np.zeros((2, 2)),
+                time_values=np.array([0.0, 1.0]),
+                active=np.ones((2, 2), dtype=np.int8),
+            )
+        }
+    )
+
+    dataset = _StubDriver(parsed).read("mesh.stub")
+
+    assert dataset.get("wl_active").dimensions == ("time", "n_face")
+    assert dataset.get("wl_active").shape == (2, 2)
+
+
 def test_node_z_colliding_with_a_parsed_variable_raises():
     """A file defining its own ``node_z`` variable is not silently overwritten."""
     parsed = _unit_square(

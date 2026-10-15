@@ -37,6 +37,26 @@ from pyramids_mesh._validate import validate_and_normalise
 _LOCATION_DIMENSION = {"node": "n_node", "face": "n_face", "edge": "n_edge"}
 
 
+def _dimensions_for(parsed_var: "ParsedVariable") -> tuple[str, ...]:
+    """Return the dimension names a variable's shape corresponds to.
+
+    Shared with the active-mask sibling, which describes the same elements over the same
+    time axis and so must be labelled the same way.
+
+    Args:
+        parsed_var: The parsed variable.
+
+    Returns:
+        tuple[str, ...]: ``(location_dim,)``, or ``("time", location_dim)`` when the
+            variable carries a time coordinate.
+    """
+    # `check_shapes` has already rejected any other location, so this cannot miss.
+    dimension = _LOCATION_DIMENSION[parsed_var.location]
+    if parsed_var.time_values is not None:
+        return ("time", dimension)
+    return (dimension,)
+
+
 def _as_float_array(values: np.ndarray | None) -> np.ndarray | None:
     """Return ``values`` as a float64 array, or ``None``.
 
@@ -564,13 +584,24 @@ class BaseDriver:
             file_name=str(path),
         )
 
-    @staticmethod
-    def _warn_network_drops(parsed: ParsedMesh) -> None:
-        """Warn by name about anything a ``Network1d`` cannot carry.
+    def _warn_network_drops(self, parsed: ParsedMesh) -> None:
+        """Warn by name about everything this 1D read leaves behind.
+
+        Two different losses, and the surface mesh is the one a reader most needs told:
+        a file holding both topologies returns one of them, and the other half is not in
+        this result. Beyond that, ``Network1d`` carries a topology and a CRS only, so
+        node elevation, variables and global attributes have nowhere to go at all.
 
         Args:
             parsed: The validated mesh about to become a network.
         """
+        if parsed.faces is not None:
+            warnings.warn(
+                f"this file also holds a {parsed.mesh_name!r} surface mesh, which is "
+                f"not in this result; read it with UgridDataset.read_file(path)",
+                # _warn_network_drops -> _construct_network -> _construct -> read
+                stacklevel=5,
+            )
         dropped: list[str] = []
         if parsed.node_z is not None:
             dropped.append("node_z")
@@ -583,7 +614,6 @@ class BaseDriver:
             f"Network1d carries a topology and a CRS only, so {', '.join(dropped)} "
             f"could not be attached to this 1D mesh and "
             f"{'is' if len(dropped) == 1 else 'are'} not in the result",
-            # _warn_network_drops -> _construct_network -> _construct -> read -> caller
             stacklevel=5,
         )
 
@@ -618,11 +648,13 @@ class BaseDriver:
                 built[active_name] = MeshVariable(
                     name=active_name,
                     # The mask describes its parent's elements, so it lives where the
-                    # parent lives. Hardcoding "face" mislabelled it and gave it a
-                    # shape that contradicted the location.
+                    # parent lives, carries the parent's dimensions and -- enforced by
+                    # `check_shapes` -- the parent's shape. Hardcoding "face" mislabelled
+                    # it and gave it a shape that contradicted the location.
                     location=parsed_var.location,
                     mesh_name=name,
                     shape=tuple(np.shape(parsed_var.active)),
+                    dimensions=_dimensions_for(parsed_var),
                     _data=np.asarray(parsed_var.active),
                 )
         if parsed.node_z is not None:
@@ -648,13 +680,7 @@ class BaseDriver:
         attributes: dict[str, Any] = {}
         if parsed_var.time_values is not None:
             attributes["time_values"] = np.asarray(parsed_var.time_values)
-        # `check_shapes` has already rejected any other location, so this cannot miss.
-        dimension = _LOCATION_DIMENSION[parsed_var.location]
-        dimensions: tuple[str, ...]
-        if parsed_var.time_values is not None:
-            dimensions = ("time", dimension)
-        else:
-            dimensions = (dimension,)
+        dimensions = _dimensions_for(parsed_var)
         return MeshVariable(
             name=var_name,
             location=parsed_var.location,

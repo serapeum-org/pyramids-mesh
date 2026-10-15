@@ -314,6 +314,22 @@ def test_2dm_mixed_file_1d_elements_are_reachable(tmp_path):
     np.testing.assert_array_equal(network.edge_node_connectivity.data, [[0, 1], [1, 2]])
 
 
+def test_2dm_1d_read_of_a_mixed_file_reports_the_dropped_surface_mesh(tmp_path):
+    """Reading the network half says the surface mesh is not in the result.
+
+    The mirror of the surface-half warning. Without it the 2D topology -- the larger
+    half of the file -- vanished without a word, while three docstrings promised
+    otherwise.
+    """
+    path = _write(tmp_path, _MIXED)
+
+    with pytest.warns(UserWarning, match="surface mesh") as record:
+        network = TwoDmDriver().read(path, mesh_name="network1d")
+
+    assert isinstance(network, Network1d)
+    assert any("UgridDataset.read_file" in str(w.message) for w in record)
+
+
 def test_2dm_mixed_file_1d_elements_reachable_through_network_read_file(tmp_path):
     """The documented route works: Network1d.read_file with the network's name."""
     path = _write(tmp_path, _MIXED)

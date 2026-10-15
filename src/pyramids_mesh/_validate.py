@@ -606,3 +606,13 @@ def check_shapes(parsed: "ParsedMesh") -> None:
                 f"variable {var_name!r} shape {tuple(var.shape)} does not match its "
                 f"{var.location} count: expected {expected}"
             )
+        if var.active is None:
+            continue
+        # The mask becomes a sibling variable built straight from this array, and it is
+        # synthesised after this loop, so nothing downstream would ever question it.
+        active_shape = tuple(np.shape(var.active))
+        if active_shape != expected:
+            raise ValueError(
+                f"the active mask of {var_name!r} has shape {active_shape}, which does "
+                f"not match the variable it describes: expected {expected}"
+            )
