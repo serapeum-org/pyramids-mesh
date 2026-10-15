@@ -13,8 +13,6 @@ name, and nothing is synthesised that ``to_file`` would not write.
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 
 from pyramids.base._errors import FileFormatNotSupportedError
