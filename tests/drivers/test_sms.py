@@ -6,12 +6,12 @@ and the 1D/2D split. Fixtures are written inline -- the format is plain text, wh
 exactly why it is the cheapest one to test.
 """
 
+import pyramids  # noqa: F401  # isort:skip
+
 from pathlib import Path
 
 import numpy as np
 import pytest
-
-import pyramids  # noqa: F401  # isort:skip
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Network1d, UgridDataset

@@ -5,10 +5,10 @@ wrong numbers, not an error -- so each is proved here with a case that would pas
 whether or not the enforcement ran, and an assertion that fails if it is reverted.
 """
 
+import pyramids  # noqa: F401  # isort:skip
+
 import numpy as np
 import pytest
-
-import pyramids  # noqa: F401  # isort:skip
 
 from pyramids_mesh._base import ParsedMesh, ParsedVariable
 from pyramids_mesh._validate import (

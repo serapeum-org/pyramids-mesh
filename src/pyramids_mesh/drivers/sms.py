@@ -241,6 +241,13 @@ class TwoDmDriver(BaseDriver):
 def build_minimal_fixture(path: str) -> None:
     """Write the smallest valid 2DM file, for the cross-driver invariant harness.
 
+    This is test support on the installed surface, deliberately: the harness discovers
+    it by name on each driver's module, which is what lets a new driver join the
+    invariant suite by being registered rather than by anyone writing new tests. It
+    writes the same seven lines as the committed ``tests/data/minimal.2dm``, and a test
+    asserts the two match so neither can drift.
+
+
     Args:
         path: Where to write the file.
 

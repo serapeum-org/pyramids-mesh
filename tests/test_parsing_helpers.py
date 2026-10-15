@@ -1,9 +1,16 @@
 """Tests for the shared text and binary parsing helpers (S4).
 
-Both modules are deliberately free of any pyramids import -- they are pure parsing --
-so nothing here needs the mesh model. The Fortran-record fixtures are built byte by
-byte, which is also the only way to produce the corrupt cases on purpose.
+Both modules are deliberately free of any pyramids import -- they are pure parsing. That
+property is checked statically, by reading their import blocks, because it cannot be
+checked by importing them: ``pyramids_mesh/__init__.py`` imports pyramids, so any import
+of a submodule pulls it in regardless.
+
+The Fortran-record fixtures are built byte by byte, which is also the only way to
+produce the corrupt cases on purpose.
 """
+
+import ast
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -16,6 +23,28 @@ from pyramids_mesh._binary import (
     record_offsets,
 )
 from pyramids_mesh._text import iter_records, native_id_map
+
+
+@pytest.mark.parametrize("module", ["_text.py", "_binary.py"])
+def test_parsing_helpers_import_nothing_from_pyramids(module):
+    """The pure-parsing modules name pyramids in no import, now or later.
+
+    A static read of the import block is the only honest check: importing either module
+    executes the package __init__, which imports pyramids, so a runtime assertion would
+    pass no matter what these modules did.
+    """
+    source = (
+        Path(__file__).parent.parent / "src" / "pyramids_mesh" / module
+    ).read_text(encoding="utf-8")
+    imported: list[str] = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.append(node.module)
+
+    offenders = [name for name in imported if name.split(".")[0] == "pyramids"]
+    assert not offenders, f"{module} must stay pyramids-free, but imports {offenders}"
 
 
 def _record(payload: bytes, endian: str) -> bytes:
