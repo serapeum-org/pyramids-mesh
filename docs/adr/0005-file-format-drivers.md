@@ -44,9 +44,11 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in `
   results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
   `read_mesh`, `needs_mesh`, `write_mesh` and `write_data` gate behaviour upstream; `read_data`,
   `lazy_data` and `multi_mesh` are **declarative** and require no method of their own.
-- Dependency-backed drivers live behind extras — `[dhi]` (`mikeio`), `[interchange]` (`meshio`),
-  `[hdf]` (`h5py`) — and a driver whose extra is absent is skipped at discovery, so a bare install
-  stays small and useful.
+- Dependency-backed drivers live behind extras — `[dhi]` (`mikeio`), `[hdf]` (`h5py`) — and a
+  driver whose extra is absent is skipped at discovery, so a bare install stays small and useful.
+  Mesh reading itself is never delegated to a third-party mesh library: that is `pyramids-gis`'s,
+  and a generic capability missing there is added there. The `[interchange]` extra (`meshio`) was
+  dropped for this reason; PLY and the TIN formats are parsed here.
 - Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
   `MANIFEST.in`'s `prune tests`. Vendor sample
   files are fetched in CI behind a marker, never committed.

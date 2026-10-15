@@ -4748,9 +4748,8 @@ packages:
   - pyramids-gis>=0.68.0
   - numpy>=2.0.0
   - mikeio>=3.0.0 ; extra == 'dhi'
-  - meshio>=5.3.0 ; extra == 'interchange'
   - h5py>=3.10.0 ; extra == 'hdf'
-  - pyramids-mesh[dhi,interchange,hdf] ; extra == 'all'
+  - pyramids-mesh[dhi,hdf] ; extra == 'all'
   requires_python: '>=3.11,<4'
 - pypi: https://files.pythonhosted.org/packages/00/ef/8d710fb1a5cc0e1985d023bfdee62c77cccaec6be1dee2ed841074a1ee0b/ast_serialize-0.13.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: ast-serialize

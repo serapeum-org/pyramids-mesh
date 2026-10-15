@@ -12,7 +12,7 @@ files; that is this package's job, and its only job.
 Drivers are discovered by `pyramids-gis` through the `pyramids.mesh_drivers`
 entry-point group, so `UgridDataset.read_file("model.slf")` resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
-(`[dhi]`, `[interchange]`, `[hdf]`) and are skipped at discovery when their extra
+(`[dhi]`, `[hdf]`) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.
 
 The package root deliberately re-exports nothing: it carries `__version__` and the
