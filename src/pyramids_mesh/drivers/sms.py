@@ -44,6 +44,12 @@ _LINE_ELEMENT = "E2L"
 _NODE = "ND"
 _MATERIALS_TAG = "NUM_MATERIALS_PER_ELEM"
 
+# An upper bound on the declared material columns. Each one allocates an array of
+# `n_face` floats and a variable, and the count comes from an untrusted file -- reading
+# other people's files is this package's whole job -- so one corrupt line must not be
+# able to ask for thousands. MDAL's practical limit is single digits.
+_MAX_MATERIAL_COLUMNS = 16
+
 # Kept in step with ``iter_records``' default: the header sniff and the parser must
 # skip the same lines, or one accepts a file the other refuses.
 _COMMENT = "#"
@@ -194,6 +200,11 @@ class TwoDmDriver(BaseDriver):
                 elements cannot be read at all reports the surface name, leaving the
                 error to ``read``.
 
+        Note:
+            The ``MESH2D`` header is not checked here, so this answers for any readable
+            text file. Dispatch asks ``can_open`` first, which does check it; a caller
+            holding a driver instance should do the same before trusting the result.
+
         Examples:
             - A file carrying both an ``E3T`` face and an ``E2L`` line element names
               two topologies, and either name may then be passed to ``read``:
@@ -251,6 +262,10 @@ class TwoDmDriver(BaseDriver):
                     has_faces = True
                 elif upper == _LINE_ELEMENT:
                     has_lines = True
+                if has_faces and has_lines:
+                    # Nothing further can change the answer, and this spares a full
+                    # scan of a large mesh for a metadata question.
+                    break
         except OSError:
             return [self._default_mesh_name]
         names = []
@@ -377,6 +392,7 @@ class _Scan:
         self.node_z: list[float] = []
         self.face_ids: list[int] = []
         self.face_vertices: list[list[int]] = []
+        self.face_keywords: list[str] = []
         self.face_extras: list[list[str]] = []
         self.edge_ids: list[int] = []
         self.edge_vertices: list[list[int]] = []
@@ -385,6 +401,7 @@ class _Scan:
         # node_z at all rather than a column of zeros, which a consumer could not tell
         # from a real zero datum.
         self.saw_elevation = False
+        self.missing_elevation = False
 
     def run(self, path: str) -> None:
         """Stream the file once, collecting records without resolving any ids.
@@ -422,10 +439,10 @@ class _Scan:
         if upper == _MATERIALS_TAG:
             _require_fields(upper, fields, 1, path)
             declared = _as_int(fields[0], upper, path)
-            if declared < 1:
+            if not 1 <= declared <= _MAX_MATERIAL_COLUMNS:
                 raise FileFormatNotSupportedError(
                     f"{path!r} declares {upper} {declared}, which is not a usable "
-                    f"column count"
+                    f"column count: expected 1 to {_MAX_MATERIAL_COLUMNS}"
                 )
             self.materials_per_element = declared
         elif upper == _NODE:
@@ -458,7 +475,17 @@ class _Scan:
             self.saw_elevation = True
             self.node_z.append(_as_float(fields[3], _NODE, path))
         else:
+            self.missing_elevation = True
             self.node_z.append(0.0)
+        if self.saw_elevation and self.missing_elevation:
+            # Mixed records would mean inventing a datum for the ones without a z, and
+            # a fabricated 0.0 is indistinguishable from a real zero elevation. The
+            # all-missing case is fine -- node_z is simply omitted -- but a file that
+            # cannot make up its mind is malformed.
+            raise FileFormatNotSupportedError(
+                f"{path!r} has ND records that disagree about the z column; elevation "
+                f"would have to be invented for the ones without it"
+            )
 
     def _add_face(self, upper: str, fields: list[str], path: str) -> None:
         """Collect one face record, keeping its trailing columns unsliced.
@@ -483,6 +510,9 @@ class _Scan:
         self.face_vertices.append(
             [_as_int(value, upper, path) for value in fields[1 : 1 + count]]
         )
+        # The keyword travels with the trailing columns so a malformed material value
+        # can name the record it came from rather than a placeholder.
+        self.face_keywords.append(upper)
         self.face_extras.append(fields[1 + count :])
 
     def build(self, path: str) -> ParsedMesh:
@@ -584,8 +614,12 @@ class _Scan:
         variables: dict[str, ParsedVariable] = {}
         for index in range(self.materials_per_element):
             column = [
-                (_as_float(extras[index], "E**", path) if len(extras) > index else 0.0)
-                for extras in self.face_extras
+                (
+                    _as_float(extras[index], keyword, path)
+                    if len(extras) > index
+                    else 0.0
+                )
+                for keyword, extras in zip(self.face_keywords, self.face_extras)
             ]
             name = "material" if index == 0 else f"material_{index + 1}"
             variables[name] = ParsedVariable(

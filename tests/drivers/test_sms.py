@@ -107,6 +107,50 @@ E3T 1 1 2 3 5
         TwoDmDriver().read(_write(tmp_path, text))
 
 
+def test_2dm_absurd_material_count_is_refused(tmp_path):
+    """A declared column count beyond the cap is refused, not allocated.
+
+    Each column costs an ``n_face`` array and a variable, and the count comes from an
+    untrusted file, so one corrupt line must not be able to ask for thousands.
+    """
+    text = """MESH2D
+NUM_MATERIALS_PER_ELEM 20000
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 5
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="expected 1 to 16"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_nd_records_disagreeing_about_z_are_refused(tmp_path):
+    """A file where only some ND records carry z would need elevation invented."""
+    text = """MESH2D
+ND 1 0.0 0.0
+ND 2 1.0 0.0 5.0
+ND 3 1.0 1.0
+E3T 1 1 2 3 1
+"""
+    with pytest.raises(
+        FileFormatNotSupportedError, match="disagree about the z column"
+    ):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
+def test_2dm_malformed_material_names_the_real_element_keyword(tmp_path):
+    """A bad material column names the element it came from, not a placeholder."""
+    text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+ND 4 0.0 1.0 0.0
+E4Q 1 1 2 3 4 clay
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="malformed E4Q record"):
+        TwoDmDriver().read(_write(tmp_path, text))
+
+
 def test_2dm_duplicate_line_element_id_is_refused(tmp_path):
     """Two E2L records sharing an id is refused, as two faces sharing one already was."""
     text = """MESH2D

@@ -52,7 +52,9 @@ that renumbers a mesh produces exactly that. The node count is the number of `ND
 records, never the highest id.
 
 The material id becomes a face-located `material` variable. With
-`NUM_MATERIALS_PER_ELEM k` the extra columns become `material_2` … `material_k`.
+`NUM_MATERIALS_PER_ELEM k` the extra columns become `material_2` … `material_k`, for `k` from 1
+to 16 — each column costs an array and a variable, and the count comes from an untrusted file, so
+a larger one is refused rather than allocated.
 
 ## Limitations
 
@@ -77,7 +79,9 @@ Every one of these is deliberate; none is a silent approximation.
   returns without them. This is a `pyramids-gis` limitation, not a decision of this driver: it
   will be carried properly once `Network1d` has somewhere to put it.
 - **No elevation is invented.** If no `ND` record carries a z column, `node_z` is omitted
-  entirely rather than filled with zeros a consumer could not tell from a real zero datum.
+  entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file
+  whose `ND` records *disagree* about the z column is refused, since the ones without it would
+  need a datum invented.
 - **Records this driver does not model are skipped**, as MDAL skips them: `MESHNAME`, the
   `BEGPARAMDEF` block and anything else beyond the nodes, elements and
   `NUM_MATERIALS_PER_ELEM`. One consequence is that a file naming its own mesh loses that name —
