@@ -1,4 +1,4 @@
-"""Geometry interchange drivers: PLY, XMS TIN, Esri TIN. Requires ``interchange``.
+"""Geometry interchange drivers: PLY, XMS TIN, Esri TIN.
 
 Not solver formats -- no time axis, and elevation per node. pyramids' mesh model is
 planar, so z becomes a node-located variable and a round trip is not geometrically

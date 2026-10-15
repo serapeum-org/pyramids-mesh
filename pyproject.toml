@@ -58,15 +58,7 @@ dependencies = [
 # mikecore, pandas, matplotlib, scipy and tqdm.
 dhi = ["mikeio >=3.0.0"]
 
-# PLY and the TIN formats — geometry interchange rather than solver output, and
-# the one family where a mature MIT parser already exists. meshio's own deps are
-# just numpy + rich.
-interchange = ["meshio >=5.3.0"]
-
-# HDF5-backed result containers: XMDF, XDMF, HEC-RAS 2D.
-hdf = ["h5py >=3.10.0"]
-
-all = ["pyramids-mesh[dhi,interchange,hdf]"]
+all = ["pyramids-mesh[dhi]"]
 
 [dependency-groups]
 dev = [
@@ -149,6 +141,16 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pyramids_mesh", "pyramids_mesh.*"]
+# Belt and braces: `where = ["src"]` already means `tests/` cannot be picked up as a
+# package, so this only states the intent for anyone reading the wheel contents.
+exclude = ["tests*"]
+
+# No sdist configuration here, and not for want of trying: setuptools offers no
+# pyproject.toml equivalent of MANIFEST.in's `prune`, so sdist contents cannot be
+# steered from this file. The default sdist carries `tests/*.py` and, importantly, does
+# NOT carry `tests/data/*` -- so the binary format fixtures the PyPI-quota argument in
+# ADR-0005 is about stay out of the distribution on their own. A handful of small test
+# modules riding along costs nothing, so there is no MANIFEST.in.
 
 
 [tool.flake8]
@@ -230,7 +232,7 @@ pyramids-mesh = { path = ".", editable = true }
 # [tool.pixi.dependencies] table at all: every environment is built from the
 # standard declarations — runtime deps from [project.dependencies], tooling from
 # the `dev` / `docs` dependency groups — all resolved from PyPI. The per-driver
-# extras (`dhi`, `interchange`, `hdf`) are declared for pip users and are
+# extra (`dhi`) is declared for pip users and is
 # deliberately in no pixi environment yet: each is wired into one when the driver
 # that needs it lands, so the lock never carries a dependency nothing imports.
 #

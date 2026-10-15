@@ -44,11 +44,17 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in `
   results-only format such as DAT, XMDF or XDMF, which carries values but no mesh). Only
   `read_mesh`, `needs_mesh`, `write_mesh` and `write_data` gate behaviour upstream; `read_data`,
   `lazy_data` and `multi_mesh` are **declarative** and require no method of their own.
-- Dependency-backed drivers live behind extras — `[dhi]` (`mikeio`), `[interchange]` (`meshio`),
-  `[hdf]` (`h5py`) — and a driver whose extra is absent is skipped at discovery, so a bare install
-  stays small and useful.
-- Test fixtures are hand-built minimal files, committed, and excluded from the sdist by
-  `MANIFEST.in`'s `prune tests`. Vendor sample
+- The one dependency-backed driver family lives behind an extra — `[dhi]` (`mikeio`) — and a
+  driver whose extra is absent is skipped at discovery, so a bare install stays small and useful.
+  Mesh reading itself is never delegated to a third-party mesh library: that is `pyramids-gis`'s,
+  and a generic capability missing there is added there. The `[interchange]` extra (`meshio`) was
+  dropped for this reason; PLY and the TIN formats are parsed here. `[hdf]` (`h5py`) went the
+  same way: HDF5 is read through the GDAL multidimensional API over the GDAL vendored in the
+  `pyramids-gis` wheel, which supplies group traversal, attributes and typed reads. `mikeio`
+  remains because DFSU and DFS2 are proprietary DHI containers with no portable alternative.
+- Test fixtures are hand-built minimal files, committed, and kept out of the built
+  distribution. Nothing special is needed for that: setuptools' sdist does not collect
+  `tests/data/*`, and the wheel is built from `src/` only. Vendor sample
   files are fetched in CI behind a marker, never committed.
 
 ## The boundary (carried over from ADR-0003 unchanged)
