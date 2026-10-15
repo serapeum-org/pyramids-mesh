@@ -7,6 +7,8 @@ whether or not the enforcement ran, and an assertion that fails if it is reverte
 
 import pyramids  # noqa: F401  # isort:skip
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -270,16 +272,23 @@ def test_per_node_array_length_mismatch_raises(field):
         validate_and_normalise(ParsedMesh(**fields))
 
 
-def test_face_centre_length_mismatch_raises():
-    """Face-centre coordinates must match the face count."""
+@pytest.mark.parametrize("field", ["face_x", "face_y"])
+def test_face_centre_length_mismatch_raises(field):
+    """Face-centre coordinates must match the face count, whichever array is wrong.
+
+    Both labels run through one loop, and only ``face_x`` was ever exercised, so the
+    tuple could have named it twice and ``face_y`` would have gone unchecked -- exactly
+    the asymmetry the ``node_y``/``node_z`` case is parametrised against.
+    """
     parsed = ParsedMesh(
         node_x=np.array([0.0, 1.0, 1.0]),
         node_y=np.array([0.0, 0.0, 1.0]),
         faces=np.array([[0, 1, 2]], dtype=np.int64),
-        face_x=np.array([0.5, 0.5]),
+        **{field: np.array([0.5, 0.5])},
     )
 
-    with pytest.raises(ValueError, match="face_x has 2 values but there are 1 faces"):
+    message = f"{field} has 2 values but there are 1 faces"
+    with pytest.raises(ValueError, match=message):
         validate_and_normalise(parsed)
 
 
@@ -390,18 +399,30 @@ def test_unknown_variable_location_raises():
         check_shapes(parsed)
 
 
-def test_row_with_fewer_than_three_real_vertices_raises():
+@pytest.mark.parametrize(
+    "row, real",
+    [
+        pytest.param([0, 1, -1], 2, id="two-real-vertices"),
+        pytest.param([-1, -1, -1], 0, id="nothing-but-padding"),
+    ],
+)
+def test_row_with_fewer_than_three_real_vertices_raises(row, real):
     """A row holding fewer than three real nodes is not a face, so it is refused.
 
     It was previously skipped, which meant it reached ``Mesh2d`` uncounted by either
     tally and invisible to every check. A 1D topology belongs in ``edges`` or
     ``network_edges``; in ``faces`` it is a driver bug.
+
+    The all-padding row is the arithmetic edge of the interior-padding rule that runs
+    first: its first pad sits at column 0 and it has no real vertices, so ``0 < 0``
+    must not fire and the row has to be refused for its width instead. A rule written
+    ``<=`` would blame the padding and never report the real fault.
     """
-    faces = np.array([[0, 1, -1]], dtype=np.int64)
+    faces = np.array([row], dtype=np.int64)
     node_x = np.array([0.0, 1.0, 1.0])
     node_y = np.array([0.0, 0.0, 1.0])
 
-    with pytest.raises(ValueError, match="holds 2 real node"):
+    with pytest.raises(ValueError, match=f"holds {real} real node"):
         fix_winding(faces, node_x, node_y, -1)
 
 
@@ -575,3 +596,180 @@ def test_check_shapes_accepts_temporal_variable():
     )
 
     check_shapes(parsed)  # does not raise
+
+
+@pytest.mark.parametrize(
+    "fill_value, collides",
+    [
+        pytest.param(3, True, id="the-last-valid-index"),
+        pytest.param(4, False, id="one-past-the-last-valid-index"),
+    ],
+)
+def test_the_fill_collision_window_ends_at_the_last_valid_index(fill_value, collides):
+    """The window is ``start_index <= fill < start_index + n_node`` -- both bounds exact.
+
+    With base 1 and three nodes the file's valid ids are 1, 2 and 3, so a fill of
+    ``3`` cannot be told from node 3 and is unrecoverable, while ``4`` is outside the
+    numbering and is real padding. Every other collision case in the suite is
+    ``fill_value=0`` at base 0, which pins the lower bound only: an upper bound
+    written ``start_index + n_node - 1`` would accept a fill that shadows the last
+    node of every 1-based file and pad the mesh with it.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[1, 2, 3]], dtype=np.int64),
+        fill_value=fill_value,
+        start_index=1,
+    )
+
+    if collides:
+        with pytest.raises(ValueError, match="collides with a valid index"):
+            validate_and_normalise(parsed)
+        return
+
+    np.testing.assert_array_equal(validate_and_normalise(parsed).faces, [[0, 1, 2]])
+
+
+@pytest.mark.parametrize(
+    "faces",
+    [
+        pytest.param(np.array([0, 1, 2], dtype=np.int64), id="one-dimensional"),
+        pytest.param(np.zeros((1, 1, 3), dtype=np.int64), id="three-dimensional"),
+    ],
+)
+def test_connectivity_of_the_wrong_rank_is_refused(faces):
+    """Rectangularity is a rank check as well as a raggedness check.
+
+    The guard reads ``dtype == object or ndim != 2``, and every existing case arrives
+    through the raggedness half -- a list numpy refuses to stack, or an object-dtype
+    array. A flat row vector is the other way a parser gets this wrong, and because
+    coverage records the ``if`` rather than each operand, the rank half could be
+    deleted with the suite still green at 100% branch coverage.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=faces,
+    )
+
+    with pytest.raises(ValueError, match="rectangular 2-D array"):
+        validate_and_normalise(parsed)
+
+
+def test_reversing_a_padded_face_leaves_its_padding_at_the_tail():
+    """A reversal rewrites a row's real prefix only, so the pad stays a trailing run.
+
+    Reversal is documented to assume UGRID's trailing-pad convention, and every
+    reversal case in the suite is an unpadded triangle. A reversal written over the
+    whole row -- ``row[:] = row[::-1]`` -- passes all of them, yet on the quad of a
+    mixed-width mesh it moves the padding to the front and breaks the one invariant
+    the interior-padding check exists to defend.
+    """
+    faces = np.array([[0, 1, 2, 3, -1]], dtype=np.int64)
+    node_x = np.array([0.0, 0.0, 1.0, 1.0])
+    node_y = np.array([0.0, 1.0, 1.0, 0.0])
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    np.testing.assert_array_equal(fixed, [[3, 2, 1, 0, -1]])
+    assert (reversed_count, degenerate_count) == (1, 0)
+    assert fixed[0, -1] == -1, f"the pad moved: {fixed[0].tolist()}"
+
+
+def test_every_face_row_is_counted_in_exactly_one_group():
+    """The two tallies are per-row, independent, and leave a correct face untouched.
+
+    ``fix_winding`` documents that each row lands in exactly one of three groups --
+    reversed, degenerate, or already counter-clockwise -- and each outcome is proved
+    on its own single-row array. A counter incremented in the wrong arm, or once per
+    call rather than once per row, would satisfy every one of those tests.
+    """
+    node_x = np.array([0.0, 1.0, 1.0, 0.0, 1.0, 2.0])
+    node_y = np.array([0.0, 0.0, 1.0, 2.0, 2.0, 2.0])
+    faces = np.array([[0, 1, 2], [0, 2, 1], [3, 4, 5]], dtype=np.int64)
+
+    fixed, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    assert (reversed_count, degenerate_count) == (1, 1)
+    np.testing.assert_array_equal(fixed[0], [0, 1, 2])
+    np.testing.assert_array_equal(fixed[1], [1, 2, 0])
+    np.testing.assert_array_equal(fixed[2], [3, 4, 5])
+
+
+@pytest.mark.parametrize(
+    "faces, node_x, node_y",
+    [
+        pytest.param([[0, 0, 1]], [0.0, 1.0], [0.0, 1.0], id="repeated-node"),
+        pytest.param(
+            [[0, 1, 2]],
+            [5.0, 5.0, 5.0],
+            [7.0, 7.0, 7.0],
+            id="collapsed-to-one-point",
+        ),
+    ],
+)
+def test_a_face_without_extent_is_degenerate(faces, node_x, node_y):
+    """A repeated node, and a face collapsed to a point, have no winding either.
+
+    ``fix_winding`` names "a repeated node" beside collinearity and only collinearity
+    was proved. The collapsed face is also the tolerance's own boundary: its span is
+    zero, so the threshold is exactly ``0.0`` and the comparison has to be ``<=``. A
+    ``<`` would fall through to the sign test and count the face as already
+    counter-clockwise, so neither tally would ever mention it.
+    """
+    fixed, reversed_count, degenerate_count = fix_winding(
+        np.array(faces, dtype=np.int64), np.array(node_x), np.array(node_y), -1
+    )
+
+    assert (reversed_count, degenerate_count) == (0, 1)
+    np.testing.assert_array_equal(fixed, faces)
+
+
+def test_normalisation_warnings_blame_the_calling_frame():
+    """Both warnings use ``stacklevel=2``, so each names the caller's own line.
+
+    Left at the default, a warning points inside ``_validate.py`` and tells a reader
+    nothing about which read produced the mesh. Every warning in the package sets the
+    level, the whole suite executes those lines, and no test looked at where they were
+    attributed.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0, 0.0, 1.0, 2.0]),
+        node_y=np.array([0.0, 1.0, 0.0, 2.0, 2.0, 2.0]),
+        faces=np.array([[0, 1, 2], [3, 4, 5]], dtype=np.int64),
+    )
+
+    with pytest.warns(UserWarning) as record:
+        validate_and_normalise(parsed)
+
+    blamed = {Path(warning.filename).name for warning in record}
+    assert blamed == {Path(__file__).name}, f"warnings blamed {blamed}"
+    assert len(record) == 2, "a reversal and a degeneracy are reported separately"
+
+
+def test_the_active_mask_of_a_temporal_variable_is_sized_over_time_too():
+    """A mask is measured against its variable's full shape, time axis included.
+
+    The only rejected mask in the suite belongs to a static variable, so a check
+    written against the element count alone would accept a single-step mask for a
+    three-step variable. The mask becomes a sibling variable built straight from this
+    array after the loop, so nothing downstream would question it.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 1.0]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        variables={
+            "wl": ParsedVariable(
+                location="face",
+                shape=(3, 1),
+                values=np.zeros((3, 1)),
+                time_values=np.array([0.0, 1.0, 2.0]),
+                active=np.ones((1,), dtype=np.int8),
+            )
+        },
+    )
+
+    with pytest.raises(ValueError, match=r"expected \(3, 1\)"):
+        check_shapes(parsed)

@@ -829,6 +829,116 @@ def test_2dm_crlf_line_endings_read(tmp_path):
     np.testing.assert_allclose(dataset.get("material").data, [1.0, 1.0])
 
 
+@pytest.mark.parametrize("header, expected", [("MESH2D", True), ("MESH3D", False)])
+def test_2dm_sniff_decides_a_final_line_with_no_trailing_newline(
+    tmp_path, header, expected
+):
+    """The remainder carried past the last newline is judged at end of file.
+
+    The sniff only ever judges complete lines, so the last line of a file that does
+    not end in a newline is decided by the end-of-file arm alone. The one test that
+    reaches that arm is the all-comments file, whose verdict is "undecided" either
+    way -- so dropping the end-of-file judgement entirely, and declining every such
+    file, would have passed the suite.
+    """
+    path = tmp_path / "noeol.2dm"
+    path.write_bytes(f"# written by some tool\n{header}".encode("utf-8"))
+
+    assert TwoDmDriver().can_open(str(path)) is expected
+
+
+def test_2dm_header_line_may_carry_trailing_fields(tmp_path):
+    """The sniff compares the header *token*, exactly as the parser compares it.
+
+    ``_Scan.run`` tests ``keyword``, so a line reading ``MESH2D`` followed by anything
+    else is still the header. A sniff comparing the whole stripped line would decline
+    such a file and ``read`` would then parse it fine -- the mirror of the ``MESH2DX``
+    case and the same asymmetry, in the other direction.
+    """
+    path = _write(tmp_path, _UNIT_SQUARE.replace("MESH2D", "MESH2D extra words", 1))
+
+    assert TwoDmDriver().can_open(path) is True
+    assert TwoDmDriver().read(path).mesh.n_face == 2
+
+
+def test_2dm_mesh_names_folds_lower_case_element_keywords(tmp_path):
+    """``mesh_names`` upper-cases its own keywords, or a lower-case file loses its 1D half.
+
+    The fold here is separate from the parser's. On a faces-only file a dropped fold
+    is invisible -- the ``or`` fallback returns the surface name regardless -- but on a
+    lower-case ``e2l`` file it would answer ``['mesh2d']``, and ``read`` would then
+    refuse ``mesh_name='network1d'`` for a topology the file plainly holds.
+    """
+    path = _write(
+        tmp_path,
+        "mesh2d\nnd 1 0.0 0.0 0.0\nnd 2 1.0 0.0 0.0\ne2l 1 1 2 1\n",
+        name="lower1d.2dm",
+    )
+    driver = TwoDmDriver()
+
+    assert driver.mesh_names(path) == ["network1d"]
+
+    with pytest.warns(UserWarning, match="node_z"):
+        network = driver.read(path, mesh_name="network1d")
+
+    assert isinstance(network, Network1d)
+    np.testing.assert_array_equal(network.edge_node_connectivity.data, [[0, 1]])
+
+
+@pytest.mark.parametrize(
+    "declared, accepted",
+    [
+        pytest.param(1, True, id="lower-bound"),
+        pytest.param(16, True, id="the-cap-itself"),
+        pytest.param(17, False, id="one-past-the-cap"),
+    ],
+)
+def test_2dm_material_column_bounds_are_inclusive(tmp_path, declared, accepted):
+    """``1 <= declared <= 16`` is checked at both ends, and both ends are inclusive.
+
+    The guard is proved from below (``0`` and ``-1``) and from far above (``20000``),
+    so neither edge is pinned. Written ``< 16`` the documented maximum would itself be
+    refused, and written ``<= 0`` a declaration of ``1`` would be.
+    """
+    columns = " ".join(str(number) for number in range(1, 18))
+    text = f"""MESH2D
+NUM_MATERIALS_PER_ELEM {declared}
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+E3T 1 1 2 3 {columns}
+"""
+    path = _write(tmp_path, text)
+
+    if not accepted:
+        with pytest.raises(
+            FileFormatNotSupportedError, match="not a usable column count"
+        ):
+            TwoDmDriver().read(path)
+        return
+
+    dataset = TwoDmDriver().read(path)
+    materials = {
+        name for name in dataset.data_variable_names if name.startswith("material")
+    }
+    assert len(materials) == declared, f"got {sorted(materials)}"
+
+
+def test_2dm_binary_content_is_a_format_error_not_a_decode_error(tmp_path):
+    """Undecodable bytes are replaced, so a binary file fails as a format error.
+
+    ``iter_records`` decodes with ``errors="replace"`` for exactly this: a
+    ``UnicodeDecodeError`` escaping ``read`` is not in the driver contract, and
+    ``can_open`` declining such a file was the only half ever asserted -- it reads the
+    bytes through a different path and would still decline if ``read`` blew up.
+    """
+    path = tmp_path / "binary.2dm"
+    path.write_bytes(bytes(range(256)) * 4)
+
+    with pytest.raises(FileFormatNotSupportedError, match="is not a 2DM file"):
+        TwoDmDriver().read(str(path))
+
+
 def test_2dm_mesh_names_is_a_single_entry(tmp_path):
     """2DM holds one topology, so ``mesh_names`` returns one name."""
     assert TwoDmDriver().mesh_names(_write(tmp_path, _UNIT_SQUARE)) == ["mesh2d"]

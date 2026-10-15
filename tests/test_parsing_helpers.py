@@ -317,6 +317,25 @@ def test_native_id_map_handles_gaps_and_reordering():
         native_id_map([4, 4])
 
 
+def test_a_zero_length_record_is_a_record_not_an_end_of_file(tmp_path):
+    """An empty payload is yielded, indexed, and the walk continues past it.
+
+    ``_read_record`` signals a clean end of file with ``None`` precisely so a
+    legitimately empty record is not mistaken for one. A truthiness test -- ``if not
+    payload`` -- ends the iteration at the first zero-length record and silently drops
+    every record after it, which is the quiet-wrong-answer failure this module's
+    length checks exist to prevent.
+    """
+    path = tmp_path / "zero.slf"
+    path.write_bytes(_record(b"", "<") + _record(b"abcd", "<"))
+
+    with open(path, "rb") as handle:
+        payloads = list(iter_fortran_records(handle, "<"))
+
+    assert payloads == [b"", b"abcd"], f"got {payloads}"
+    assert record_offsets(str(path), "<") == [(4, 0), (12, 4)]
+
+
 def test_iter_records_skips_blank_and_comment_lines(tmp_path):
     """Blank and comment lines are dropped; the rest split into keyword and fields."""
     path = tmp_path / "mesh.2dm"

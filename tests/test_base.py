@@ -484,6 +484,118 @@ def test_suffix_matching_ignores_case(tmp_path):
     assert _StubDriver(_unit_square()).can_open(str(path)) is True
 
 
+def test_can_open_propagates_a_bad_argument_type():
+    """A value that is not a path at all is the caller's mistake, so it is not caught.
+
+    ``can_open`` promises never to raise *a verdict about a file*, and the path checks
+    sit outside the guard on purpose. Pulling ``os.path.isfile`` inside it would turn
+    the mistake into a silent ``False`` plus a warning blaming the driver for a file
+    that was never named -- and the guard is proved to swallow everything else, so
+    nothing pinned the boundary of what it swallows.
+    """
+    with pytest.raises(TypeError):
+        _StubDriver(_unit_square()).can_open(None)
+
+
+def test_the_lazy_flag_reaches_the_driver_parse():
+    """``read`` forwards ``lazy`` to ``_parse``, and defers by default.
+
+    ``_parse`` is the only place a format can honour it, every stub in the suite
+    ignores it, and the invariant harness only ever passes ``True`` -- so ``read``
+    could have pinned the flag and no test would have noticed.
+    """
+
+    class _LazySpy(_StubDriver):
+        """A stub recording the ``lazy`` value each read hands to ``_parse``."""
+
+        def __init__(self, parsed: ParsedMesh) -> None:
+            super().__init__(parsed)
+            self.seen: list[bool] = []
+
+        def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
+            self.seen.append(lazy)
+            return super()._parse(path, lazy=lazy)
+
+    spy = _LazySpy(_unit_square())
+    spy.read("mesh.stub", lazy=False)
+    spy.read("mesh.stub", lazy=True)
+    spy.read("mesh.stub")
+
+    assert spy.seen == [False, True, True], f"_parse saw {spy.seen}"
+
+
+_WKT = (
+    'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],'
+    'PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+)
+
+
+@pytest.mark.parametrize(
+    "crs, expected_wkt",
+    [
+        pytest.param(None, None, id="no-crs"),
+        pytest.param(4326, None, id="epsg-int"),
+        pytest.param(_WKT, _WKT, id="wkt-string"),
+    ],
+)
+def test_crs_reaches_crs_wkt_only_when_it_is_a_string(crs, expected_wkt):
+    """``crs_wkt`` carries a WKT CRS and nothing else; an EPSG int is not stringified.
+
+    ``ParsedMesh`` accepts both because Selafin and DFSU carry no EPSG, and the
+    dataset's ``crs_wkt`` is filled from the string case alone. Every fixture in the
+    suite parses ``crs=None``, so the type test was only ever executed one way and an
+    int written into ``crs_wkt`` as ``"4326"`` would have gone unnoticed.
+    """
+    dataset = _StubDriver(_unit_square(crs=crs)).read("mesh.stub")
+
+    assert dataset.crs_wkt == expected_wkt, f"crs_wkt was {dataset.crs_wkt!r}"
+    assert dataset.mesh.crs == crs, f"the mesh lost the CRS: {dataset.mesh.crs!r}"
+
+
+def test_network_edges_win_over_edges_when_a_parse_carries_both():
+    """``network_edges`` is the 1D topology, so it is preferred over ``edges``.
+
+    A real driver sets one or the other, so the precedence in ``_network_edges`` was
+    only ever executed one branch at a time. Swapping the two would hand a mixed
+    file's surface edges to ``Network1d`` as its channels -- the mislabelling the two
+    separate fields exist to prevent.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 2.0]),
+        node_y=np.array([0.0, 0.0, 0.0]),
+        faces=None,
+        edges=np.array([[0, 1]], dtype=np.int64),
+        network_edges=np.array([[1, 2]], dtype=np.int64),
+        topology_dimension=1,
+    )
+
+    network = _StubDriver(parsed).read("channels.stub")
+
+    np.testing.assert_array_equal(network.edge_node_connectivity.data, [[1, 2]])
+
+
+def test_a_one_dimensional_parse_builds_a_network_under_any_offered_name():
+    """A 1D parse has no surface to build, so the surface name still yields a network.
+
+    ``_wants_network`` ends by re-reading ``topology_dimension`` for a name that is not
+    the network's own, and only the ``False`` outcome of that line was ever produced.
+    The ``True`` one is what keeps ``mesh_name='mesh2d'`` from constructing a
+    ``Mesh2d`` out of a parse that has no faces at all.
+    """
+    parsed = ParsedMesh(
+        node_x=np.array([0.0, 1.0, 2.0]),
+        node_y=np.array([0.0, 0.0, 0.0]),
+        faces=None,
+        edges=np.array([[0, 1], [1, 2]], dtype=np.int64),
+        topology_dimension=1,
+    )
+
+    result = _StubDriver(parsed).read("channels.stub", mesh_name="mesh2d")
+
+    assert isinstance(result, Network1d)
+    assert result.n_edge == 2
+
+
 def test_temporal_variable_carries_time_values_and_dimensions():
     """A variable with a time coordinate records it and names a time dimension."""
     parsed = _unit_square(
