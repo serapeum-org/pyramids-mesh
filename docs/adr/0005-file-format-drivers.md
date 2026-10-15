@@ -65,9 +65,10 @@ full. Only its three-concerns decision was wrong.
 
 ## Consequences
 
-- The `pyramids-gis` floor becomes an API floor on the **registry**, not on the mesh model. Until
-  that release exists the floor is provisional and this package's entry points are inert: it
-  installs and is never dispatched to. It must not be published to PyPI before then.
+- The `pyramids-gis` floor is an API floor on the **registry**, not on the mesh model. The registry
+  shipped in `pyramids-gis 0.68.0`, so the floor is now `>= 0.68.0` and this package's entry points
+  are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
+  while the registry was unreleased and the entry points inert — is lifted.
 - Three concerns MDAL supports and `pyramids-gis` does not — ragged vertical levels
   (`DataOnVolumes`), per-timestep active/dry flags, and a dataset reference time — are **upstream**
   work. A driver meeting them carries the value through without fabricating data: it raises on a

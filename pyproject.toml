@@ -26,24 +26,12 @@ classifiers = [
 
 requires-python = ">= 3.11, <4"
 
-# PROVISIONAL FLOOR. 0.66.0 is the release this repo was scaffolded against, and
-# it does carry the types every driver builds on: `Mesh2d`, `UgridDataset`,
-# `Connectivity`, `MeshVariable`, `MeshTopologyInfo`, `Network1d`.
-#
-# But a driver package needs one thing more: the `pyramids.mesh_drivers`
-# entry-point registry that `UgridDataset.read_file` dispatches through, which has
-# not shipped in any pyramids release yet. Until it does, the entry points
-# declared here are INERT — nothing reads them, so a driver is never dispatched
-# to. Raise this floor to the release that ships the registry as soon as it
-# exists, and do not publish to PyPI before then: the package would install and
-# silently do nothing. See ADR-0005 and planning/tasks/R1.md.
-#
 # GDAL is deliberately absent. It is not a dependency of this package: the
 # `pyramids-gis` wheel vendors its own osgeo bindings and `import pyramids` is
 # what puts them on `sys.path` (activate_vendored_osgeo). Nothing here installs
 # or pins a separate GDAL.
 dependencies = [
-    "pyramids-gis >=0.66.0",
+    "pyramids-gis >=0.68.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
