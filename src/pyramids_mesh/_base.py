@@ -361,6 +361,9 @@ class BaseDriver:
                 ...     suffixes = (".tiny",)
                 ...     capabilities = frozenset({"read_mesh", "multi_mesh"})
                 ...
+                ...     def mesh_names(self, path):
+                ...         return ["mesh2d", "network1d"]
+                ...
                 ...     def _parse(self, path, *, lazy):
                 ...         return ParsedMesh(
                 ...             node_x=np.array([0.0, 1.0, 1.0, 2.0]),
@@ -377,6 +380,10 @@ class BaseDriver:
                 [[0, 1, 2]]
                 >>> channels.edge_node_connectivity.data.tolist()
                 [[2, 3]]
+
+              A ``multi_mesh`` driver must name its topologies, because ``mesh_name``
+              is checked against ``mesh_names``: a name the driver does not offer is
+              refused rather than quietly resolved to something else.
 
             - Asking for the 1D topology of a file that has none is an error rather
               than an empty network:
@@ -396,8 +403,8 @@ class BaseDriver:
                 >>> try:
                 ...     SurfaceOnlyDriver().read("flat.tiny", mesh_name="network1d")
                 ... except ValueError as error:
-                ...     print(str(error).split(",")[0])
-                'surfaceonly' was asked for the 'network1d' topology
+                ...     print(str(error).split(";")[0])
+                surfaceonly does not offer a 'network1d' topology in 'flat.tiny'
         """
         parsed = self._parse(path, lazy=lazy)
         parsed = validate_and_normalise(parsed)
