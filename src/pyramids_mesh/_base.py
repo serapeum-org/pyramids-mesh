@@ -37,6 +37,23 @@ from pyramids_mesh._validate import validate_and_normalise
 _LOCATION_DIMENSION = {"node": "n_node", "face": "n_face", "edge": "n_edge"}
 
 
+def _as_float_array(values: np.ndarray | None) -> np.ndarray | None:
+    """Return ``values`` as a float64 array, or ``None``.
+
+    Face and edge centres go through this for the same reason node coordinates do: a
+    driver may hand over a plain list, and pyramids' coordinate arrays are float64.
+
+    Args:
+        values: A coordinate array, a sequence, or ``None``.
+
+    Returns:
+        np.ndarray | None: The float64 array, or ``None`` when nothing was given.
+    """
+    if values is None:
+        return None
+    return np.asarray(values, dtype=np.float64)
+
+
 def _recorded_start_index(parsed: "ParsedMesh") -> int:
     """Return the connectivity base to record on ``Connectivity`` for a round trip.
 
@@ -226,7 +243,11 @@ class BaseDriver:
 
         Args:
             path: The file to read.
-            mesh_name: The topology name to build under; defaults to the parsed name.
+            mesh_name: Which topology to build. A format carrying both a surface mesh
+                and a 1D network names them separately -- see ``mesh_names`` -- and
+                this selects one. Note that ``Network1d`` has no name of its own, so
+                on the 1D path the value only chooses the topology; it is not recorded
+                anywhere.
             lazy: Forwarded to ``_parse`` so a format with a real deferred loader can
                 honour it.
 
@@ -452,8 +473,8 @@ class BaseDriver:
             node_y,
             face_node_connectivity=face_conn,
             edge_node_connectivity=edge_conn,
-            face_x=parsed.face_x,
-            face_y=parsed.face_y,
+            face_x=_as_float_array(parsed.face_x),
+            face_y=_as_float_array(parsed.face_y),
             crs=parsed.crs,
         )
         data_variables = self._build_variables(parsed, name)
@@ -511,14 +532,28 @@ class BaseDriver:
             built[var_name] = self._build_variable(var_name, parsed_var, name)
             if parsed_var.active is not None:
                 active_name = f"{var_name}_active"
+                if active_name in parsed.variables:
+                    raise ValueError(
+                        f"the active mask of {var_name!r} would be attached as "
+                        f"{active_name!r}, which this file already defines as a "
+                        f"variable of its own"
+                    )
                 built[active_name] = MeshVariable(
                     name=active_name,
-                    location="face",
+                    # The mask describes its parent's elements, so it lives where the
+                    # parent lives. Hardcoding "face" mislabelled it and gave it a
+                    # shape that contradicted the location.
+                    location=parsed_var.location,
                     mesh_name=name,
                     shape=tuple(np.shape(parsed_var.active)),
                     _data=np.asarray(parsed_var.active),
                 )
         if parsed.node_z is not None:
+            if "node_z" in parsed.variables:
+                raise ValueError(
+                    "this file carries both a node_z coordinate and a variable named "
+                    "'node_z'; the elevation would silently replace the variable"
+                )
             built["node_z"] = MeshVariable(
                 name="node_z",
                 location="node",
@@ -536,7 +571,8 @@ class BaseDriver:
         attributes: dict[str, Any] = {}
         if parsed_var.time_values is not None:
             attributes["time_values"] = np.asarray(parsed_var.time_values)
-        dimension = _LOCATION_DIMENSION.get(parsed_var.location, "n_elem")
+        # `check_shapes` has already rejected any other location, so this cannot miss.
+        dimension = _LOCATION_DIMENSION[parsed_var.location]
         dimensions: tuple[str, ...]
         if parsed_var.time_values is not None:
             dimensions = ("time", dimension)

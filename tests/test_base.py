@@ -83,6 +83,70 @@ def test_active_becomes_sibling_variable():
     assert dataset.get("wl_active").location == "face"
 
 
+def test_active_sibling_inherits_its_parent_location():
+    """The mask describes its parent's elements, so it lives where the parent lives."""
+    parsed = _unit_square(
+        variables={
+            "wl": ParsedVariable(
+                location="node",
+                shape=(4,),
+                values=np.zeros(4),
+                active=np.array([1, 1, 0, 1], dtype=np.int8),
+            )
+        }
+    )
+
+    sibling = _StubDriver(parsed).read("mesh.stub").get("wl_active")
+
+    assert sibling.location == "node"
+    assert sibling.shape == (4,)
+
+
+def test_node_z_colliding_with_a_parsed_variable_raises():
+    """A file defining its own ``node_z`` variable is not silently overwritten."""
+    parsed = _unit_square(
+        node_z=np.array([9.0, 9.0, 9.0, 9.0]),
+        variables={
+            "node_z": ParsedVariable(
+                location="face", shape=(2,), values=np.array([42.0, 43.0])
+            )
+        },
+    )
+
+    with pytest.raises(ValueError, match="both a node_z coordinate"):
+        _StubDriver(parsed).read("mesh.stub")
+
+
+def test_active_sibling_colliding_with_a_parsed_variable_raises():
+    """A generated ``<var>_active`` name that the file already uses is an error."""
+    parsed = _unit_square(
+        variables={
+            "wl": ParsedVariable(
+                location="face",
+                shape=(2,),
+                values=np.zeros(2),
+                active=np.array([1, 0], dtype=np.int8),
+            ),
+            "wl_active": ParsedVariable(
+                location="face", shape=(2,), values=np.zeros(2)
+            ),
+        }
+    )
+
+    with pytest.raises(ValueError, match="already defines"):
+        _StubDriver(parsed).read("mesh.stub")
+
+
+def test_face_centres_are_converted_to_float_arrays():
+    """Face centres given as plain lists reach ``Mesh2d`` as float64 arrays."""
+    parsed = _unit_square(face_x=[0.5, 0.5], face_y=[0.25, 0.75])
+
+    mesh = _StubDriver(parsed).read("mesh.stub").mesh
+
+    assert mesh.face_x.dtype == np.float64
+    np.testing.assert_allclose(mesh.face_y, [0.25, 0.75])
+
+
 def test_topology_dimension_1_yields_network1d():
     """A 1D topology builds a ``Network1d`` rather than a ``UgridDataset``."""
     parsed = ParsedMesh(
