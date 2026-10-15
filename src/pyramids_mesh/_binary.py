@@ -240,12 +240,22 @@ def record_offsets(path: str, endian: str) -> list[tuple[int, int]]:
     """
     offsets: list[tuple[int, int]] = []
     with open(path, "rb") as handle:
+        size = handle.seek(0, 2)
+        handle.seek(0)
         while True:
             head = handle.read(_LENGTH_WORD)
             if not head:
                 return offsets
-            length = _record_length(head, endian, path)
+            length = _decode_length(head, endian, path)
             offset = handle.tell()
+            # Seeking past the end succeeds silently, so the truncation would otherwise
+            # surface one step later as a missing trailing word -- caught, but
+            # misdiagnosed.
+            if offset + length > size:
+                raise ValueError(
+                    f"truncated Fortran record: declared {length} bytes, "
+                    f"{size - offset} remain in the file"
+                )
             handle.seek(length, 1)
             _check_trailer(handle, length, endian=endian)
             offsets.append((offset, length))
@@ -256,13 +266,29 @@ def _as_int32(raw: bytes, endian: str) -> int:
     return int(np.frombuffer(raw, dtype=f"{endian}i4", count=1)[0])
 
 
-def _record_length(head: bytes, endian: str, path: str) -> int:
-    """Return the payload length a record header declares, validated as usable."""
+def _decode_length(head: bytes, endian: str, path: str | None = None) -> int:
+    """Return the payload length a record header declares, validated as usable.
+
+    One implementation for both the sequential read and the offset index, so the two
+    cannot drift into reporting the same corruption differently.
+
+    Args:
+        head: The four bytes of the length word.
+        endian: ``"<"`` or ``">"``.
+        path: The file being read, named in the message when known.
+
+    Returns:
+        int: The declared payload length.
+
+    Raises:
+        ValueError: If the header is short, or declares a negative length.
+    """
+    where = f"{path!r} " if path is not None else ""
     if len(head) < _LENGTH_WORD:
-        raise ValueError(f"{path!r} ends inside a Fortran record header")
+        raise ValueError(f"{where}ends inside a Fortran record header")
     length = _as_int32(head, endian)
     if length < 0:
-        raise ValueError(f"{path!r} declares a negative record length {length}")
+        raise ValueError(f"{where}declares a negative Fortran record length {length}")
     return length
 
 
@@ -271,11 +297,7 @@ def _read_record(handle: BinaryIO, endian: str) -> bytes | None:
     head = handle.read(_LENGTH_WORD)
     if not head:
         return None
-    if len(head) < _LENGTH_WORD:
-        raise ValueError("file ends inside a Fortran record header")
-    length = _as_int32(head, endian)
-    if length < 0:
-        raise ValueError(f"negative Fortran record length {length}")
+    length = _decode_length(head, endian)
     payload = handle.read(length)
     if len(payload) != length:
         raise ValueError(
@@ -311,8 +333,26 @@ def _check_trailer(handle: BinaryIO, length: int, *, endian: str) -> None:
 
 
 def _read_typed(handle: BinaryIO, endian: str, count: int, code: str) -> np.ndarray:
-    """One record decoded as ``count`` values of the given numpy type code."""
+    """One record decoded as ``count`` values of the given numpy type code.
+
+    The record's own length is checked against ``count`` first. A wrong ``count`` is
+    exactly the mistake a driver makes when it misreads a header field, and without the
+    check numpy happily returns the requested number of values taken from the wrong part
+    of the file -- a plausible-looking array that is simply wrong, which is the failure
+    class the trailing-length-word verification exists to prevent.
+
+    Raises:
+        ValueError: At end of file, or when the record does not hold exactly ``count``
+            values of this type.
+    """
     payload = _read_record(handle, endian)
     if payload is None:
         raise ValueError("expected a Fortran record, found end of file")
-    return np.frombuffer(payload, dtype=f"{endian}{code}", count=count).copy()
+    dtype = np.dtype(f"{endian}{code}")
+    expected = count * dtype.itemsize
+    if len(payload) != expected:
+        raise ValueError(
+            f"Fortran record holds {len(payload)} bytes but {count} values of "
+            f"{dtype.str} need {expected}; the count is wrong"
+        )
+    return np.frombuffer(payload, dtype=dtype, count=count).copy()

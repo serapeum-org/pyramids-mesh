@@ -185,8 +185,39 @@ def test_record_offsets_rejects_a_negative_length(tmp_path):
     path = tmp_path / "negative_index.slf"
     path.write_bytes(np.array([-4], dtype="<i4").tobytes() + b"abcd")
 
-    with pytest.raises(ValueError, match="negative record length"):
+    with pytest.raises(ValueError, match="negative Fortran record length"):
         record_offsets(str(path), "<")
+
+
+def test_record_offsets_diagnoses_a_truncated_payload(tmp_path):
+    """A payload shorter than declared is reported as truncation, not a missing word.
+
+    Seeking past the end of a file succeeds, so without an explicit size check the
+    truncation surfaces one step later as a missing trailing length word -- caught, but
+    blamed on the wrong thing.
+    """
+    path = tmp_path / "truncated_index.slf"
+    path.write_bytes(np.array([40], dtype="<i4").tobytes() + b"short")
+
+    with pytest.raises(ValueError, match="truncated Fortran record: declared 40 bytes"):
+        record_offsets(str(path), "<")
+
+
+@pytest.mark.parametrize("count", [3, 7])
+def test_typed_read_rejects_a_count_the_record_cannot_hold(tmp_path, count):
+    """A count disagreeing with the record length raises instead of taking a slab.
+
+    Reading fewer values than the record holds used to succeed silently and return the
+    wrong part of the file.
+    """
+    payload = np.array([1, 2, 3, 4, 5], dtype="<i4").tobytes()
+    word = np.array([len(payload)], dtype="<i4").tobytes()
+    path = tmp_path / "count.slf"
+    path.write_bytes(word + payload + word)
+
+    with open(path, "rb") as handle:
+        with pytest.raises(ValueError, match="the count is wrong"):
+            read_record_ints(handle, "<", count)
 
 
 def test_iter_records_honours_a_custom_comment_marker(tmp_path):
