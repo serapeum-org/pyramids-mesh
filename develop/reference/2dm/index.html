@@ -1308,7 +1308,9 @@ mesh's edges, so they are never folded into <code>edge_node_connectivity</code>.
 that renumbers a mesh produces exactly that. The node count is the number of <code>ND</code>
 records, never the highest id.</p>
 <p>The material id becomes a face-located <code>material</code> variable. With
-<code>NUM_MATERIALS_PER_ELEM k</code> the extra columns become <code>material_2</code> … <code>material_k</code>.</p>
+<code>NUM_MATERIALS_PER_ELEM k</code> the extra columns become <code>material_2</code> … <code>material_k</code>, for <code>k</code> from 1
+to 16 — each column costs an array and a variable, and the count comes from an untrusted file, so
+a larger one is refused rather than allocated.</p>
 <h2 id="limitations"><a class="toclink" href="#limitations">Limitations</a><a class="headerlink" href="#limitations" title="Permanent link">#</a></h2>
 <p>Every one of these is deliberate; none is a silent approximation.</p>
 <ul>
@@ -1331,7 +1333,9 @@ records, never the highest id.</p>
   returns without them. This is a <code>pyramids-gis</code> limitation, not a decision of this driver: it
   will be carried properly once <code>Network1d</code> has somewhere to put it.</li>
 <li><strong>No elevation is invented.</strong> If no <code>ND</code> record carries a z column, <code>node_z</code> is omitted
-  entirely rather than filled with zeros a consumer could not tell from a real zero datum.</li>
+  entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file
+  whose <code>ND</code> records <em>disagree</em> about the z column is refused, since the ones without it would
+  need a datum invented.</li>
 <li><strong>Records this driver does not model are skipped</strong>, as MDAL skips them: <code>MESHNAME</code>, the
   <code>BEGPARAMDEF</code> block and anything else beyond the nodes, elements and
   <code>NUM_MATERIALS_PER_ELEM</code>. One consequence is that a file naming its own mesh loses that name —
