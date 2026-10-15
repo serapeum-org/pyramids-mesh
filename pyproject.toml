@@ -58,10 +58,7 @@ dependencies = [
 # mikecore, pandas, matplotlib, scipy and tqdm.
 dhi = ["mikeio >=3.0.0"]
 
-# HDF5-backed result containers: XMDF, XDMF, HEC-RAS 2D.
-hdf = ["h5py >=3.10.0"]
-
-all = ["pyramids-mesh[dhi,hdf]"]
+all = ["pyramids-mesh[dhi]"]
 
 [dependency-groups]
 dev = [
@@ -225,7 +222,7 @@ pyramids-mesh = { path = ".", editable = true }
 # [tool.pixi.dependencies] table at all: every environment is built from the
 # standard declarations — runtime deps from [project.dependencies], tooling from
 # the `dev` / `docs` dependency groups — all resolved from PyPI. The per-driver
-# extras (`dhi`, `hdf`) are declared for pip users and are
+# extra (`dhi`) is declared for pip users and is
 # deliberately in no pixi environment yet: each is wired into one when the driver
 # that needs it lands, so the lock never carries a dependency nothing imports.
 #
