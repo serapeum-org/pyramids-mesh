@@ -5,10 +5,10 @@
 `pyramids-mesh` is pre-1.0. Only the latest released version receives fixes; there are no
 maintenance branches for older `0.x` releases.
 
-| Version | Supported |
-| ------- | ------------------ |
-| latest `0.x` | :white_check_mark: |
-| any earlier `0.x` | :x: |
+| Version           | Supported          |
+|-------------------|--------------------|
+| latest `0.x`      | :white_check_mark: |
+| any earlier `0.x` | :x:                |
 
 ## Reporting a vulnerability
 
