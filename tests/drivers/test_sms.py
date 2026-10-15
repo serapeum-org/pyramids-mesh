@@ -16,6 +16,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Network1d, UgridDataset
 
+from pyramids_mesh.drivers import sms
 from pyramids_mesh.drivers.sms import TwoDmDriver, build_minimal_fixture
 
 _UNIT_SQUARE = """MESH2D
@@ -511,6 +512,18 @@ def test_2dm_header_found_past_a_long_comment_header(tmp_path):
 def test_2dm_can_open_declines_a_file_that_is_only_comments(tmp_path):
     """A file with no significant line at all is still declined, and bounded."""
     path = _write(tmp_path, "# nothing here\n" * 2000)
+
+    assert TwoDmDriver().can_open(path) is False
+
+
+def test_2dm_sniff_gives_up_at_its_limit(tmp_path, monkeypatch):
+    """The sniff stops after its byte limit rather than reading an unbounded file.
+
+    The limit is lowered here instead of writing a 256 KiB fixture; the behaviour under
+    test is that the loop ends at the limit, not the size of the constant.
+    """
+    monkeypatch.setattr(sms, "_SNIFF_LIMIT", 64)
+    path = _write(tmp_path, "# padding padding padding\n" * 20 + _UNIT_SQUARE)
 
     assert TwoDmDriver().can_open(path) is False
 
