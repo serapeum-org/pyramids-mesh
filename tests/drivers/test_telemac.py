@@ -355,3 +355,19 @@ def test_selafin_header_ending_before_names_is_refused(tmp_path):
     Path(path).write_bytes(data[:104])
     with pytest.raises(FileFormatNotSupportedError, match="ends inside its header"):
         SelafinDriver().read(path)
+
+
+def test_selafin_lazy_loader_translates_a_short_read(tmp_path):
+    """A lazy slab read that comes up short raises the format error, like the eager path.
+
+    Exercised at the loader directly: a bad offset/width is the failure a lazy read can
+    hit when the caller touches .data, and it must surface as FileFormatNotSupportedError
+    rather than the helper's bare ValueError.
+    """
+    from pyramids_mesh.drivers.telemac import _SelafinLoader
+
+    path = tmp_path / "tiny.slf"
+    path.write_bytes(b"\x00" * 8)
+    loader = _SelafinLoader(str(path), [0], 100, endian="<", double=False)
+    with pytest.raises(FileFormatNotSupportedError, match="not a readable Selafin"):
+        loader()

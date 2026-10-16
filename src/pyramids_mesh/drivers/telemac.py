@@ -482,7 +482,9 @@ class _SelafinReader:
         n_variables = len(self.names)
         per_step = 1 + n_variables
         remaining = len(offsets) - self.header_records
-        if remaining < 0 or per_step == 0:
+        if remaining < 0:
+            # A header that read cleanly cannot leave fewer records than it consumed, so
+            # this only trips on a file whose index is inconsistent with its header.
             return np.empty(0, dtype=np.float64), {}
         n_time = remaining // per_step
         if remaining % per_step:
@@ -592,13 +594,28 @@ class _SelafinLoader:
         self.double = double
 
     def __call__(self) -> np.ndarray:
-        """Read every timestep's slab and stack them into ``(n_time, npoin)``."""
+        """Read every timestep's slab and stack them into ``(n_time, npoin)``.
+
+        Raises:
+            FileFormatNotSupportedError: If a slab is short or the wrong width -- the same
+                failure the eager path reports, translated here so a lazy read surfaces
+                the documented type rather than the helper's bare ``ValueError``.
+        """
         if not self.offsets:
             return np.empty((0, self.npoin), dtype=np.float64)
-        slabs = [
-            read_payload_floats(
-                self.path, offset, self.npoin, endian=self.endian, double=self.double
-            )
-            for offset in self.offsets
-        ]
+        try:
+            slabs = [
+                read_payload_floats(
+                    self.path,
+                    offset,
+                    self.npoin,
+                    endian=self.endian,
+                    double=self.double,
+                )
+                for offset in self.offsets
+            ]
+        except ValueError as error:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is not a readable Selafin file: {error}"
+            ) from error
         return np.stack(slabs).astype(np.float64)
