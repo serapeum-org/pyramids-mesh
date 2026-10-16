@@ -389,6 +389,63 @@ def record_offsets(path: str, endian: str) -> list[tuple[int, int]]:
             offsets.append((offset, length))
 
 
+def read_payload_floats(
+    path: str, offset: int, count: int, *, endian: str, double: bool
+) -> np.ndarray:
+    """Read ``count`` floats from a record payload at a known byte offset.
+
+    The counterpart to :func:`record_offsets`: that indexes every record's payload
+    position, and this seeks straight to one and decodes it, which is what lets a lazy
+    variable loader read a single slab without rescanning the file. It opens the file
+    itself and takes the offset rather than a handle, so a loader closes over a path and
+    not a handle that may already be shut (design section 7).
+
+    The offset is the payload position -- after the leading length word -- so the length
+    word and trailing word are not re-verified here; :func:`record_offsets` already did
+    that when it built the index.
+
+    Args:
+        path: The binary file to read from.
+        offset: The payload's byte position, as :func:`record_offsets` reports it.
+        count: How many floats to read.
+        endian: ``"<"`` or ``">"``.
+        double: ``True`` for ``float64``, ``False`` for ``float32``.
+
+    Returns:
+        np.ndarray: A writable array of ``count`` floats.
+
+    Raises:
+        ValueError: If fewer than ``count`` values remain at ``offset``.
+
+    Examples:
+        - Seek to a slab and read it, the way a lazy loader does:
+
+            >>> import os
+            >>> import tempfile
+            >>> import numpy as np
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "model.slf")
+            ...     payload = np.array([1.0, 2.0, 3.0, 4.0], dtype="<f4").tobytes()
+            ...     word = np.array([len(payload)], dtype="<i4").tobytes()
+            ...     with open(path, "wb") as handle:
+            ...         _ = handle.write(word + payload + word)
+            ...     values = read_payload_floats(path, 4, 4, endian="<", double=False)
+            >>> values.tolist()
+            [1.0, 2.0, 3.0, 4.0]
+    """
+    dtype = np.dtype(f"{endian}{'f8' if double else 'f4'}")
+    expected = count * dtype.itemsize
+    with open(path, "rb") as handle:
+        handle.seek(offset)
+        payload = handle.read(expected)
+    if len(payload) != expected:
+        raise ValueError(
+            f"{path!r} holds {len(payload)} bytes at offset {offset} but {count} "
+            f"values of {dtype.str} need {expected}; the index or width is wrong"
+        )
+    return np.frombuffer(payload, dtype=dtype, count=count).copy()
+
+
 def _as_int32(raw: bytes, endian: str) -> int:
     """One ``int32`` decoded from four bytes in the given byte order."""
     return int(np.frombuffer(raw, dtype=f"{endian}i4", count=1)[0])
