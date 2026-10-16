@@ -61,6 +61,10 @@ _PLY_TYPES = {
 # node-located variable rather than being dropped.
 _PLY_COORDS = ("x", "y", "z")
 
+# The integer type codes a face list's count may use; a float count type cannot size a
+# record, so it is refused rather than reaching _struct_char as a KeyError.
+_INTEGER_TYPES = frozenset({"i1", "u1", "i2", "u2", "i4", "u4"})
+
 _PLY_MINIMAL = """ply
 format ascii 1.0
 element vertex 4
@@ -405,10 +409,23 @@ class _PlyReader:
         return name
 
     def _add_property(self, tokens: list[str], current: str | None) -> None:
-        """Attach a property to the open element block."""
+        """Attach a property to the open element block.
+
+        Raises:
+            FileFormatNotSupportedError: On an unknown scalar type, a face list whose
+                count type is not an integer (the binary reader cannot size it), or a
+                scalar property on the face element -- a trailing per-face property the
+                readers do not model, which would mis-align the face rows.
+        """
         if tokens[1] == "list":
             # property list <count-type> <index-type> <name>
-            self.face_prop = _PlyProperty(tokens[4], tokens[3], count=tokens[2])
+            count_type = tokens[2]
+            if _PLY_TYPES.get(count_type) not in _INTEGER_TYPES:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} declares a face list with a non-integer count type "
+                    f"{count_type!r}"
+                )
+            self.face_prop = _PlyProperty(tokens[4], tokens[3], count=count_type)
             return
         scalar = tokens[1]
         if scalar not in _PLY_TYPES:
@@ -417,6 +434,12 @@ class _PlyReader:
             )
         if current == "vertex":
             self.vertex_props.append(_PlyProperty(tokens[2], scalar))
+        elif current == "face":
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} declares a per-face property {tokens[2]!r}; only the "
+                f"vertex-index list is supported on a face, and a trailing scalar would "
+                f"mis-align the face rows"
+            )
 
     def _read_ascii(self, offset: int) -> tuple[dict[str, np.ndarray], list[list[int]]]:
         """Read the ASCII body: vertex rows then face rows."""
@@ -460,6 +483,11 @@ class _PlyReader:
         with open(self.path, "rb") as handle:
             handle.seek(offset)
             buffer = handle.read()
+        if self.face_count and self.face_prop is None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} declares faces but no 'property list' for them; the "
+                f"face connectivity cannot be read"
+            )
         dtype = np.dtype(
             [
                 (prop.name, f"{self.endian}{_PLY_TYPES[prop.scalar]}")

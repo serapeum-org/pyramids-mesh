@@ -489,3 +489,63 @@ end_header
             FileFormatNotSupportedError, match="VERT card without a count"
         ):
             XmsTinDriver().read(_write(tmp_path, text, "vc.tin"))
+
+
+class TestPlyBinaryHeaderValidation:
+    """Malformed binary-PLY headers raise named errors, not AttributeError/KeyError."""
+
+    def test_binary_face_without_list_property_is_refused(self, tmp_path):
+        """A binary PLY with a face element but no 'property list' is named, not a crash."""
+        header = (
+            "ply\nformat binary_little_endian 1.0\n"
+            "element vertex 3\n"
+            "property float x\nproperty float y\nproperty float z\n"
+            "element face 1\n"
+            "end_header\n"
+        ).encode("ascii")
+        import numpy as np
+
+        body = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0]], dtype="<f4").tobytes()
+        path = tmp_path / "noface.ply"
+        path.write_bytes(header + body)
+        with pytest.raises(FileFormatNotSupportedError, match="no 'property list'"):
+            PlyDriver().read(str(path))
+
+    def test_face_list_with_float_count_type_is_refused(self, tmp_path):
+        """A 'property list float ...' is refused, not a KeyError in the struct helper."""
+        text = """ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list float int vertex_indices
+end_header
+0.0 0.0 0.0
+1.0 0.0 0.0
+1.0 1.0 0.0
+3 0 1 2
+"""
+        with pytest.raises(FileFormatNotSupportedError, match="non-integer count type"):
+            PlyDriver().read(_write(tmp_path, text))
+
+    def test_per_face_scalar_property_is_refused(self, tmp_path):
+        """A trailing per-face scalar property is refused rather than mis-aligning rows."""
+        text = """ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar int vertex_indices
+property uchar flag
+end_header
+0.0 0.0 0.0
+1.0 0.0 0.0
+1.0 1.0 0.0
+3 0 1 2 9
+"""
+        with pytest.raises(FileFormatNotSupportedError, match="per-face property"):
+            PlyDriver().read(_write(tmp_path, text))
