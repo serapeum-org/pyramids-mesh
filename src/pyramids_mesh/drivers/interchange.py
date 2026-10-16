@@ -313,11 +313,6 @@ class _PlyProperty:
         self.scalar = scalar
         self.count = count
 
-    @property
-    def is_list(self) -> bool:
-        """Whether this is a ``property list`` (a face's variable-length index row)."""
-        return self.count is not None
-
 
 class _PlyReader:
     """One PLY file: header parsed first, then the body for ASCII or either byte order."""

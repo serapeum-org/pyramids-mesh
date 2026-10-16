@@ -257,3 +257,56 @@ def test_selafin_committed_fixture_reads_and_matches_the_builder(tmp_path):
     generated = tmp_path / "generated.slf"
     build_minimal_fixture_selafin(str(generated))
     assert generated.read_bytes() == committed.read_bytes()
+
+
+def test_selafin_can_open_true_on_a_valid_file(tmp_path):
+    """``can_open`` accepts a valid Selafin file -- the sniff's success path."""
+    assert SelafinDriver().can_open(_write(tmp_path)) is True
+
+
+def test_write_selafin_rejects_mismatched_values(tmp_path):
+    """The fixture writer refuses a values list that does not match the timestep count."""
+    with pytest.raises(ValueError, match="one entry per timestep"):
+        write_selafin(
+            str(tmp_path / "bad.slf"),
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            ikle=_IKLE,
+            variable_names=_NAMES,
+            times=[0.0, 1.0],
+            values=[[[0.5, 0.25, 0.75, 0.125]]],
+        )
+
+
+def test_selafin_truncated_header_is_refused(tmp_path):
+    """A file cut off inside its header is refused rather than read partially."""
+    path = _write(tmp_path)
+    data = Path(path).read_bytes()
+    # Keep only the title record (its 4+80+4 bytes), dropping everything after.
+    Path(path).write_bytes(data[:88])
+    with pytest.raises((FileFormatNotSupportedError, ValueError)):
+        SelafinDriver().read(path)
+
+
+def test_selafin_zero_timestep_file_reads_empty_series(tmp_path):
+    """A file with the header but no timesteps reads variables of zero length."""
+    path = _write(tmp_path, times=[], values=[])
+    dataset = SelafinDriver().read(path)
+
+    variable = dataset.get("WATER DEPTH")
+    assert variable.shape == (0, 4)
+    assert variable.data.shape == (0, 4)
+
+
+def test_selafin_header_ending_before_names_is_refused(tmp_path):
+    """A file whose header ends before its promised name records is refused.
+
+    Truncating right after the variable-count record leaves the first name record at end
+    of file, which the raw-record reader reports rather than reading past.
+    """
+    path = _write(tmp_path)
+    data = Path(path).read_bytes()
+    # title record (4+80+4=88) + nbv record (4+8+4=16) = 104 bytes; names come next.
+    Path(path).write_bytes(data[:104])
+    with pytest.raises(FileFormatNotSupportedError, match="ends inside its header"):
+        SelafinDriver().read(path)

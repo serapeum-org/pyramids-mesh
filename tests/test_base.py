@@ -619,3 +619,24 @@ def test_temporal_variable_carries_time_values_and_dimensions():
     assert variable.standard_name == "sea_surface_height"
     assert variable.nodata == -999.0
     np.testing.assert_allclose(variable.attributes["time_values"], [0.0, 1.0])
+
+
+def test_build_variable_rejects_reserved_time_values_attribute():
+    """A variable whose attributes claim 'time_values' is refused as a contradiction.
+
+    'time_values' is written from ``ParsedVariable.time_values``; letting a driver also
+    set it in ``attributes`` would publish two sources for one time axis.
+    """
+    import numpy as np
+    import pytest
+
+    from pyramids_mesh._base import BaseDriver, ParsedVariable
+
+    parsed = ParsedVariable(
+        location="node",
+        shape=(3,),
+        values=np.zeros(3),
+        attributes={"time_values": np.array([0.0])},
+    )
+    with pytest.raises(ValueError, match="reserved"):
+        BaseDriver()._build_data_variables({"depth": parsed}, "mesh2d")

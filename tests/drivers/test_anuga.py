@@ -273,3 +273,59 @@ def test_sww_committed_fixture_reads_and_matches_the_builder(tmp_path):
     assert (
         from_file.get("stage").data.tolist() == from_builder.get("stage").data.tolist()
     )
+
+
+def _write_no_volumes(tmp_path):
+    """A NetCDF with x, y and a 2D array but no ``volumes`` -- opens, yet is not a SWW.
+
+    The 2D array is what makes GDAL open it as a multidimensional raster; a purely 1-D
+    NetCDF does not open that way.
+    """
+    from osgeo import gdal
+
+    path = str(tmp_path / "novolumes.sww")
+    dataset = gdal.GetDriverByName("netCDF").CreateMultiDimensional(path)
+    group = dataset.GetRootGroup()
+    f64 = gdal.ExtendedDataType.Create(gdal.GDT_Float64)
+    points = group.CreateDimension("number_of_points", "", "", 4)
+    rows = group.CreateDimension("rows", "", "", 2)
+    cols = group.CreateDimension("cols", "", "", 2)
+    for name in ("x", "y"):
+        array = group.CreateMDArray(name, [points], f64)
+        array.Write(np.array([0.0, 1.0, 1.0, 0.0]))
+    cells = group.CreateMDArray("cells", [rows, cols], f64)
+    cells.Write(np.zeros((2, 2)))
+    dataset.FlushCache()
+    dataset.Close()
+    return path
+
+
+def test_sww_sniff_false_on_netcdf_that_opens_without_volumes(tmp_path):
+    """``can_open`` reaches the array-name check and declines a non-SWW NetCDF."""
+    assert SwwDriver().can_open(_write_no_volumes(tmp_path)) is False
+
+
+def test_sww_parse_without_volumes_is_refused(tmp_path):
+    """``read`` on a NetCDF lacking ``volumes`` names the missing array."""
+    with pytest.raises(FileFormatNotSupportedError, match="missing"):
+        SwwDriver().read(_write_no_volumes(tmp_path))
+
+
+def test_sww_volumes_index_out_of_range_is_refused(tmp_path):
+    """A 0-based volumes entry beyond the node range is refused."""
+    bad = [[0, 1, 9], [0, 2, 3]]
+    with pytest.raises(FileFormatNotSupportedError, match="no node index reaches"):
+        SwwDriver().read(_write(tmp_path, volumes=bad))
+
+
+def test_sww_empty_crs_attribute_leaves_crs_none(tmp_path):
+    """A present but empty CRS attribute is ignored rather than carried."""
+    dataset = SwwDriver().read(_write(tmp_path, crs_wkt=""))
+    assert dataset.crs_wkt is None
+
+
+def test_sww_without_elevation_has_no_node_z(tmp_path):
+    """A SWW carrying no elevation array produces no ``node_z`` variable."""
+    dataset = SwwDriver().read(_write(tmp_path, elevation=None))
+    assert "node_z" not in dataset.data_variable_names
+    assert "stage" in dataset.data_variable_names

@@ -361,3 +361,20 @@ def test_iter_records_skips_blank_and_comment_lines(tmp_path):
         ("ND", ["1", "0.0", "0.0", "1.0"]),
         ("E3T", ["1", "1", "2", "3", "0"]),
     ]
+
+
+def test_read_payload_floats_refuses_insufficient_bytes(tmp_path):
+    """``read_payload_floats`` refuses an offset with fewer values than requested.
+
+    This is the guard a lazy loader relies on when a record index or float width is
+    wrong: it fails loudly instead of returning a short or garbage array.
+    """
+    import numpy as np
+    import pytest
+
+    from pyramids_mesh._binary import read_payload_floats
+
+    path = tmp_path / "short.bin"
+    path.write_bytes(np.array([1.0, 2.0], dtype="<f4").tobytes())
+    with pytest.raises(ValueError, match="the index or width is wrong"):
+        read_payload_floats(str(path), 0, 8, endian="<", double=False)

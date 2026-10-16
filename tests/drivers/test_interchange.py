@@ -341,3 +341,126 @@ TRI 5
         assert generated.read_text(encoding="utf-8") == committed.read_text(
             encoding="utf-8"
         )
+
+
+class TestPlyCoverageGaps:
+    """Error and edge branches of the PLY reader not reached by the happy-path tests."""
+
+    def test_read_on_non_ply_file_raises(self, tmp_path):
+        """``read`` (which does not sniff) refuses a file lacking the magic line."""
+        path = tmp_path / "x.ply"
+        path.write_text("not a ply\n", encoding="utf-8")
+        with pytest.raises(
+            FileFormatNotSupportedError, match="missing the 'ply' magic"
+        ):
+            PlyDriver().read(str(path))
+
+    def test_header_without_end_marker_is_refused(self, tmp_path):
+        """A header that never reaches ``end_header`` is refused."""
+        text = "ply\nformat ascii 1.0\nelement vertex 1\n"
+        with pytest.raises(
+            FileFormatNotSupportedError, match="ends before 'end_header'"
+        ):
+            PlyDriver().read(_write(tmp_path, text))
+
+    def test_blank_header_line_is_skipped(self, tmp_path):
+        """A blank line inside the header is skipped rather than ending parsing."""
+        text = _ASCII_PLY.replace("format ascii 1.0\n", "format ascii 1.0\n\n")
+        dataset = PlyDriver().read(_write(tmp_path, text))
+        assert dataset.mesh.n_node == 4
+
+    def test_unsupported_format_line_is_refused(self, tmp_path):
+        """A ``format`` the reader does not know is refused."""
+        text = _ASCII_PLY.replace("format ascii 1.0", "format binary_middle_endian 1.0")
+        with pytest.raises(FileFormatNotSupportedError, match="unsupported PLY format"):
+            PlyDriver().read(_write(tmp_path, text))
+
+    def test_non_numeric_ascii_value_is_refused(self, tmp_path):
+        """A non-numeric vertex value is refused, naming it."""
+        text = _ASCII_PLY.replace("0.0 0.0 2.0", "east 0.0 2.0")
+        with pytest.raises(FileFormatNotSupportedError, match="non-numeric PLY value"):
+            PlyDriver().read(_write(tmp_path, text))
+
+    def test_binary_truncated_vertex_block_is_refused(self, tmp_path):
+        """A binary file whose vertex block is short of its count is refused."""
+        path = _binary_ply(tmp_path, "<")
+        data = Path(path).read_bytes()
+        end = data.index(b"end_header\n") + len(b"end_header\n")
+        Path(path).write_bytes(data[: end + 8])
+        with pytest.raises(FileFormatNotSupportedError, match="vertex block"):
+            PlyDriver().read(path)
+
+    def test_binary_truncated_face_block_is_refused(self, tmp_path):
+        """A binary file cut off within the face block is refused."""
+        path = _binary_ply(tmp_path, "<")
+        data = Path(path).read_bytes()
+        end = data.index(b"end_header\n") + len(b"end_header\n")
+        Path(path).write_bytes(data[: end + 4 * 3 * 4])
+        with pytest.raises(FileFormatNotSupportedError, match="face block"):
+            PlyDriver().read(path)
+
+    def test_binary_truncated_index_list_is_refused(self, tmp_path):
+        """A binary face whose index list runs past the end is refused."""
+        path = _binary_ply(tmp_path, "<")
+        data = Path(path).read_bytes()
+        end = data.index(b"end_header\n") + len(b"end_header\n")
+        Path(path).write_bytes(data[: end + 4 * 3 * 4 + 1])
+        with pytest.raises(FileFormatNotSupportedError, match="index list"):
+            PlyDriver().read(path)
+
+    def test_missing_coordinate_property_is_refused(self, tmp_path):
+        """A PLY with no ``x`` vertex property is not a readable surface."""
+        text = """ply
+format ascii 1.0
+element vertex 3
+property float y
+property float z
+element face 1
+property list uchar int vertex_indices
+end_header
+0.0 1.0
+0.0 1.0
+1.0 1.0
+3 0 1 2
+"""
+        with pytest.raises(FileFormatNotSupportedError, match="no 'x' vertex property"):
+            PlyDriver().read(_write(tmp_path, text))
+
+
+class TestXmsTinCoverageGaps:
+    """Error branches of the XMS TIN reader not reached by the happy-path tests."""
+
+    def test_empty_file_is_refused(self, tmp_path):
+        """An empty TIN file is refused."""
+        with pytest.raises(FileFormatNotSupportedError, match="is empty"):
+            XmsTinDriver().read(_write(tmp_path, "", "e.tin"))
+
+    def test_without_vertex_block_is_refused(self, tmp_path):
+        """A TIN with triangles but no VERT block is refused."""
+        text = "TIN\nBEGT\nTRI 1\n1 2 3\nENDT\n"
+        with pytest.raises(FileFormatNotSupportedError, match="no VERT block"):
+            XmsTinDriver().read(_write(tmp_path, text, "n.tin"))
+
+    def test_without_triangle_block_is_refused(self, tmp_path):
+        """A TIN with vertices but no TRI block is refused."""
+        text = "TIN\nBEGT\nVERT 2\n0 0 1 0\n1 1 2 0\nENDT\n"
+        with pytest.raises(FileFormatNotSupportedError, match="no TRI block"):
+            XmsTinDriver().read(_write(tmp_path, text, "nt.tin"))
+
+    def test_short_triangle_record_is_refused(self, tmp_path):
+        """A triangle record with fewer than three ids is refused."""
+        text = "TIN\nBEGT\nVERT 3\n0 0 1 0\n1 0 1 0\n1 1 1 0\nTRI 1\n1 2\nENDT\n"
+        with pytest.raises(FileFormatNotSupportedError, match="short triangle record"):
+            XmsTinDriver().read(_write(tmp_path, text, "st.tin"))
+
+    def test_non_numeric_vertex_is_refused(self, tmp_path):
+        """A non-numeric vertex coordinate is refused by the float parser."""
+        text = "TIN\nBEGT\nVERT 1\neast 0 1 0\nTRI 1\n1 1 1\nENDT\n"
+        with pytest.raises(FileFormatNotSupportedError, match="expected a number"):
+            XmsTinDriver().read(_write(tmp_path, text, "nn.tin"))
+
+    def test_non_numeric_triangle_index_is_refused(self, tmp_path):
+        """A non-numeric triangle index is refused by the integer parser."""
+        text = "TIN\nBEGT\nVERT 3\n0 0 1 0\n1 0 1 0\n1 1 1 0\nTRI 1\na b c\nENDT\n"
+        with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
+            XmsTinDriver().read(_write(tmp_path, text, "ni.tin"))

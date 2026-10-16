@@ -255,3 +255,65 @@ def test_mike21_committed_fixture_reads_and_matches_the_builder(tmp_path):
     assert generated.read_text(encoding="utf-8") == committed.read_text(
         encoding="utf-8"
     )
+
+
+def test_mike21_empty_projection_maps_to_none():
+    """``_projection_to_crs`` returns None for an empty projection field directly.
+
+    The Mike21 header always carries a projection token, so the empty case is reached
+    only by calling the mapper directly; it is covered here rather than left dark.
+    """
+    assert misc._projection_to_crs("") is None
+
+
+def test_mike21_short_header_is_refused(tmp_path):
+    """A header line with fewer than four fields is refused."""
+    with pytest.raises(FileFormatNotSupportedError, match="short header"):
+        Mike21Driver().read(_write(tmp_path, "100079 1000\n1 0 0 0 1\n"))
+
+
+def test_mike21_short_element_header_is_refused(tmp_path):
+    """An element header with fewer than three fields is refused."""
+    text = """100079 1000 1 LONG/LAT
+1 0.0 0.0 0.0 1
+2 3
+1 1 2 3
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="short element header"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_unusable_element_block_is_refused(tmp_path):
+    """An element header declaring zero elements or fewer than three nodes is refused."""
+    text = """100079 1000 3 LONG/LAT
+1 0.0 0.0 0.0 1
+2 1.0 0.0 0.0 1
+3 1.0 1.0 0.0 1
+0 3 21
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="not a usable element block"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_short_element_record_is_refused(tmp_path):
+    """An element record with fewer than three node ids is refused."""
+    text = """100079 1000 3 LONG/LAT
+1 0.0 0.0 0.0 1
+2 1.0 0.0 0.0 1
+3 1.0 1.0 0.0 1
+1 3 21
+1 1 2
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="short element record"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_non_integer_node_count_is_refused(tmp_path):
+    """A non-integer node count in the header is refused by the integer parser."""
+    text = """100079 1000 many LONG/LAT
+1 0.0 0.0 0.0 1
+1 3 21
+1 1 2 3
+"""
+    with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
+        Mike21Driver().read(_write(tmp_path, text))
