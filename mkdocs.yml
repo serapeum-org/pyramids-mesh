@@ -122,6 +122,7 @@ nav:
     - DAT (SMS results): reference/dat.md
     - Mike21 (DHI mesh): reference/mike21.md
     - Selafin (TELEMAC): reference/selafin.md
+    - SWW (ANUGA): reference/sww.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

@@ -126,6 +126,7 @@ notebook = [
 dat = "pyramids_mesh.drivers.sms:DatDriver"
 mike21 = "pyramids_mesh.drivers.misc:Mike21Driver"
 selafin = "pyramids_mesh.drivers.telemac:SelafinDriver"
+sww = "pyramids_mesh.drivers.anuga:SwwDriver"
 
 
 [project.urls]

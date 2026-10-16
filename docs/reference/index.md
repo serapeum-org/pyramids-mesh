@@ -23,6 +23,7 @@ its suffixes, capabilities and documented limitations:
 | `dat` | SMS ASCII results, attached to a mesh | [DAT](dat.md) |
 | `mike21` | DHI Mike21 mesh frame | [Mike21](mike21.md) |
 | `selafin` | TELEMAC Selafin / Serafin | [Selafin](selafin.md) |
+| `sww` | ANUGA SWW (NetCDF) | [SWW](sww.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
