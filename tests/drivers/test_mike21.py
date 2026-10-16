@@ -336,3 +336,16 @@ def test_mike21_wkt_projection_with_internal_spacing_is_preserved(tmp_path):
 
     assert dataset.crs_wkt is not None
     assert "UTM" in dataset.crs_wkt
+
+
+def test_mike21_importable_but_invalid_wkt_falls_back_to_none(tmp_path):
+    """A WKT that imports but fails PROJ validation leaves crs None, not a crash."""
+    wkt = (
+        'PROJCS["x",GEOGCS["y",DATUM["z",SPHEROID["s",6378137,298.257223563]],'
+        'PRIMEM["Greenwich",0],UNIT["deg",0.0174]],PROJECTION["Mercator_1SP"],'
+        'UNIT["m",1]]'
+    )
+    text = _UNIT_SQUARE.replace("LONG/LAT", wkt)
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+
+    assert dataset.crs_wkt is None

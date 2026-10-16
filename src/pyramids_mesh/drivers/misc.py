@@ -259,9 +259,12 @@ def _projection_to_crs(projection: str) -> str | int | None:
             reference = osr.SpatialReference()
             try:
                 reference.ImportFromWkt(projection)
+                # Validate() inside the guard: under the scoped ExceptionMgr it raises
+                # for an importable-but-unsupported WKT, which must fall back to None.
+                valid = reference.Validate() == 0
             except RuntimeError:
                 return None
-            return projection if reference.Validate() == 0 else None
+            return projection if valid else None
     # A DHI-internal name such as UTM-32 or LONG/LAT: a label, not a datum.
     return None
 

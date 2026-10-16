@@ -75,11 +75,36 @@ def test_sww_one_based_volumes_are_rebased(tmp_path):
     assert connectivity.original_start_index == 1
 
 
-def test_sww_impossible_base_is_refused(tmp_path):
-    """A volumes table based at neither 0 nor 1 is refused rather than read wrong."""
+def test_sww_out_of_range_volumes_index_is_refused(tmp_path):
+    """A volumes entry beyond the node range is refused rather than read wrong."""
     bad = [[2, 3, 4], [2, 4, 5]]
-    with pytest.raises(FileFormatNotSupportedError, match="neither"):
+    with pytest.raises(FileFormatNotSupportedError, match="no node index reaches"):
         SwwDriver().read(_write(tmp_path, volumes=bad))
+
+
+def test_sww_zero_based_mesh_not_referencing_node_zero(tmp_path):
+    """A 0-based mesh whose node 0 is unreferenced is not misdetected as 1-based.
+
+    Keying the base on volumes.min() shifted such a mesh down a node; keying on the max
+    (which stays within n_node-1 here) keeps it 0-based. Five nodes, triangles using
+    only nodes 1..4, so min()==1 but it is genuinely 0-based.
+    """
+    volumes = [[1, 2, 3], [1, 3, 4]]
+    dataset = SwwDriver().read(
+        _write(
+            tmp_path,
+            node_x=[9.0, 0.0, 1.0, 1.0, 0.0],
+            node_y=[9.0, 0.0, 0.0, 1.0, 1.0],
+            volumes=volumes,
+            elevation=[0.0, 2.0, 2.5, 3.0, 3.5],
+            times=[0.0],
+            node_variables={"stage": [[0.0, 0.5, 0.25, 0.75, 0.125]]},
+        )
+    )
+
+    connectivity = dataset.mesh.face_node_connectivity
+    assert connectivity.original_start_index == 0
+    assert connectivity.data.tolist() == [[1, 2, 3], [1, 3, 4]]
 
 
 def test_sww_elevation_becomes_node_variable(tmp_path):
@@ -347,3 +372,51 @@ def test_sww_elevation_on_foreign_dimension_is_skipped_not_crashed(tmp_path):
         dataset = SwwDriver().read(path)
 
     assert "node_z" not in dataset.data_variable_names
+
+
+_IMPORTABLE_INVALID_WKT = (
+    'PROJCS["x",GEOGCS["y",DATUM["z",SPHEROID["s",6378137,298.257223563]],'
+    'PRIMEM["Greenwich",0],UNIT["deg",0.0174]],PROJECTION["Mercator_1SP"],UNIT["m",1]]'
+)
+
+
+def test_sww_importable_but_invalid_crs_falls_back_to_none(tmp_path):
+    """A WKT that imports but fails PROJ validation yields crs=None, not a crash.
+
+    Under the scoped ExceptionMgr, Validate() raises for such a WKT; the guard must catch
+    it and fall back rather than letting a RuntimeError escape read().
+    """
+    dataset = SwwDriver().read(_write(tmp_path, crs_wkt=_IMPORTABLE_INVALID_WKT))
+
+    assert dataset.crs_wkt is None
+
+
+def test_sww_both_elevation_and_z_warns_and_keeps_elevation(tmp_path):
+    """A file carrying both ``elevation`` and ``z`` warns and keeps only ``elevation``.
+
+    Both are elevation names, so only the first becomes node_z; the other is dropped,
+    which is now announced rather than silent.
+    """
+    path = _write(
+        tmp_path,
+        elevation=[2.0, 2.5, 3.0, 3.5],
+        extra_node_arrays={"z": [1.0, 1.5, 2.0, 2.5]},
+    )
+    with pytest.warns(UserWarning, match="only 'elevation' becomes node_z"):
+        result = SwwDriver().read(path)
+
+    assert "node_z" in result.data_variable_names
+    assert "z" not in result.data_variable_names
+
+
+def test_sww_negative_volumes_index_is_refused(tmp_path):
+    """A negative volumes index is refused outright."""
+    with pytest.raises(FileFormatNotSupportedError, match="negative volumes index"):
+        SwwDriver().read(_write(tmp_path, volumes=[[-1, 0, 1], [0, 1, 2]]))
+
+
+def test_sww_volumes_mixing_zero_and_node_count_is_refused(tmp_path):
+    """A table using both index 0 and index n_node is refused -- base is inconsistent."""
+    # 4 nodes, indices span 0..4: 0 is only 0-based, 4 is only 1-based.
+    with pytest.raises(FileFormatNotSupportedError, match="neither 0 nor 1"):
+        SwwDriver().read(_write(tmp_path, volumes=[[0, 1, 2], [2, 3, 4]]))

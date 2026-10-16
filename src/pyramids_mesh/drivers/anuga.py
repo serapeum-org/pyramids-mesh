@@ -229,6 +229,7 @@ def write_sww(
     node_variables: dict[str, list] | None = None,
     face_variables: dict[str, list] | None = None,
     foreign_variables: dict[str, list] | None = None,
+    extra_node_arrays: dict[str, list] | None = None,
     crs_wkt: str | None = None,
     elevation_name: str = "elevation",
 ) -> None:
@@ -251,6 +252,8 @@ def write_sww(
         face_variables: Per-triangle arrays, shaped against the volumes dimension.
         foreign_variables: 1-D arrays each written on its own fresh dimension, for
             testing the skip path -- a variable the mesh model cannot place.
+        extra_node_arrays: extra static (point-dimension) arrays, for a file carrying a
+            second structural array such as ``z`` alongside ``elevation``.
         crs_wkt: A WKT string to write as a ``crs_wkt`` root attribute, or ``None``.
         elevation_name: Which name to store elevation under (``"elevation"`` or ``"z"``).
     """
@@ -290,6 +293,8 @@ def write_sww(
     )
     if elevation is not None:
         write(elevation_name, ["number_of_points"], f64, elevation, np.float64)
+    for name, values in (extra_node_arrays or {}).items():
+        write(name, ["number_of_points"], f64, values, np.float64)
     if times is not None:
         write(_TIME, ["number_of_timesteps"], f64, times, np.float64)
     for name, values in (node_variables or {}).items():
@@ -421,16 +426,28 @@ class _SwwReader:
                 falls outside the node range -- either a corrupt file or the wrong base.
         """
         faces = np.asarray(volumes_array.ReadAsArray(), dtype=np.int64)
-        base = int(faces.min())
-        if base not in (0, 1):
+        low, high = int(faces.min()), int(faces.max())
+        if low < 0:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} has a volumes table based at {base}, which is neither "
-                f"0 (ANUGA's convention) nor 1; the numbering cannot be trusted"
+                f"{self.path!r} has a negative volumes index {low}"
             )
-        if int(faces.max()) - base > n_node - 1:
+        # The base is decided from the *maximum*, not the minimum. An index equal to the
+        # node count is valid only 1-based, so it forces base 1; anything within
+        # 0..n_node-1 is read 0-based (ANUGA's convention), which -- unlike keying on the
+        # minimum -- stays correct when a 0-based mesh simply never references node 0.
+        if high == n_node:
+            if low < 1:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} mixes index 0 with index {n_node} for {n_node} "
+                    f"nodes; the base is neither 0 nor 1 consistently"
+                )
+            base = 1
+        elif high <= n_node - 1:
+            base = 0
+        else:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} has a volumes entry {int(faces.max())} that no node "
-                f"index reaches for {n_node} nodes at base {base}"
+                f"{self.path!r} has a volumes entry {high} that no node index reaches "
+                f"for {n_node} nodes"
             )
         return faces, base
 
@@ -463,9 +480,13 @@ class _SwwReader:
             reference = osr.SpatialReference()
             try:
                 reference.ImportFromWkt(wkt)
+                # Validate() must sit inside the guard: under the scoped ExceptionMgr it
+                # raises for an importable-but-unsupported WKT, and the point here is to
+                # fall back to no CRS, not to crash the read.
+                valid = reference.Validate() == 0
             except RuntimeError:
                 continue
-            if reference.Validate() == 0:
+            if valid:
                 return wkt
         return None
 
@@ -486,7 +507,14 @@ class _SwwReader:
         """
         variables: dict[str, ParsedVariable] = {}
         times = self._times(group, names)
-        elevation = next((name for name in _ELEVATION_NAMES if name in names), None)
+        present_elevations = [name for name in _ELEVATION_NAMES if name in names]
+        if len(present_elevations) > 1:
+            warnings.warn(
+                f"{self.path!r} carries both {present_elevations!r}; only "
+                f"{present_elevations[0]!r} becomes node_z and the rest are dropped",
+                stacklevel=5,
+            )
+        elevation = present_elevations[0] if present_elevations else None
         if elevation is not None:
             node_z = self._variable(
                 group, elevation, point_dim, volume_dim, times, time_dim
@@ -537,6 +565,15 @@ class _SwwReader:
             )
             return None
         has_time = times is not None and time_dim is not None and time_dim in dim_names
+        if has_time and dim_names[0] != time_dim:
+            # shape is read in the file's stored order while the dimension labels are
+            # built time-first, so a time axis anywhere but first would contradict them.
+            # ANUGA always stores (time, points); a file that does not is refused rather
+            # than read transposed.
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} variable {name!r} stores its time axis at position "
+                f"{dim_names.index(time_dim)}, not first; only (time, ...) order is read"
+            )
         loader = _SwwLoader(self.path, name)
         return ParsedVariable(
             location=location,
