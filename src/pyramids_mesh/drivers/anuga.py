@@ -27,8 +27,10 @@ from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 
-gdal.UseExceptions()
-osr.UseExceptions()
+# GDAL exceptions are enabled per operation with ``gdal.ExceptionMgr`` rather than
+# globally at import: importing a driver must not mutate the interpreter's GDAL
+# state for everything else, and the try/except RuntimeError guards here need
+# exceptions on only while they run.
 
 # The arrays that make a NetCDF file a SWW: a triangle table plus node coordinates.
 _VOLUMES = "volumes"
@@ -146,14 +148,15 @@ class SwwDriver(BaseDriver):
         Returns:
             bool: ``True`` when the defining arrays are present.
         """
-        try:
-            dataset = gdal.OpenEx(path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
-        except RuntimeError:
-            return False
-        try:
-            names = set(dataset.GetRootGroup().GetMDArrayNames())
-        finally:
-            dataset.Close()
+        with gdal.ExceptionMgr(useExceptions=True):
+            try:
+                dataset = gdal.OpenEx(path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
+            except RuntimeError:
+                return False
+            try:
+                names = set(dataset.GetRootGroup().GetMDArrayNames())
+            finally:
+                dataset.Close()
         return {_VOLUMES, _X, _Y} <= names
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
@@ -336,12 +339,13 @@ class _SwwLoader:
 
     def __call__(self) -> np.ndarray:
         """Reopen the file and read this one array."""
-        dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
-        try:
-            array = dataset.GetRootGroup().OpenMDArray(self.array_name)
-            return np.asarray(array.ReadAsArray())
-        finally:
-            dataset.Close()
+        with gdal.ExceptionMgr(useExceptions=True):
+            dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
+            try:
+                array = dataset.GetRootGroup().OpenMDArray(self.array_name)
+                return np.asarray(array.ReadAsArray())
+            finally:
+                dataset.Close()
 
 
 class _SwwReader:
@@ -361,20 +365,32 @@ class _SwwReader:
             FileFormatNotSupportedError: On a missing defining array or an impossible
                 connectivity base.
         """
-        dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
-        try:
-            group = dataset.GetRootGroup()
-            names = set(group.GetMDArrayNames())
-            self._require(names)
-            node_x = np.asarray(group.OpenMDArray(_X).ReadAsArray(), dtype=np.float64)
-            node_y = np.asarray(group.OpenMDArray(_Y).ReadAsArray(), dtype=np.float64)
-            volumes_array = group.OpenMDArray(_VOLUMES)
-            faces, base = self._faces(volumes_array, len(node_x))
-            point_dim, volume_dim = self._topology_dims(volumes_array)
-            crs = self._crs(group)
-            variables = self._variables(group, names, point_dim, volume_dim)
-        finally:
-            dataset.Close()
+        with (
+            gdal.ExceptionMgr(useExceptions=True),
+            osr.ExceptionMgr(useExceptions=True),
+        ):
+            dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
+            try:
+                group = dataset.GetRootGroup()
+                names = set(group.GetMDArrayNames())
+                self._require(names)
+                node_x = np.asarray(
+                    group.OpenMDArray(_X).ReadAsArray(), dtype=np.float64
+                )
+                node_y = np.asarray(
+                    group.OpenMDArray(_Y).ReadAsArray(), dtype=np.float64
+                )
+                volumes_array = group.OpenMDArray(_VOLUMES)
+                faces, base = self._faces(volumes_array, len(node_x))
+                point_dim = group.OpenMDArray(_X).GetDimensions()[0].GetName()
+                volume_dim = volumes_array.GetDimensions()[0].GetName()
+                time_dim = self._time_dim(group, names)
+                crs = self._crs(group)
+                variables = self._variables(
+                    group, names, point_dim, volume_dim, time_dim
+                )
+            finally:
+                dataset.Close()
         return ParsedMesh(
             node_x=node_x,
             node_y=node_y,
@@ -419,15 +435,17 @@ class _SwwReader:
         return faces, base
 
     @staticmethod
-    def _topology_dims(volumes_array) -> tuple[str, str]:
-        """Return the point and volume dimension names.
+    def _time_dim(group, names: set[str]) -> str | None:
+        """Return the time coordinate's own dimension name, or ``None`` if there is none.
 
-        The volume dimension is ``volumes``' first; the point dimension is ``x``'s. A
-        variable's location is then resolved by which of these its dimensions name --
-        reliable where comparing counts would be ambiguous in a tiny file.
+        Derived from the ``time`` array rather than assumed, for the same reason the
+        point and volume dimensions are: a variable's time axis is recognised by the
+        dimension the file's own time coordinate uses, not by a hardcoded literal.
         """
-        volume_dim = volumes_array.GetDimensions()[0].GetName()
-        return "number_of_points", volume_dim
+        if _TIME not in names:
+            return None
+        dimensions = group.OpenMDArray(_TIME).GetDimensions()
+        return dimensions[0].GetName() if dimensions else None
 
     def _crs(self, group) -> str | None:
         """Return a validated CRS from a root attribute, or ``None``.
@@ -452,23 +470,33 @@ class _SwwReader:
         return None
 
     def _variables(
-        self, group, names: set[str], point_dim: str, volume_dim: str
+        self,
+        group,
+        names: set[str],
+        point_dim: str,
+        volume_dim: str,
+        time_dim: str | None,
     ) -> dict[str, ParsedVariable]:
         """Build a lazy variable for elevation and every result array.
 
         Elevation is emitted as a node-located ``node_z`` variable, and every other
         non-structural array is placed by its dimension names. A variable on neither the
-        point nor the volume dimension is skipped with a warning.
+        point nor the volume dimension is skipped with a warning -- the elevation
+        included, which is why its assignment is guarded like the rest.
         """
         variables: dict[str, ParsedVariable] = {}
         times = self._times(group, names)
         elevation = next((name for name in _ELEVATION_NAMES if name in names), None)
         if elevation is not None:
-            variables["node_z"] = self._variable(
-                group, elevation, point_dim, volume_dim, times
+            node_z = self._variable(
+                group, elevation, point_dim, volume_dim, times, time_dim
             )
+            if node_z is not None:
+                variables["node_z"] = node_z
         for name in sorted(names - _STRUCTURAL):
-            variable = self._variable(group, name, point_dim, volume_dim, times)
+            variable = self._variable(
+                group, name, point_dim, volume_dim, times, time_dim
+            )
             if variable is not None:
                 variables[name] = variable
         return variables
@@ -486,6 +514,7 @@ class _SwwReader:
         point_dim: str,
         volume_dim: str,
         times: np.ndarray | None,
+        time_dim: str | None,
     ) -> ParsedVariable | None:
         """Build one lazy variable, placed by its dimension names.
 
@@ -507,7 +536,7 @@ class _SwwReader:
                 stacklevel=5,
             )
             return None
-        has_time = times is not None and "number_of_timesteps" in dim_names
+        has_time = times is not None and time_dim is not None and time_dim in dim_names
         loader = _SwwLoader(self.path, name)
         return ParsedVariable(
             location=location,

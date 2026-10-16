@@ -329,3 +329,21 @@ def test_sww_without_elevation_has_no_node_z(tmp_path):
     dataset = SwwDriver().read(_write(tmp_path, elevation=None))
     assert "node_z" not in dataset.data_variable_names
     assert "stage" in dataset.data_variable_names
+
+
+def test_sww_elevation_on_foreign_dimension_is_skipped_not_crashed(tmp_path):
+    """Elevation on a dimension the mesh cannot place is skipped, not a None crash.
+
+    The node_z assignment is guarded like the result-variable loop; before the guard an
+    unplaceable elevation set ``variables['node_z'] = None`` and then crashed in the base
+    builder dereferencing ``None.attributes``.
+    """
+    path = _write(
+        tmp_path,
+        elevation=None,
+        foreign_variables={"elevation": [1.0, 2.0, 3.0, 4.0, 5.0]},
+    )
+    with pytest.warns(UserWarning, match="neither the node nor the face dimension"):
+        dataset = SwwDriver().read(path)
+
+    assert "node_z" not in dataset.data_variable_names
