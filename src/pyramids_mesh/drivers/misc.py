@@ -26,7 +26,8 @@ from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 from pyramids_mesh._base import BaseDriver, ParsedMesh
 from pyramids_mesh._text import native_id_map
 
-osr.UseExceptions()
+# osr exceptions are enabled per call with ``osr.ExceptionMgr`` rather than globally
+# at import, so importing the driver does not mutate the interpreter's GDAL state.
 
 # A Mike21 element pads a triangle in a quad mesh with a trailing 0. Node ids are
 # 1-based, so 0 is never a real node and is read as the fill marker.
@@ -246,20 +247,21 @@ def _projection_to_crs(projection: str) -> str | int | None:
     """
     if not projection:
         return None
-    if projection.isdigit():
-        reference = osr.SpatialReference()
-        try:
-            reference.ImportFromEPSG(int(projection))
-        except RuntimeError:
-            return None
-        return int(projection)
-    if projection.upper().startswith(_WKT_PREFIXES):
-        reference = osr.SpatialReference()
-        try:
-            reference.ImportFromWkt(projection)
-        except RuntimeError:
-            return None
-        return projection if reference.Validate() == 0 else None
+    with osr.ExceptionMgr(useExceptions=True):
+        if projection.isdigit():
+            reference = osr.SpatialReference()
+            try:
+                reference.ImportFromEPSG(int(projection))
+            except RuntimeError:
+                return None
+            return int(projection)
+        if projection.upper().startswith(_WKT_PREFIXES):
+            reference = osr.SpatialReference()
+            try:
+                reference.ImportFromWkt(projection)
+            except RuntimeError:
+                return None
+            return projection if reference.Validate() == 0 else None
     # A DHI-internal name such as UTM-32 or LONG/LAT: a label, not a datum.
     return None
 
@@ -269,18 +271,29 @@ class _Mike21Scan:
 
     def __init__(self, path: str) -> None:
         self.path = path
-        self.lines = self._read_lines(path)
+        self.lines, self.raw_lines = self._read_lines(path)
         self.cursor = 0
 
     @staticmethod
-    def _read_lines(path: str) -> list[list[str]]:
-        """Return the file's non-blank lines, each split into fields.
+    def _read_lines(path: str) -> tuple[list[list[str]], list[str]]:
+        """Return the file's non-blank lines, both split into fields and raw.
+
+        The raw lines are kept so the projection field on the header can be preserved
+        verbatim: splitting and re-joining on whitespace would normalise any tab or
+        multi-space run inside a WKT string before it reaches PROJ.
 
         ``utf-8-sig`` drops a byte-order mark, as the text helpers do, so a header saved
         by a Windows editor is not refused for that alone.
         """
+        split: list[list[str]] = []
+        raw: list[str] = []
         with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
-            return [line.split() for raw in handle if (line := raw.strip())]
+            for line in handle:
+                stripped = line.strip()
+                if stripped:
+                    split.append(stripped.split())
+                    raw.append(stripped)
+        return split, raw
 
     def _next(self, what: str) -> list[str]:
         """Return the next record, or refuse a file that ends before one is due."""
@@ -342,8 +355,17 @@ class _Mike21Scan:
                 f"{_ELEMENT_HEADER_FIELDS + 1} fields, found {len(header)}"
             )
         node_count = _as_int(header[2], "header", self.path)
-        projection = " ".join(header[3:])
-        return node_count, _projection_to_crs(projection)
+        # The projection is everything after the third field, taken from the raw header
+        # line so a WKT string keeps its internal spacing rather than being re-joined on
+        # single spaces. The header is always the first non-blank line, so raw_lines[0].
+        raw_header = self.raw_lines[0]
+        projection = raw_header.split(maxsplit=_ELEMENT_HEADER_FIELDS)
+        projection_text = (
+            projection[_ELEMENT_HEADER_FIELDS]
+            if len(projection) > _ELEMENT_HEADER_FIELDS
+            else ""
+        )
+        return node_count, _projection_to_crs(projection_text.strip())
 
     def _read_nodes(
         self, node_count: int

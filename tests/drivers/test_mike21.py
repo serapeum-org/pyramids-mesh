@@ -317,3 +317,22 @@ def test_mike21_non_integer_node_count_is_refused(tmp_path):
 """
     with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
         Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_wkt_projection_with_internal_spacing_is_preserved(tmp_path):
+    """A WKT projection keeps its internal spacing instead of being whitespace-collapsed.
+
+    The projection is taken from the raw header line, so a WKT carrying tabs or runs of
+    spaces reaches PROJ as written rather than re-joined on single spaces.
+    """
+    from osgeo import osr
+
+    reference = osr.SpatialReference()
+    reference.ImportFromEPSG(32632)
+    wkt = reference.ExportToWkt()
+    spaced = wkt.replace(",", ",  ")  # introduce double spaces PROJ still parses
+    text = _UNIT_SQUARE.replace("LONG/LAT", spaced)
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+
+    assert dataset.crs_wkt is not None
+    assert "UTM" in dataset.crs_wkt
