@@ -549,3 +549,35 @@ end_header
 """
         with pytest.raises(FileFormatNotSupportedError, match="per-face property"):
             PlyDriver().read(_write(tmp_path, text))
+
+
+def test_ply_extra_empty_element_type_is_ignored(tmp_path):
+    """An empty element that is neither vertex nor face is parsed past, not fatal.
+
+    Its header declaration is read and its (zero) instances contribute nothing; the mesh
+    still comes from the vertex and face elements. An extra element carrying data rows is
+    a separate, unsupported case -- the reader expects the vertex block then the face
+    block with nothing between.
+    """
+    text = """ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element edge 0
+property int vertex1
+element face 1
+property list uchar int vertex_indices
+end_header
+0.0 0.0 1.0
+1.0 0.0 1.0
+1.0 1.0 1.0
+3 0 1 2
+"""
+    path = tmp_path / "edges.ply"
+    path.write_text(text, encoding="utf-8")
+    dataset = PlyDriver().read(str(path))
+
+    assert dataset.mesh.n_node == 3
+    assert dataset.mesh.n_face == 1

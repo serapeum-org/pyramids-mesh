@@ -482,9 +482,9 @@ class _SelafinReader:
         n_variables = len(self.names)
         per_step = 1 + n_variables
         remaining = len(offsets) - self.header_records
-        if remaining < 0:
-            # A header that read cleanly cannot leave fewer records than it consumed, so
-            # this only trips on a file whose index is inconsistent with its header.
+        if remaining < 0:  # pragma: no cover - a header that read cleanly cannot leave
+            # fewer records than it consumed; a defensive guard against an inconsistent
+            # index, not reachable from a file that parsed its header.
             return np.empty(0, dtype=np.float64), {}
         n_time = remaining // per_step
         if remaining % per_step:

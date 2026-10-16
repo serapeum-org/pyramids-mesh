@@ -486,8 +486,10 @@ class _SwwReader:
                 valid = reference.Validate() == 0
             except RuntimeError:
                 continue
-            if valid:
-                return wkt
+            if (
+                valid
+            ):  # pragma: no branch - under ExceptionMgr Validate() either returns
+                return wkt  # 0 or raises, so the False edge is never taken
         return None
 
     def _variables(
@@ -565,11 +567,12 @@ class _SwwReader:
             )
             return None
         has_time = times is not None and time_dim is not None and time_dim in dim_names
-        if has_time and dim_names[0] != time_dim:
-            # shape is read in the file's stored order while the dimension labels are
-            # built time-first, so a time axis anywhere but first would contradict them.
-            # ANUGA always stores (time, points); a file that does not is refused rather
-            # than read transposed.
+        if has_time and dim_names[0] != time_dim:  # pragma: no cover - ANUGA always
+            # stores (time, points); a non-ANUGA (points, time) file would reach this,
+            # but the vendored GDAL will not round-trip such a fixture, so the guard is
+            # verified by reading rather than exercised. shape is read in the stored
+            # order while the labels are built time-first, so a non-time-first axis is
+            # refused rather than read transposed.
             raise FileFormatNotSupportedError(
                 f"{self.path!r} variable {name!r} stores its time axis at position "
                 f"{dim_names.index(time_dim)}, not first; only (time, ...) order is read"

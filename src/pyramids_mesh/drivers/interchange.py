@@ -259,8 +259,8 @@ class XmsTinDriver(BaseDriver):
         try:
             for keyword, _fields in iter_records(path):
                 return keyword.upper() == _TIN_HEADER
-        except OSError:
-            return False
+        except OSError:  # pragma: no cover - can_open checks isfile first, so the open
+            return False  # here does not fail in practice; a defensive guard only
         return False
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:

@@ -636,3 +636,11 @@ def test_dat_old_format_short_vector_row_is_refused(mesh, tmp_path):
     text = "VECTOR\nND 4\nTS 0.0\n1.0 -1.0\n2.0\n3.0 -3.0\n4.0 -4.0\n"
     with pytest.raises(FileFormatNotSupportedError, match="short TS row"):
         _attach(mesh, tmp_path, text, name="vel.dat")
+
+
+def test_dat_old_format_unknown_card_is_ignored(mesh, tmp_path):
+    """An unknown card in the old dialect is skipped, as MDAL skips its unknowns."""
+    text = "SCALAR\nND 4\nWHATEVER 1 2\nTS 0.0\n1.0\n2.0\n3.0\n4.0\n"
+    attached = _attach(mesh, tmp_path, text, name="depth.dat")
+
+    assert attached.get("depth").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]

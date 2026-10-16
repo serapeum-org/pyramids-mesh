@@ -349,3 +349,12 @@ def test_mike21_importable_but_invalid_wkt_falls_back_to_none(tmp_path):
     dataset = Mike21Driver().read(_write(tmp_path, text))
 
     assert dataset.crs_wkt is None
+
+
+def test_mike21_blank_lines_between_records_are_skipped(tmp_path):
+    """Blank lines between records are ignored rather than breaking the fixed order."""
+    text = _UNIT_SQUARE.replace("2 3 21\n", "\n2 3 21\n")
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
