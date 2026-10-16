@@ -21,7 +21,7 @@ from pyramids.netcdf.ugrid import (
 )
 
 # Drivers that need no optional extra, so discovery must always find them.
-DEPENDENCY_FREE_DRIVERS: set[str] = {"2dm"}
+DEPENDENCY_FREE_DRIVERS: set[str] = {"2dm", "dat"}
 
 # Drivers gated behind an optional extra; present only when the extra is installed.
 OPTIONAL_DRIVERS: set[str] = set()

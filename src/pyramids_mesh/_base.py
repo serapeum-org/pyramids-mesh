@@ -110,6 +110,12 @@ class ParsedVariable:
         time_values: The time coordinate, when the variable varies in time.
         active: A per-step active (wet/dry) mask, attached as a sibling variable rather
             than folded into the values (see design section 21.2).
+        attributes: Extra per-variable metadata to carry onto the built
+            ``MeshVariable``. It exists because a format often declares something with
+            no field of its own here and no home on the dataset -- DAT's ``RT_JULIAN``
+            reference time and ``TIMEUNITS``, or a NetCDF variable's CF attributes.
+            ``time_values`` is reserved: it is set from ``time_values`` and an entry of
+            that name here would contradict it.
     """
 
     location: str
@@ -121,6 +127,7 @@ class ParsedVariable:
     nodata: float | None = None
     time_values: np.ndarray | None = None
     active: np.ndarray | None = None
+    attributes: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -719,15 +726,67 @@ class BaseDriver:
             stacklevel=2,
         )
 
+    def _build_data_variables(
+        self, variables: dict[str, ParsedVariable], mesh_name: str
+    ) -> dict[str, MeshVariable]:
+        """Turn parsed data variables into ``MeshVariable`` objects.
+
+        A per-step active mask on a variable becomes a sibling variable named
+        ``<var>_active`` rather than being folded into the values as NaN, so the
+        information survives and stays inspectable (design section 21.2).
+
+        Split out of :meth:`_build_variables` so the results-only path can share it: a
+        ``needs_mesh`` driver's ``read_data`` returns variables for a mesh it did not
+        parse, so it has no :class:`ParsedMesh` to hand over, but it must build its
+        variables -- and its active siblings -- exactly the way ``read`` does.
+
+        Args:
+            variables: The parsed variables, keyed by name.
+            mesh_name: The mesh name every variable is built under.
+
+        Returns:
+            dict[str, MeshVariable]: The variables, plus one ``<var>_active`` sibling
+                for each variable carrying an active mask.
+
+        Raises:
+            ValueError: If an active mask's ``<var>_active`` name is one the file
+                already defines as a variable of its own, where one would silently
+                replace the other.
+        """
+        built: dict[str, MeshVariable] = {}
+        for var_name, parsed_var in variables.items():
+            built[var_name] = self._build_variable(var_name, parsed_var, mesh_name)
+            if parsed_var.active is not None:
+                active_name = f"{var_name}_active"
+                if active_name in variables:
+                    raise ValueError(
+                        f"the active mask of {var_name!r} would be attached as "
+                        f"{active_name!r}, which this file already defines as a "
+                        f"variable of its own"
+                    )
+                built[active_name] = MeshVariable(
+                    name=active_name,
+                    # The mask describes its parent's elements, so it lives where the
+                    # parent lives, carries the parent's dimensions and -- enforced by
+                    # `check_shapes` -- the parent's shape. Hardcoding "face" mislabelled
+                    # it and gave it a shape that contradicted the location.
+                    location=parsed_var.location,
+                    mesh_name=mesh_name,
+                    shape=tuple(np.shape(parsed_var.active)),
+                    dimensions=_dimensions_for(parsed_var),
+                    _data=np.asarray(parsed_var.active),
+                )
+        return built
+
     def _build_variables(
         self, parsed: ParsedMesh, name: str
     ) -> dict[str, MeshVariable]:
         """Turn parsed variables (and ``node_z``) into ``MeshVariable`` objects.
 
-        A per-step active mask on a variable becomes a sibling face-located variable
-        named ``<var>_active`` rather than being folded into the values as NaN, so the
-        information survives and stays inspectable (design section 21.2). ``node_z``
-        becomes a node-located variable, never a coordinate (design section 6).
+        The variables themselves go through :meth:`_build_data_variables`, which the
+        results-only ``read_data`` path shares. ``node_z`` is handled here because only
+        a parsed *mesh* carries it, and it becomes a node-located variable rather than a
+        coordinate (design section 6).
 
         Args:
             parsed: The validated mesh carrying the variables.
@@ -743,29 +802,7 @@ class BaseDriver:
                 coordinate and a variable of that name. Either way one would silently
                 replace the other.
         """
-        built: dict[str, MeshVariable] = {}
-        for var_name, parsed_var in parsed.variables.items():
-            built[var_name] = self._build_variable(var_name, parsed_var, name)
-            if parsed_var.active is not None:
-                active_name = f"{var_name}_active"
-                if active_name in parsed.variables:
-                    raise ValueError(
-                        f"the active mask of {var_name!r} would be attached as "
-                        f"{active_name!r}, which this file already defines as a "
-                        f"variable of its own"
-                    )
-                built[active_name] = MeshVariable(
-                    name=active_name,
-                    # The mask describes its parent's elements, so it lives where the
-                    # parent lives, carries the parent's dimensions and -- enforced by
-                    # `check_shapes` -- the parent's shape. Hardcoding "face" mislabelled
-                    # it and gave it a shape that contradicted the location.
-                    location=parsed_var.location,
-                    mesh_name=name,
-                    shape=tuple(np.shape(parsed_var.active)),
-                    dimensions=_dimensions_for(parsed_var),
-                    _data=np.asarray(parsed_var.active),
-                )
+        built = self._build_data_variables(parsed.variables, name)
         if parsed.node_z is not None:
             if "node_z" in parsed.variables:
                 raise ValueError(
@@ -785,8 +822,21 @@ class BaseDriver:
     def _build_variable(
         var_name: str, parsed_var: ParsedVariable, name: str
     ) -> MeshVariable:
-        """Build one ``MeshVariable`` from a :class:`ParsedVariable`."""
-        attributes: dict[str, Any] = {}
+        """Build one ``MeshVariable`` from a :class:`ParsedVariable`.
+
+        Raises:
+            ValueError: If ``attributes`` carries a ``time_values`` entry of its own.
+                That key is set from ``time_values``, so accepting both would let a
+                driver silently publish a time axis that contradicts the one the
+                variable's dimensions were labelled from.
+        """
+        attributes: dict[str, Any] = dict(parsed_var.attributes)
+        if "time_values" in attributes:
+            raise ValueError(
+                f"variable {var_name!r} sets 'time_values' in attributes, which is "
+                f"reserved: it is written from ParsedVariable.time_values, and two "
+                f"sources for one time axis can disagree"
+            )
         if parsed_var.time_values is not None:
             attributes["time_values"] = np.asarray(parsed_var.time_values)
         dimensions = _dimensions_for(parsed_var)

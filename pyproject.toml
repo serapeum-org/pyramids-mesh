@@ -123,6 +123,7 @@ notebook = [
 # install stays useful.
 [project.entry-points."pyramids.mesh_drivers"]
 2dm = "pyramids_mesh.drivers.sms:TwoDmDriver"
+dat = "pyramids_mesh.drivers.sms:DatDriver"
 
 
 [project.urls]

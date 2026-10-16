@@ -1,9 +1,9 @@
-"""SMS-family drivers: the 2DM mesh frame, with the results-only DAT still to come.
+"""SMS-family drivers: the 2DM mesh frame and the results-only DAT.
 
-2DM is the reference driver every later one copies (task D1), and the only one this
-module holds today. DAT carries values but no topology, so when it lands it will declare
-``needs_mesh`` and implement ``read_data`` rather than ``read`` (task D2). See
-``planning/design.md`` section 20.1.
+2DM is the reference driver every later one copies (task D1). DAT carries values but no
+topology, so it declares ``needs_mesh`` and implements ``read_data`` rather than ``read``
+(task D2): a results file is attached to a mesh the caller already has, through
+``UgridDataset.attach_data``. See ``planning/design.md`` section 20.1.
 
 The 2DM structure here was verified against MDAL's ``mdal_2dm.cpp``: a plain-text file
 whose first significant line is ``MESH2D``, then one record per line.
@@ -13,6 +13,8 @@ name, and nothing is synthesised that ``to_file`` would not write.
 """
 
 from __future__ import annotations
+
+from typing import Iterator
 
 import numpy as np
 
@@ -25,7 +27,7 @@ import numpy as np
 # _base.py needs for the same reason). Until then a patch release renaming the private
 # module would break this import, so `tests/test_package.py` keeps a canary on it.
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, UgridDataset
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh._text import iter_records, native_id_map
@@ -63,6 +65,59 @@ _COMMENT = "#"
 # characters rather than raising.
 _SNIFF_BLOCK = 4096
 _SNIFF_LIMIT = 256 * 1024
+
+# -- DAT cards (task D2) ----------------------------------------------------------
+#
+# The new dialect opens with DATASET. The old one has no such line and is recognised by
+# any of `_OLD_DIALECT_CARDS` appearing in the sniffed prefix -- MDAL keeps a separate
+# parser for it, and the two differ in TS arity (below).
+_DATASET = "DATASET"
+_OLD_DIALECT_CARDS = ("SCALAR", "VECTOR", "TS", "TIMEUNITS")
+
+_BEGIN_SCALAR = "BEGSCL"
+_BEGIN_VECTOR = "BEGVEC"
+_END_DATASET = "ENDDS"
+_OBJTYPE = "OBJTYPE"
+_NODE_COUNT = "ND"
+_CELL_COUNT = "NC"
+_NAME = "NAME"
+_TIME_UNITS = "TIMEUNITS"
+_REFERENCE_TIME = "RT_JULIAN"
+_TIMESTEP = "TS"
+
+# Cards that are only meaningful inside an open BEGSCL/BEGVEC group. MDAL raises on each
+# of these outside one, and so does this driver: a NAME or TS with no group to attach to
+# means the file is malformed, and guessing a group would invent structure.
+_GROUP_ONLY_CARDS = (_NAME, _TIME_UNITS, _TIMESTEP)
+
+# `TS <istat> <time>` carries at least these many fields per dialect. The old dialect
+# drops a field, so a parser written only for the new one reads the *time* as the active
+# flag and silently yields a one-timestep series -- the trap this split exists to avoid.
+_TS_FIELDS_NEW = 2
+_TS_FIELDS_OLD = 1
+
+# The smallest valid DAT: one scalar group, two timesteps, four node values each. It
+# matches `build_minimal_fixture`'s 2DM -- four nodes, two cells -- so the two can be
+# attached to each other in a test without a count mismatch.
+_MINIMAL_DAT_FIXTURE = """DATASET
+OBJTYPE mesh2d
+BEGSCL
+ND 4
+NC 2
+NAME depth
+TIMEUNITS SECONDS
+TS 0 0.0
+0.5
+0.6
+0.7
+0.8
+TS 0 3600.0
+1.5
+1.6
+1.7
+1.8
+ENDDS
+"""
 
 # The smallest valid 2DM: the unit square split into two counter-clockwise triangles.
 _MINIMAL_FIXTURE = """MESH2D
@@ -364,6 +419,247 @@ class TwoDmDriver(BaseDriver):
         scan = _Scan()
         scan.run(path)
         return scan.build(path)
+
+
+class DatDriver(BaseDriver):
+    """Reader for the SMS ASCII DAT results format.
+
+    DAT carries values and no topology -- MDAL marks it ``Mesh Frame Support: N/A`` --
+    so this driver declares ``needs_mesh`` and implements ``read_data`` instead of
+    ``read``. The values attach to a mesh the caller already holds, through
+    ``UgridDataset.read_file("domain.2dm").attach_data("depth.dat")``.
+
+    Two dialects are supported. The **new** one opens with a ``DATASET`` card; the
+    **old** one has no such line and is recognised by ``SCALAR``, ``VECTOR``, ``TS`` or
+    ``TIMEUNITS`` appearing in the file. They differ in ``TS`` arity, which is why the
+    distinction is tracked rather than ignored: a parser written only for the new
+    dialect reads an old file's *time* as its active flag and silently produces a
+    one-timestep series.
+
+    Documented limitations:
+        - **The element-count check is the only thing tying a DAT to its mesh.** Nothing
+          in the file identifies the mesh it belongs to, so ``ND`` is checked against
+          the dataset's node count and ``NC`` against its face count before any value
+          is read. A file declaring neither is refused rather than hoped about. Two
+          meshes with coincidentally equal counts stay indistinguishable -- a property
+          of the format, not of this driver.
+        - A ``BEGVEC`` group yields **two scalar variables**, ``<name>_x`` and
+          ``<name>_y``, rather than one two-component variable: ``MeshVariable`` carries
+          a location and a shape over elements and time, with no component axis for a
+          vector. Both keep the group's name as a prefix so they stay recognisable as
+          one quantity.
+        - Values are **node-located** when ``ND`` is declared, which is what SMS
+          writes. A file declaring only ``NC`` is read as face-located. With both
+          declared the group is node-located, the SMS convention for
+          ``BEGSCL``/``BEGVEC``; ``OBJTYPE`` is recorded but no SMS writer puts a
+          location in it.
+        - The per-step active mask becomes a **separate face-located variable**
+          ``<name>_active``, never folded into the values as NaN (design section 21.2).
+          It is deliberately not attached through ``ParsedVariable.active``: that gives
+          the sibling its parent's location and shape, and a DAT active block counts
+          *cells* while a node-located group counts *nodes*.
+        - **The active block is read where MDAL reads it: right after the ``TS`` card,
+          before the values.** This is the one part of the layout no vendor file was
+          available to confirm, so a mismatch is made loud rather than silent -- the
+          flags must all be ``0`` or ``1``, and a block of real values in their place
+          is refused. A file whose node and cell counts are equal defeats that check,
+          which is recorded here because nothing in the data can catch it.
+        - ``RT_JULIAN`` is carried as a ``reference_time`` entry in **each variable's
+          attributes**. It cannot reach the dataset's global attributes: ``attach_data``
+          merges the variables a driver returns and keeps its own ``global_attributes``
+          untouched, so a driver has no way to add one.
+        - DAT carries no CRS and no topology, so neither is produced here.
+
+    Examples:
+        - Attach a DAT to the mesh it belongs to. Each group arrives as a variable
+          carrying the file's time axis:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids.netcdf.ugrid import UgridDataset
+            >>> from pyramids_mesh.drivers.sms import (
+            ...     build_minimal_fixture,
+            ...     build_minimal_fixture_dat,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     mesh_path = os.path.join(directory, "domain.2dm")
+            ...     dat_path = os.path.join(directory, "depth.dat")
+            ...     build_minimal_fixture(mesh_path)
+            ...     build_minimal_fixture_dat(dat_path)
+            ...     attached = UgridDataset.read_file(mesh_path).attach_data(dat_path)
+            >>> sorted(attached.data_variable_names)
+            ['depth', 'material', 'node_z']
+            >>> depth = attached.get("depth")
+            >>> depth.location, depth.shape
+            ('node', (2, 4))
+            >>> depth.data.tolist()
+            [[0.5, 0.6, 0.7, 0.8], [1.5, 1.6, 1.7, 1.8]]
+
+        - ``read`` is not how a results-only format is reached, and says so rather than
+          failing obscurely:
+
+            >>> from pyramids_mesh.drivers.sms import DatDriver
+            >>> try:
+            ...     DatDriver().read("depth.dat")
+            ... except ValueError as error:
+            ...     print(str(error).split(";")[0])
+            dat carries values but no mesh, so it has no read()
+
+        - A count disagreeing with the mesh is refused, reporting both numbers, because
+          nothing else in the file ties it to a topology:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids.netcdf.ugrid import UgridDataset
+            >>> from pyramids_mesh.drivers.sms import build_minimal_fixture
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     mesh_path = os.path.join(directory, "domain.2dm")
+            ...     dat_path = os.path.join(directory, "wrong.dat")
+            ...     build_minimal_fixture(mesh_path)
+            ...     with open(dat_path, "w", encoding="utf-8") as handle:
+            ...         print("DATASET", file=handle)
+            ...         print("BEGSCL", file=handle)
+            ...         print("ND 9", file=handle)
+            ...         print("NAME depth", file=handle)
+            ...         print("ENDDS", file=handle)
+            ...     try:
+            ...         UgridDataset.read_file(mesh_path).attach_data(dat_path)
+            ...     except ValueError as error:
+            ...         print(str(error).split(": ")[-1])
+            declares ND 9 but the mesh has 4 nodes
+    """
+
+    name = "dat"
+    long_name = "SMS ASCII DAT results"
+    suffixes = (".dat",)
+    api_version = MESH_DRIVER_API_VERSION
+    # `needs_mesh` is what makes `read_data` the entry point rather than `read`: the
+    # format carries no topology, so the mesh has to come from the caller.
+    capabilities = frozenset({"needs_mesh", "read_data"})
+
+    def _sniff(self, path: str) -> bool:
+        """Report whether the file looks like either DAT dialect.
+
+        The new dialect is a ``DATASET`` first significant line. The old one has no such
+        card, so a bounded prefix is scanned for the cards MDAL keys its own old-format
+        detection on. Scanning a prefix keeps ``can_open`` cheap on a large results
+        file, at the cost of missing a dialect marker buried past the limit -- the same
+        bound the 2DM sniff accepts.
+
+        Args:
+            path: The file to inspect.
+
+        Returns:
+            bool: ``True`` when either dialect is recognised.
+        """
+        with open(path, "rb") as handle:
+            prefix = handle.read(_SNIFF_LIMIT)
+        significant = [
+            stripped
+            for line in prefix.decode("utf-8-sig", errors="replace").splitlines()
+            if (stripped := line.strip()) and not stripped.startswith(_COMMENT)
+        ]
+        if not significant:
+            return False
+        if significant[0].split()[0].upper() == _DATASET:
+            return True
+        # The old dialect has no header card, so it is recognised by the cards it must
+        # contain. Matching the first token only keeps a file that merely mentions one
+        # of those words in a comment or a dataset name from qualifying.
+        return any(
+            line.split()[0].upper() in _OLD_DIALECT_CARDS for line in significant
+        )
+
+    def read(
+        self, path: str, *, mesh_name: str | None = None, lazy: bool = True
+    ) -> UgridDataset:
+        """Refuse the mesh-reading entry point, naming the one to use instead.
+
+        Args:
+            path: The results file, named in the message.
+            mesh_name: Unused.
+            lazy: Unused.
+
+        Returns:
+            UgridDataset: Never. The signature matches the driver protocol so the
+                refusal is a clear message rather than a ``TypeError``.
+
+        Raises:
+            ValueError: Always. A results-only format has no topology to return, and an
+                empty mesh would be a plausible-looking wrong answer.
+        """
+        raise ValueError(
+            f"{self.name} carries values but no mesh, so it has no read(); attach it to "
+            f"a mesh you already have with "
+            f"UgridDataset.read_file(mesh_path).attach_data({path!r})"
+        )
+
+    def read_data(
+        self, path: str, dataset: UgridDataset, *, lazy: bool = True
+    ) -> dict[str, MeshVariable]:
+        """Read a DAT file's groups as variables for a mesh the caller supplies.
+
+        The declared element counts are checked against ``dataset`` before any value is
+        read; the class's documented limitations explain why that check is the whole
+        safeguard.
+
+        Args:
+            path: The DAT file to read.
+            dataset: The mesh the values will attach to, for the element-count check.
+            lazy: Accepted for the driver protocol and ignored. DAT is plain text with
+                no record index to seek, so there is nothing to defer, and the driver
+                does not declare ``lazy_data``.
+
+        Returns:
+            dict[str, MeshVariable]: One variable per scalar group, two per vector
+                group, plus one ``<name>_active`` face variable per group that carries
+                an active mask.
+
+        Raises:
+            FileFormatNotSupportedError: If the file matches neither dialect, a card
+                appears outside the group it belongs to, a group opens while one is open
+                or ends when none is, a value block is short or non-numeric, two groups
+                would produce the same variable name, or an active block holds anything
+                but ``0`` and ``1``.
+            ValueError: If a declared element count disagrees with ``dataset``, or the
+                file declares neither count.
+        """
+        scan = _DatScan(
+            path, n_node=int(dataset.mesh.n_node), n_face=int(dataset.mesh.n_face)
+        )
+        scan.run()
+        return self._build_data_variables(scan.build(), dataset.mesh_name)
+
+
+def build_minimal_fixture_dat(path: str) -> None:
+    """Write the smallest valid DAT file, matching the 2DM fixture's element counts.
+
+    Named per driver rather than ``build_minimal_fixture`` because this module holds two
+    drivers; the invariant harness looks for ``build_minimal_fixture_<driver name>``
+    first and falls back to the shared name.
+
+    Args:
+        path: Where to write the file.
+
+    Examples:
+        - One scalar group over two timesteps, with a value per node of the 2DM
+          fixture's four:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.sms import build_minimal_fixture_dat
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "minimal.dat")
+            ...     build_minimal_fixture_dat(path)
+            ...     with open(path, encoding="utf-8") as handle:
+            ...         lines = handle.read().splitlines()
+            >>> lines[0]
+            'DATASET'
+            >>> len([line for line in lines if line.startswith("TS ")])
+            2
+    """
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(_MINIMAL_DAT_FIXTURE)
 
 
 def build_minimal_fixture(path: str) -> None:
@@ -765,3 +1061,383 @@ def _index_of(native: int, node_map: dict[int, int], path: str) -> int:
         raise ValueError(
             f"{path!r} references node id {native}, which no ND record defines"
         ) from None
+
+
+class _DatGroup:
+    """One ``BEGSCL``/``BEGVEC`` group's records, collected in file order."""
+
+    def __init__(self, vector: bool) -> None:
+        self.vector = vector
+        self.name: str | None = None
+        self.time_units: str | None = None
+        self.times: list[float] = []
+        # One entry per timestep, each ``(n_element, components)``.
+        self.values: list[np.ndarray] = []
+        # One entry per timestep when the group carries active masks, else empty.
+        self.active: list[np.ndarray] = []
+
+
+class _DatScan:
+    """One DAT file's groups, checked against the mesh before any value is read."""
+
+    def __init__(self, path: str, *, n_node: int, n_face: int) -> None:
+        self.path = path
+        self.n_node = n_node
+        self.n_face = n_face
+        self.new_dialect = False
+        self.declared_nd: int | None = None
+        self.declared_nc: int | None = None
+        self.objtype: str | None = None
+        self.reference_time: float | None = None
+        self.counts_checked = False
+        self.groups: list[_DatGroup] = []
+        self.current: _DatGroup | None = None
+
+    def run(self) -> None:
+        """Stream the file once, reading each group's values as its ``TS`` cards appear.
+
+        Raises:
+            FileFormatNotSupportedError: If a group is left unterminated, the file holds
+                no group at all, or any card is malformed or misplaced.
+        """
+        records = iter_records(self.path, comment=_COMMENT)
+        for keyword, fields in records:
+            self._consume(keyword.upper(), fields, records)
+        if self.current is not None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} ends with a group still open: no {_END_DATASET} card"
+            )
+        if not self.groups:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} holds no {_BEGIN_SCALAR}/{_BEGIN_VECTOR} group, so "
+                f"there is no data in it to attach"
+            )
+
+    def _consume(
+        self,
+        upper: str,
+        fields: list[str],
+        records: Iterator[tuple[str, list[str]]],
+    ) -> None:
+        """Dispatch one card onto the matching collector.
+
+        A card this driver does not model is ignored rather than refused, as MDAL
+        ignores the ones it does not model: DAT has accumulated optional cards across
+        SMS versions, and refusing an unknown one would reject files that read fine.
+        """
+        if upper == _DATASET:
+            self.new_dialect = True
+        elif upper == _OBJTYPE:
+            # Recorded for completeness. No SMS writer puts a location in it, so it is
+            # deliberately not used to resolve one -- see the class's limitations.
+            self.objtype = fields[0] if fields else None
+        elif upper in (_BEGIN_SCALAR, _BEGIN_VECTOR):
+            self._open_group(upper)
+        elif upper == _NODE_COUNT:
+            self.declared_nd = self._single_int(upper, fields)
+        elif upper == _CELL_COUNT:
+            self.declared_nc = self._single_int(upper, fields)
+        elif upper == _REFERENCE_TIME:
+            _require_fields(upper, fields, 1, self.path)
+            self.reference_time = _as_float(fields[0], upper, self.path)
+        elif upper in _GROUP_ONLY_CARDS:
+            self._consume_group_card(upper, fields, records)
+        elif upper == _END_DATASET:
+            self._close_group()
+
+    def _consume_group_card(
+        self,
+        upper: str,
+        fields: list[str],
+        records: Iterator[tuple[str, list[str]]],
+    ) -> None:
+        """Handle a card that only means anything inside an open group."""
+        group = self._require_group(upper)
+        if upper == _NAME:
+            _require_fields(upper, fields, 1, self.path)
+            # Joined rather than taking one field: a group name may contain spaces, and
+            # quotes are stripped because SMS writes them inconsistently.
+            group.name = " ".join(fields).strip('"')
+        elif upper == _TIME_UNITS:
+            _require_fields(upper, fields, 1, self.path)
+            group.time_units = fields[0]
+        else:
+            self._read_timestep(group, fields, records)
+
+    def _single_int(self, upper: str, fields: list[str]) -> int:
+        """Parse a one-field integer card such as ``ND`` or ``NC``."""
+        _require_fields(upper, fields, 1, self.path)
+        return _as_int(fields[0], upper, self.path)
+
+    def _open_group(self, upper: str) -> None:
+        """Start a group, refusing one opened while another is still open."""
+        if self.current is not None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} opens a {upper} group while another is still open; "
+                f"MDAL refuses that rather than guessing where the first one ended"
+            )
+        self.current = _DatGroup(vector=upper == _BEGIN_VECTOR)
+
+    def _close_group(self) -> None:
+        """End the open group, refusing an ``ENDDS`` with nothing open."""
+        if self.current is None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has an {_END_DATASET} card with no open group"
+            )
+        self.groups.append(self.current)
+        self.current = None
+
+    def _require_group(self, upper: str) -> _DatGroup:
+        """Return the open group, refusing a group-only card found outside one."""
+        if self.current is None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has a {upper} card outside a "
+                f"{_BEGIN_SCALAR}/{_BEGIN_VECTOR} group, so there is nothing for it to "
+                f"describe"
+            )
+        return self.current
+
+    def _read_timestep(
+        self,
+        group: _DatGroup,
+        fields: list[str],
+        records: Iterator[tuple[str, list[str]]],
+    ) -> None:
+        """Read one ``TS`` card and the value block that belongs to it.
+
+        The element counts are checked here, before the first value is consumed, which
+        is the point of checking them at all.
+
+        The two dialects differ exactly here: the new one writes ``TS <istat> <time>``
+        and the old one ``TS <time>``. Reading an old file with the new arity takes the
+        time for the active flag and the first value for the time, which yields a
+        plausible one-timestep series instead of an error.
+        """
+        self._check_counts()
+        if self.new_dialect:
+            _require_fields(_TIMESTEP, fields, _TS_FIELDS_NEW, self.path)
+            istat = _as_int(fields[0], _TIMESTEP, self.path)
+            time = _as_float(fields[1], _TIMESTEP, self.path)
+        else:
+            _require_fields(_TIMESTEP, fields, _TS_FIELDS_OLD, self.path)
+            istat = 0
+            time = _as_float(fields[0], _TIMESTEP, self.path)
+        group.times.append(time)
+        if istat:
+            group.active.append(self._pull_active(records))
+        _location, count = self._element_count()
+        columns = 2 if group.vector else 1
+        group.values.append(self._pull_block(records, count, columns, _TIMESTEP))
+
+    def _pull_active(self, records: Iterator[tuple[str, list[str]]]) -> np.ndarray:
+        """Read the per-cell active block that follows a ``TS`` card with ``istat`` set.
+
+        Raises:
+            FileFormatNotSupportedError: If any flag is not ``0`` or ``1``. That is the
+                only check available on the block's position: this driver reads it where
+                MDAL reads it, before the values, and a block of real values landing
+                here would otherwise be taken as flags and the values shifted by a whole
+                block. The check cannot fire when the node and cell counts are equal.
+        """
+        block = self._pull_block(records, self.n_face, 1, "active")
+        flags = block[:, 0]
+        if not bool(np.isin(flags, (0.0, 1.0)).all()):
+            offenders = np.unique(flags[~np.isin(flags, (0.0, 1.0))])[:3].tolist()
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has an active block holding values other than 0 and 1 "
+                f"({offenders}); it is read immediately after the TS card, before the "
+                f"values, and this file does not match that layout"
+            )
+        return flags.astype(np.int8)
+
+    def _pull_block(
+        self,
+        records: Iterator[tuple[str, list[str]]],
+        rows: int,
+        columns: int,
+        what: str,
+    ) -> np.ndarray:
+        """Read ``rows`` lines of ``columns`` numbers each from the record stream.
+
+        Args:
+            records: The file's remaining records.
+            rows: How many lines the block holds.
+            columns: How many numbers each line holds.
+            what: What the block belongs to, for the error message.
+
+        Returns:
+            np.ndarray: The block, shape ``(rows, columns)``, float64.
+
+        Raises:
+            FileFormatNotSupportedError: If the file ends mid-block, a line holds fewer
+                numbers than the block needs, or a field is not a number.
+        """
+        block = np.empty((rows, columns), dtype=np.float64)
+        for row in range(rows):
+            try:
+                keyword, fields = next(records)
+            except StopIteration:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} ends inside a {what} block: expected {rows} rows, "
+                    f"found {row}"
+                ) from None
+            tokens = [keyword, *fields]
+            if len(tokens) < columns:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has a short {what} row: expected {columns} "
+                    f"value(s), found {len(tokens)}"
+                )
+            for column in range(columns):
+                block[row, column] = _as_float(tokens[column], what, self.path)
+        return block
+
+    def _check_counts(self) -> None:
+        """Check the declared element counts against the mesh, once.
+
+        Raises:
+            ValueError: If a declared count disagrees with the mesh, or the file
+                declares neither. Nothing else in a DAT ties it to a topology, so an
+                unchecked attach produces a plausible, wrong result.
+        """
+        if self.counts_checked:
+            return
+        if self.declared_nd is None and self.declared_nc is None:
+            raise ValueError(
+                f"{self.path!r} declares neither {_NODE_COUNT} nor {_CELL_COUNT}, so "
+                f"nothing can be checked against the mesh; a DAT carries no other "
+                f"identifier tying it to a topology, and attaching it unchecked would "
+                f"be a guess"
+            )
+        if self.declared_nd is not None and self.declared_nd != self.n_node:
+            raise ValueError(
+                f"{self.path!r} does not match this mesh: declares {_NODE_COUNT} "
+                f"{self.declared_nd} but the mesh has {self.n_node} nodes"
+            )
+        if self.declared_nc is not None and self.declared_nc != self.n_face:
+            raise ValueError(
+                f"{self.path!r} does not match this mesh: declares {_CELL_COUNT} "
+                f"{self.declared_nc} but the mesh has {self.n_face} faces"
+            )
+        self.counts_checked = True
+
+    def _element_count(self) -> tuple[str, int]:
+        """Return the location and element count a group's values are indexed by.
+
+        ``ND`` wins when both are declared: ``BEGSCL``/``BEGVEC`` groups are
+        node-located in SMS, and both counts have already been checked against the mesh
+        so neither can be wrong -- only ambiguous.
+        """
+        if self.declared_nd is not None:
+            return "node", self.declared_nd
+        # `_check_counts` has refused the case where neither is declared.
+        return "face", int(self.declared_nc or 0)
+
+    def build(self) -> dict[str, ParsedVariable]:
+        """Turn the collected groups into parsed variables.
+
+        Returns:
+            dict[str, ParsedVariable]: One variable per scalar group, two per vector
+                group, plus a face-located ``<name>_active`` for each group carrying
+                active masks.
+
+        Raises:
+            ValueError: If a declared count disagrees with the mesh, or the file
+                declares neither count.
+            FileFormatNotSupportedError: If a group carries no ``TS`` card at all, so
+                there are no values in it to attach, or two groups would produce the
+                same variable name.
+        """
+        self._check_counts()
+        location, _count = self._element_count()
+        variables: dict[str, ParsedVariable] = {}
+        for index, group in enumerate(self.groups):
+            for name, variable in self._group_variables(group, index, location):
+                if name in variables:
+                    # A malformed file, not a mesh mismatch, so it is the format error:
+                    # `attach_data` passes a ValueError through only when the message
+                    # names the mesh, and wraps anything else as a driver failure.
+                    raise FileFormatNotSupportedError(
+                        f"{self.path!r} produces the variable name {name!r} twice; "
+                        f"name the groups distinctly, since one would otherwise "
+                        f"silently replace the other"
+                    )
+                variables[name] = variable
+        return variables
+
+    def _group_variables(
+        self, group: _DatGroup, index: int, location: str
+    ) -> list[tuple[str, ParsedVariable]]:
+        """Build one group's variables, splitting a vector group into components."""
+        if not group.times:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has a group with no {_TIMESTEP} card, so it carries no "
+                f"values to attach"
+            )
+        # Fall back to a positional name rather than refusing: a nameless group is
+        # readable, and the position is the only other thing identifying it.
+        base = group.name or f"dataset_{index + 1}"
+        times = np.array(group.times, dtype=np.float64)
+        stacked = np.stack(group.values)
+        attributes = self._attributes(group)
+        built: list[tuple[str, ParsedVariable]] = []
+        if group.vector:
+            # Two scalars rather than one two-component variable: MeshVariable has no
+            # component axis. See the class's documented limitations.
+            for offset, suffix in ((0, "x"), (1, "y")):
+                built.append(
+                    (
+                        f"{base}_{suffix}",
+                        ParsedVariable(
+                            location=location,
+                            shape=stacked[:, :, offset].shape,
+                            values=stacked[:, :, offset],
+                            time_values=times,
+                            attributes=dict(attributes),
+                        ),
+                    )
+                )
+        else:
+            built.append(
+                (
+                    base,
+                    ParsedVariable(
+                        location=location,
+                        shape=stacked[:, :, 0].shape,
+                        values=stacked[:, :, 0],
+                        time_values=times,
+                        attributes=dict(attributes),
+                    ),
+                )
+            )
+        if group.active:
+            masks = np.stack(group.active)
+            built.append(
+                (
+                    f"{base}_active",
+                    ParsedVariable(
+                        # The mask counts cells while a node-located group counts nodes,
+                        # so it cannot ride along as ParsedVariable.active -- that would
+                        # give it the parent's location and shape.
+                        location="face",
+                        shape=masks.shape,
+                        values=masks,
+                        time_values=times,
+                        attributes=dict(attributes),
+                    ),
+                )
+            )
+        return built
+
+    def _attributes(self, group: _DatGroup) -> dict[str, object]:
+        """Collect the metadata a DAT declares that has nowhere else to go.
+
+        ``attach_data`` keeps the dataset's own ``global_attributes`` and merges only
+        the variables a driver returns, so a file-level value such as ``RT_JULIAN`` can
+        only travel on the variables themselves.
+        """
+        attributes: dict[str, object] = {}
+        if self.reference_time is not None:
+            attributes["reference_time"] = self.reference_time
+        if group.time_units is not None:
+            attributes["time_units"] = group.time_units
+        return attributes

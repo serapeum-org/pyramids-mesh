@@ -20,6 +20,7 @@ its suffixes, capabilities and documented limitations:
 | Driver | Format | Page |
 |---|---|---|
 | `2dm` | SMS / TUFLOW 2DM mesh frame | [2DM](2dm.md) |
+| `dat` | SMS ASCII results, attached to a mesh | [DAT](dat.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their

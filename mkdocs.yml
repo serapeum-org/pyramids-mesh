@@ -119,6 +119,7 @@ nav:
   - Reference:
     - Overview: reference/index.md
     - 2DM (SMS/TUFLOW): reference/2dm.md
+    - DAT (SMS results): reference/dat.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md
