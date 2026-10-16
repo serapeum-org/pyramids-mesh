@@ -119,6 +119,12 @@ nav:
   - Reference:
     - Overview: reference/index.md
     - 2DM (SMS/TUFLOW): reference/2dm.md
+    - DAT (SMS results): reference/dat.md
+    - Mike21 (DHI mesh): reference/mike21.md
+    - Selafin (TELEMAC): reference/selafin.md
+    - SWW (ANUGA): reference/sww.md
+    - PLY (Stanford): reference/ply.md
+    - XMS TIN: reference/xmstin.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

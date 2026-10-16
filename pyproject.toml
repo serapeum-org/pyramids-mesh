@@ -123,6 +123,12 @@ notebook = [
 # install stays useful.
 [project.entry-points."pyramids.mesh_drivers"]
 2dm = "pyramids_mesh.drivers.sms:TwoDmDriver"
+dat = "pyramids_mesh.drivers.sms:DatDriver"
+mike21 = "pyramids_mesh.drivers.misc:Mike21Driver"
+selafin = "pyramids_mesh.drivers.telemac:SelafinDriver"
+sww = "pyramids_mesh.drivers.anuga:SwwDriver"
+ply = "pyramids_mesh.drivers.interchange:PlyDriver"
+xmstin = "pyramids_mesh.drivers.interchange:XmsTinDriver"
 
 
 [project.urls]
