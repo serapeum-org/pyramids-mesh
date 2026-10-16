@@ -1421,8 +1421,11 @@ class _DatScan:
                         location="face",
                         shape=masks.shape,
                         values=masks,
+                        # The time axis is kept (the mask varies per step), but the
+                        # group's reference_time/time_units are not: a wet/dry flag is
+                        # not a timed physical quantity, so carrying a Julian reference
+                        # time on it is misleading metadata.
                         time_values=times,
-                        attributes=dict(attributes),
                     ),
                 )
             )

@@ -524,3 +524,34 @@ def test_dat_committed_fixture_attaches_and_matches_the_builder(mesh, tmp_path):
     assert generated.read_text(encoding="utf-8") == committed.read_text(
         encoding="utf-8"
     )
+
+
+def test_dat_active_sibling_does_not_carry_reference_time(mesh, tmp_path):
+    """The ``<name>_active`` mask drops reference_time/time_units; the parent keeps them.
+
+    A wet/dry flag is not a timed physical quantity, so a Julian reference time on it is
+    misleading; the parent variable still carries it.
+    """
+    text = """DATASET
+BEGSCL
+ND 4
+NC 2
+NAME depth
+RT_JULIAN 2451545.0
+TIMEUNITS HOURS
+TS 1 0.0
+1
+0
+0.5
+0.6
+0.7
+0.8
+ENDDS
+"""
+    attached = _attach(mesh, tmp_path, text)
+
+    assert attached.get("depth").attributes["reference_time"] == 2451545.0
+    active_attrs = attached.get("depth_active").attributes
+    assert "reference_time" not in active_attrs
+    assert "time_units" not in active_attrs
+    assert "time_values" in active_attrs
