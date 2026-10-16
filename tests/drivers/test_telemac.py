@@ -121,22 +121,68 @@ def test_selafin_date_record_present_and_absent(tmp_path, date_flag):
     assert dataset.get("WATER DEPTH").shape == (2, 4)
 
 
-def test_selafin_3d_file_warns_and_returns_surface(tmp_path):
-    """A 3D file (non-zero plane count) is read as its surface plane, with a warning."""
-    iparam = [1, 0, 0, 0, 0, 0, 5, 0, 0, 0]
-    with pytest.warns(UserWarning, match="3D Selafin file with 5 planes"):
-        dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam))
+@pytest.mark.parametrize("planes", [0, 1])
+def test_selafin_plane_count_zero_or_one_is_2d(tmp_path, planes):
+    """A plane count of 0 or 1 is a 2D mesh and reads normally.
+
+    Some tools write 1 for a 2D mesh, which MDAL also accepts; neither value is a real
+    3D file.
+    """
+    iparam = [1, 0, 0, 0, 0, 0, planes, 0, 0, 0]
+    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam))
 
     assert dataset.mesh.n_node == 4
 
 
-@pytest.mark.parametrize("slot", [7, 8])
-def test_selafin_parallel_subdomain_file_refused(tmp_path, slot):
-    """A parallel sub-domain file is refused rather than read with local indices."""
-    iparam = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    iparam[slot] = 3
+def test_selafin_layered_3d_file_is_refused(tmp_path):
+    """A genuine 3D file (planes > 1) is refused, not read as a malformed 2D mesh.
+
+    The fixture is a real layered file: three planes over a 4-node surface give 12 nodes
+    and prism (6-node) connectivity. The earlier cut returned that 12-node, 6-vertex mesh
+    while claiming "surface only"; this pins the refusal instead.
+    """
+    nx = [0.0, 1.0, 1.0, 0.0] * 3
+    ny = [0.0, 0.0, 1.0, 1.0] * 3
+    prisms = [[1, 2, 3, 5, 6, 7], [1, 3, 4, 5, 7, 8]]
+    iparam = [1, 0, 0, 0, 0, 0, 3, 0, 0, 0]
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=prisms,
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(12))]],
+        iparam=iparam,
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="layered 3D Selafin file"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_parallel_subdomain_file_refused(tmp_path):
+    """A file with interface points -- the parallel marker -- is refused.
+
+    Interface points are nodes shared between partitions, so a nonzero count means the
+    numbering is local to one sub-domain. Keyed on IPARAM[8] alone, matching MDAL's slot
+    semantics (mdal_selafin.cpp).
+    """
+    iparam = [1, 0, 0, 0, 0, 0, 0, 0, 3, 0]
     with pytest.raises(FileFormatNotSupportedError, match="parallel sub-domain"):
         SelafinDriver().read(_write(tmp_path, iparam=iparam))
+
+
+def test_selafin_serial_file_with_boundary_points_reads(tmp_path):
+    """A serial file whose boundary-point field is nonzero still reads.
+
+    IPARAM[7] (boundary points) is a mesh property, nonzero for essentially every real
+    mesh. Keying the parallel refusal on it -- as the first cut did -- refused ordinary
+    serial files; this pins that it does not.
+    """
+    iparam = [1, 0, 0, 0, 0, 0, 0, 128, 0, 0]
+    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.face_node_connectivity.data.tolist() == [[0, 1, 2], [0, 2, 3]]
 
 
 def test_selafin_lazy_read_seeks_without_loading_all(tmp_path):
@@ -164,7 +210,6 @@ def test_selafin_eager_read_holds_values_directly(tmp_path):
 
 def test_selafin_variable_name_and_unit_split_by_position(tmp_path):
     """The 32-char record splits into a 16-char name and 16-char unit, by position."""
-    names = ["SURFACE ELEVATION" + " " * 0]  # 17 chars, will be padded/truncated
     names = ["BOTTOM FRICTION M2/S            "]
     dataset = SelafinDriver().read(_write(tmp_path, variable_names=names))
 
@@ -227,7 +272,7 @@ def test_selafin_corrupt_trailing_word_is_refused(tmp_path):
     data[-1] = (data[-1] + 1) % 256
     Path(path).write_bytes(bytes(data))
 
-    with pytest.raises((FileFormatNotSupportedError, ValueError)):
+    with pytest.raises(FileFormatNotSupportedError, match="not a readable Selafin"):
         SelafinDriver().read(path)
 
 
@@ -284,7 +329,7 @@ def test_selafin_truncated_header_is_refused(tmp_path):
     data = Path(path).read_bytes()
     # Keep only the title record (its 4+80+4 bytes), dropping everything after.
     Path(path).write_bytes(data[:88])
-    with pytest.raises((FileFormatNotSupportedError, ValueError)):
+    with pytest.raises(FileFormatNotSupportedError, match="not a readable Selafin"):
         SelafinDriver().read(path)
 
 

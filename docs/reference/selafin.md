@@ -38,12 +38,17 @@ depth = dataset.get("WATER DEPTH").data   # read now; deferred until this line
   are added to the node coordinates. Read without adding them, the mesh sits near zero
   instead of at its real location — plausible and completely wrong, with nothing in the
   data to catch it.
-- **A 3D file ships its surface plane only.** A non-zero `IPARAM[6]` (plane count) means a
-  layered 3D file; the surface is returned with a warning, because a full read needs the
-  layered mesh model pyramids does not have yet (design §21.1).
-- **A parallel sub-domain file is refused.** A non-zero `IPARAM[7]` or `IPARAM[8]` means
-  local numbering within one partition, so the connectivity would index a sub-domain
-  rather than the whole mesh. Merge the partitions before reading.
+- **A layered 3D file is refused.** `IPARAM[6]` is the plane count; 0 and 1 both mean 2D,
+  and a value above 1 is a real 3D file. Its `NPOIN` and prism `IKLE` cannot be read as a
+  flat 2D mesh without returning all planes' nodes under 6-node faces, and a faithful
+  surface extraction needs a vendor file to verify the plane ordering, so it is refused —
+  as MDAL refuses it. A full 3D read needs the layered mesh model pyramids does not have
+  yet (design §21.1).
+- **A parallel sub-domain file is refused.** A non-zero interface-point count
+  (`IPARAM[8]`) means local numbering within one partition, so the connectivity would
+  index a sub-domain rather than the whole mesh. It is keyed on interface points alone —
+  the boundary-point field is a mesh property, nonzero for ordinary serial meshes. Merge
+  the partitions before reading.
 - **Variables are node-located, always** — never inferred from an array length.
 - **The IKLE row/column order could not be checked against a vendor file.** It is read
   row-major (one element's `NDP` node ids contiguous), as MDAL reads it. A real file that

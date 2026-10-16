@@ -52,7 +52,10 @@ _IPARAM_COUNT = 10
 _IPARAM_X_ORIGIN = 2
 _IPARAM_Y_ORIGIN = 3
 _IPARAM_PLANES = 6
-_IPARAM_BOUNDARY_POINTS = 7
+# Interface points: nodes shared between partitions, so nonzero only in a parallel
+# sub-domain file and zero in any serial one. This is the single reliable parallel
+# marker -- IPARAM[7] (boundary points) is a mesh property, not a parallel flag, and
+# MDAL keys on neither (mdal_selafin.cpp reads IPOBO regardless).
 _IPARAM_INTERFACE_POINTS = 8
 _IPARAM_DATE_FLAG = 9
 _DATE_FIELDS = 6
@@ -79,14 +82,17 @@ class SelafinDriver(BaseDriver):
           format marker (``SERAFIND`` double, ``SERAFIN`` single) sets the width for the
           coordinates and every data slab alike; reading the wrong width desynchronises
           the file, which the trailing-length-word check then reports.
-        - **A 3D file ships its surface plane only.** ``IPARAM[6]`` is the plane count; a
-          non-zero value means a layered 3D file, and a full read needs the layered model
-          this package does not have yet (design section 21.1). The surface plane is
-          returned with a warning rather than refused.
-        - **A parallel sub-domain file is refused.** A non-zero ``IPARAM[7]`` or
-          ``IPARAM[8]`` means local numbering within one partition, so the connectivity
-          indexes a sub-domain rather than the whole mesh; returning it would be a mesh
-          with meaningless global indices.
+        - **A layered 3D file is refused.** ``IPARAM[6]`` is the plane count; 0 and 1 both
+          mean 2D (some tools write 1 for 2D), and a value above 1 is a real 3D file whose
+          ``NPOIN`` and prism ``IKLE`` cannot be read as a flat 2D mesh without returning
+          all planes' nodes under 6-node faces. A full 3D read needs the layered mesh
+          model pyramids does not have yet (design section 21.1), so the file is refused
+          -- as MDAL refuses it -- rather than yielding a plausible, wrong mesh.
+        - **A parallel sub-domain file is refused.** A non-zero interface-point count
+          (``IPARAM[8]``) means local numbering within one partition, so the connectivity
+          would index a sub-domain rather than the whole mesh. It is keyed on interface
+          points alone -- the boundary-point field is a mesh property, nonzero for
+          ordinary serial meshes, and keying on it would refuse them.
         - **Selafin variables are node-located, always.** The location is not inferred
           from an array length.
         - **The IKLE row/column order could not be checked against a vendor file.** It is
@@ -332,12 +338,22 @@ class _SelafinReader:
             ParsedMesh: The topology and the node-located variables.
 
         Raises:
-            FileFormatNotSupportedError: On a parallel sub-domain file, or a file whose
-                data records do not divide evenly into whole timesteps.
+            FileFormatNotSupportedError: On a parallel sub-domain file, a layered 3D
+                file, or a file truncated or corrupt against the counts its header
+                promises -- the last translated from the Fortran-record helpers' bare
+                ``ValueError``.
         """
-        node_x, node_y, faces = self._read_header()
-        offsets = record_offsets(self.path, self.endian)
-        times, variables = self._read_data(offsets)
+        try:
+            node_x, node_y, faces = self._read_header()
+            offsets = record_offsets(self.path, self.endian)
+            times, variables = self._read_data(offsets)
+        except ValueError as error:
+            # The Fortran-record helpers signal a truncated or corrupt file with a bare
+            # ValueError; the driver contract is to report an unreadable file as the
+            # format error, so it is translated here rather than leaked to the caller.
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is not a readable Selafin file: {error}"
+            ) from error
         return ParsedMesh(
             node_x=node_x,
             node_y=node_y,
@@ -379,6 +395,7 @@ class _SelafinReader:
                 read_record_ints(handle, self.endian, _DATE_FIELDS)
                 self.header_records += 1
             self._guard_parallel()
+            self._guard_3d()
             dims = read_record_ints(handle, self.endian, 4)
             self.nelem, self.npoin, self.ndp = (
                 int(dims[0]),
@@ -397,7 +414,6 @@ class _SelafinReader:
         faces = ikle.reshape(self.nelem, self.ndp).astype(np.int64)
         node_x = node_x.astype(np.float64) + float(self.iparam[_IPARAM_X_ORIGIN])
         node_y = node_y.astype(np.float64) + float(self.iparam[_IPARAM_Y_ORIGIN])
-        self._warn_if_3d()
         return node_x, node_y, faces
 
     def _read_raw(self, handle) -> bytes:
@@ -413,26 +429,42 @@ class _SelafinReader:
         return payload
 
     def _guard_parallel(self) -> None:
-        """Refuse a parallel sub-domain file rather than return local indices."""
-        boundary = int(self.iparam[_IPARAM_BOUNDARY_POINTS])
+        """Refuse a parallel sub-domain file rather than return local indices.
+
+        Keyed on interface points alone. A serial file has none, so this never fires on
+        one; a partition has nodes shared with its neighbours, so a nonzero count marks
+        local numbering whose connectivity indexes a sub-domain, not the whole mesh. The
+        boundary-point field is deliberately ignored: it is a mesh property, nonzero for
+        essentially every real mesh, and keying on it would refuse ordinary serial files.
+        """
         interface = int(self.iparam[_IPARAM_INTERFACE_POINTS])
-        if boundary or interface:
+        if interface:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} is a parallel sub-domain file (IPARAM boundary="
-                f"{boundary}, interface={interface}): its numbering is local to one "
-                f"partition, so the connectivity would index a sub-domain rather than "
-                f"the whole mesh. Merge the partitions before reading."
+                f"{self.path!r} is a parallel sub-domain file ({interface} interface "
+                f"point(s)): its numbering is local to one partition, so the "
+                f"connectivity would index a sub-domain rather than the whole mesh. "
+                f"Merge the partitions before reading."
             )
 
-    def _warn_if_3d(self) -> None:
-        """Warn that a 3D file is read as its surface plane only."""
+    def _guard_3d(self) -> None:
+        """Refuse a layered 3D file rather than return a malformed pseudo-2D mesh.
+
+        ``IPARAM[6]`` is the plane count. 0 and 1 both mean a 2D mesh -- some tools write
+        1 for 2D, which MDAL also accepts -- so only a value above 1 is a real 3D file.
+        For one, ``NPOIN`` is the full 3D node count and ``IKLE`` is prism connectivity,
+        so reading them as a flat 2D mesh yields all planes' nodes with 6-node "faces":
+        plausible and wrong. A full 3D read needs the layered mesh model pyramids does
+        not have yet (design section 21.1), and extracting the surface plane cannot be
+        done faithfully without a vendor file to verify the plane ordering against, so
+        the file is refused -- as MDAL refuses it ("would need additional parsing").
+        """
         planes = int(self.iparam[_IPARAM_PLANES])
-        if planes:
-            warnings.warn(
-                f"{self.path!r} is a 3D Selafin file with {planes} planes; only the "
-                f"surface plane is read. A full 3D read needs the layered mesh model "
-                f"pyramids does not have yet.",
-                stacklevel=4,
+        if planes > 1:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is a layered 3D Selafin file ({planes} planes); only 2D "
+                f"meshes are read. A 3D read needs the layered mesh model pyramids does "
+                f"not have yet, and the surface plane cannot be extracted faithfully "
+                f"without a vendor file to verify the plane ordering."
             )
 
     def _read_data(
