@@ -124,6 +124,7 @@ notebook = [
 [project.entry-points."pyramids.mesh_drivers"]
 2dm = "pyramids_mesh.drivers.sms:TwoDmDriver"
 dat = "pyramids_mesh.drivers.sms:DatDriver"
+mike21 = "pyramids_mesh.drivers.misc:Mike21Driver"
 
 
 [project.urls]
