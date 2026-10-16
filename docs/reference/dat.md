@@ -37,14 +37,19 @@ property of the format.
 
 ## Two dialects
 
-| Dialect | Recognised by | `TS` card |
+| Dialect | Recognised by | Structure |
 |---|---|---|
-| New | first line is `DATASET` | `TS <istat> <time>` |
-| Old | no `DATASET` card; one of `SCALAR`, `VECTOR`, `TS`, `TIMEUNITS` appears | `TS <time>` |
+| New | first line is `DATASET` | `BEGSCL`/`BEGVEC` groups, `ND`/`NC`, `NAME`, `TS <istat> <time>`, `ENDDS` |
+| Old | no `DATASET` line | one group whose type is the header line (`VECTOR` ⇒ vector), `ND`, bare `TS <time>` blocks; no `BEGSCL`/`ENDDS`/`NC`/`NAME` |
 
-The arity is the reason the distinction is tracked rather than ignored. Reading an old file with
-the new arity takes the *time* for the active flag and the first value for the time, which yields a
-plausible one-timestep series instead of an error.
+The dialect is decided by the first line alone, exactly as MDAL decides (`loadNewFormat` vs
+`loadOldFormat`). The `TS` arity differs — new `TS <istat> <time>`, old `TS <time>` — so reading an
+old file with the new arity would take the *time* for the active flag and the first value for the
+time, a plausible one-timestep series instead of an error.
+
+The **old dialect** carries a single node-located group named after the file (it has no `NAME`
+card), with no active block (MDAL hardcodes `hasStatus` false for it). Its `ND` is checked against
+the mesh just as the new dialect's counts are.
 
 ## Cards
 

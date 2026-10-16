@@ -79,32 +79,34 @@ def test_dat_new_format_parses(mesh, tmp_path):
 
 
 def test_dat_old_format_without_dataset_card_parses(mesh, tmp_path):
-    """A file with no ``DATASET`` card is recognised by its other cards and read."""
-    text = """BEGSCL
+    """A genuine old-format file (no DATASET, SCALAR header, bare TS) reads.
+
+    The old dialect carries one group named after the file -- MDAL has no NAME card in
+    it -- so the variable here is ``results`` from ``results.dat``.
+    """
+    text = """SCALAR
 ND 4
-NAME stage
 TS 0.0
 1.0
 2.0
 3.0
 4.0
-ENDDS
 """
     attached = _attach(mesh, tmp_path, text)
 
-    assert attached.get("stage").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]
+    assert attached.get("results").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]
+    assert attached.get("results").location == "node"
 
 
 def test_dat_old_format_ts_arity(mesh, tmp_path):
     """The old dialect's ``TS <time>`` is read as a time, not as an active flag.
 
-    Conflating the arities takes the time for ``istat`` and the first value for the
-    time, which yields a plausible one-timestep series instead of an error -- so the
-    times themselves are what this asserts.
+    Conflating the arities would take the time for ``istat`` and the first value for the
+    time, yielding a plausible one-timestep series; the two times here pin that both
+    steps and their values are read correctly.
     """
-    text = """BEGSCL
+    text = """SCALAR
 ND 4
-NAME stage
 TS 10.0
 1.0
 2.0
@@ -115,14 +117,67 @@ TS 20.0
 6.0
 7.0
 8.0
-ENDDS
 """
-    attached = _attach(mesh, tmp_path, text)
+    attached = _attach(mesh, tmp_path, text, name="series.dat")
 
-    stage = attached.get("stage")
-    assert stage.shape == (2, _N_NODE)
-    assert stage.attributes["time_values"].tolist() == [10.0, 20.0]
-    assert stage.data.tolist() == [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]
+    series = attached.get("series")
+    assert series.shape == (2, _N_NODE)
+    assert series.attributes["time_values"].tolist() == [10.0, 20.0]
+    assert series.data.tolist() == [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]
+
+
+def test_dat_old_format_vector_splits_into_components(mesh, tmp_path):
+    """A VECTOR old-format header yields ``<name>_x``/``<name>_y`` node variables."""
+    text = """VECTOR
+ND 4
+TS 0.0
+1.0 -1.0
+2.0 -2.0
+3.0 -3.0
+4.0 -4.0
+"""
+    attached = _attach(mesh, tmp_path, text, name="velocity.dat")
+
+    assert attached.get("velocity_x").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]
+    assert attached.get("velocity_y").data.tolist() == [[-1.0, -2.0, -3.0, -4.0]]
+
+
+def test_dat_old_format_without_nd_is_refused(mesh, tmp_path):
+    """An old-format file declaring no ND is refused -- the element-count safeguard."""
+    text = """SCALAR
+TS 0.0
+1.0
+2.0
+3.0
+4.0
+"""
+    with pytest.raises(ValueError, match="declares no ND"):
+        _attach(mesh, tmp_path, text)
+
+
+def test_dat_old_format_nd_mismatch_is_refused(mesh, tmp_path):
+    """An old-format ND disagreeing with the mesh is refused, reporting both counts."""
+    text = """SCALAR
+ND 9
+TS 0.0
+1.0
+"""
+    with pytest.raises(ValueError, match="declares ND 9 but the mesh has 4 nodes"):
+        _attach(mesh, tmp_path, text)
+
+
+def test_dat_old_format_without_timestep_is_refused(mesh, tmp_path):
+    """An old-format file with ND but no TS carries no values and is refused."""
+    text = "SCALAR\nND 4\n"
+    with pytest.raises(FileFormatNotSupportedError, match="no TS block"):
+        _attach(mesh, tmp_path, text)
+
+
+def test_dat_old_format_short_block_is_refused(mesh, tmp_path):
+    """An old-format TS block ending early is refused."""
+    text = "SCALAR\nND 4\nTS 0.0\n1.0\n2.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="ends inside a TS block"):
+        _attach(mesh, tmp_path, text)
 
 
 @pytest.mark.parametrize(
@@ -555,3 +610,29 @@ ENDDS
     assert "reference_time" not in active_attrs
     assert "time_units" not in active_attrs
     assert "time_values" in active_attrs
+
+
+def test_dat_old_format_empty_file_is_refused(mesh, tmp_path):
+    """An empty file routed to read_data is refused as empty by the old reader.
+
+    Dispatch's can_open rejects an empty file first, so read_data is called directly to
+    reach the old-format empty-header path.
+    """
+    path = _write_dat(tmp_path, "", "empty.dat")
+    with pytest.raises(FileFormatNotSupportedError, match="is empty"):
+        DatDriver().read_data(path, mesh)
+
+
+def test_dat_old_format_timeunits_carried(mesh, tmp_path):
+    """An old-format TIMEUNITS card is carried onto the variable's attributes."""
+    text = "SCALAR\nND 4\nTIMEUNITS HOURS\nTS 0.0\n1.0\n2.0\n3.0\n4.0\n"
+    attached = _attach(mesh, tmp_path, text, name="depth.dat")
+
+    assert attached.get("depth").attributes["time_units"] == "HOURS"
+
+
+def test_dat_old_format_short_vector_row_is_refused(mesh, tmp_path):
+    """An old-format VECTOR row carrying one number instead of two is refused."""
+    text = "VECTOR\nND 4\nTS 0.0\n1.0 -1.0\n2.0\n3.0 -3.0\n4.0 -4.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short TS row"):
+        _attach(mesh, tmp_path, text, name="vel.dat")

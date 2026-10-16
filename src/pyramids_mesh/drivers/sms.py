@@ -73,6 +73,8 @@ _SNIFF_LIMIT = 256 * 1024
 # parser for it, and the two differ in TS arity (below).
 _DATASET = "DATASET"
 _OLD_DIALECT_CARDS = ("SCALAR", "VECTOR", "TS", "TIMEUNITS")
+# MDAL keys the old-format group type on this word appearing in the header line.
+_VECTOR_TOKEN = "VECTOR"
 
 _BEGIN_SCALAR = "BEGSCL"
 _BEGIN_VECTOR = "BEGVEC"
@@ -613,7 +615,8 @@ class DatDriver(BaseDriver):
         Returns:
             dict[str, MeshVariable]: One variable per scalar group, two per vector
                 group, plus one ``<name>_active`` face variable per group that carries
-                an active mask.
+                an active mask. The old dialect carries a single group named after the
+                file, read node-located with no active block (MDAL's old-format model).
 
         Raises:
             FileFormatNotSupportedError: If the file matches neither dialect, a card
@@ -624,11 +627,18 @@ class DatDriver(BaseDriver):
             ValueError: If a declared element count disagrees with ``dataset``, or the
                 file declares neither count.
         """
-        scan = _DatScan(
-            path, n_node=int(dataset.mesh.n_node), n_face=int(dataset.mesh.n_face)
-        )
-        scan.run()
-        return self._build_data_variables(scan.build(), dataset.mesh_name)
+        n_node = int(dataset.mesh.n_node)
+        n_face = int(dataset.mesh.n_face)
+        if _first_significant_card(path) == _DATASET:
+            scan = _DatScan(path, n_node=n_node, n_face=n_face)
+            scan.run()
+            variables = scan.build()
+        else:
+            # No DATASET header: the old dialect, which MDAL reads with a separate
+            # parser -- one group whose type comes from the header line, ND, and bare
+            # TS <time> blocks, with no BEGSCL/ENDDS/NC/NAME cards.
+            variables = _DatOldScan(path, n_node=n_node).build()
+        return self._build_data_variables(variables, dataset.mesh_name)
 
 
 def build_minimal_fixture_dat(path: str) -> None:
@@ -660,6 +670,178 @@ def build_minimal_fixture_dat(path: str) -> None:
     """
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(_MINIMAL_DAT_FIXTURE)
+
+
+def _first_significant_card(path: str) -> str | None:
+    """Return the upper-cased first significant card of a DAT file, or ``None``.
+
+    The dialect turns on this alone, exactly as MDAL decides: a ``DATASET`` first line is
+    the new format, anything else is the old one. Blank and comment lines are skipped, so
+    a leading comment does not change the verdict.
+    """
+    for keyword, _fields in iter_records(path, comment=_COMMENT):
+        return keyword.upper()
+    return None
+
+
+class _DatOldScan:
+    """The pre-DATASET DAT dialect: one group from the header, then TS value blocks.
+
+    MDAL reads this with a parser separate from the new format (``loadOldFormat``): the
+    first line sets the single group's type (vector if it contains ``VECTOR``, else
+    scalar), ``ND`` gives the node count, and each ``TS <time>`` starts a timestep whose
+    values follow one row per node. There is no ``BEGSCL``/``BEGVEC``, no ``ENDDS``, no
+    ``NC`` and no ``NAME`` -- the group is named after the file, as MDAL names it.
+
+    The values are node-located, and the declared ``ND`` is checked against the mesh
+    before any value is read, the same safeguard the new dialect applies: a results file
+    carries nothing else tying it to a mesh.
+    """
+
+    def __init__(self, path: str, *, n_node: int) -> None:
+        self.path = path
+        self.n_node = n_node
+        self.vector = False
+        self.declared_nd: int | None = None
+        self.time_units: str | None = None
+        self.times: list[float] = []
+        self.values: list[np.ndarray] = []
+
+    def build(self) -> dict[str, ParsedVariable]:
+        """Read the file and return its variables, keyed by name.
+
+        Raises:
+            FileFormatNotSupportedError: On a malformed or short record, or a file with
+                no ``TS`` block (no values to attach).
+            ValueError: If ``ND`` is absent or disagrees with the mesh node count.
+        """
+        records = iter_records(self.path, comment=_COMMENT)
+        try:
+            header, _ = next(records)
+        except StopIteration:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is empty: an old-format DAT starts with a type header"
+            ) from None
+        # MDAL keys the type on the word VECTOR appearing anywhere in the header line.
+        self.vector = _VECTOR_TOKEN in header.upper()
+        for keyword, fields in records:
+            self._consume(keyword.upper(), fields, records)
+        self._check_nd()
+        if not self.times:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has no {_TIMESTEP} block, so it carries no values"
+            )
+        return self._variables()
+
+    def _consume(
+        self,
+        upper: str,
+        fields: list[str],
+        records: Iterator[tuple[str, list[str]]],
+    ) -> None:
+        """Dispatch one old-format card; unknown cards are ignored, as MDAL ignores them.
+
+        ``SCALAR``/``VECTOR`` are type hints the header already settled, so they do
+        nothing here -- matching MDAL, which comments "just ignore".
+        """
+        if upper == _NODE_COUNT:
+            self.declared_nd = self._single_int(upper, fields)
+        elif upper == _TIME_UNITS:
+            _require_fields(upper, fields, 1, self.path)
+            self.time_units = fields[0]
+        elif upper == _TIMESTEP:
+            self._read_timestep(fields, records)
+
+    def _single_int(self, upper: str, fields: list[str]) -> int:
+        """Parse a one-field integer card such as ``ND``."""
+        _require_fields(upper, fields, 1, self.path)
+        return _as_int(fields[0], upper, self.path)
+
+    def _check_nd(self) -> None:
+        """Check the declared node count against the mesh, before any value is used.
+
+        Raises:
+            ValueError: If ``ND`` is absent (nothing ties the file to a mesh) or does not
+                match the mesh's node count.
+        """
+        if self.declared_nd is None:
+            raise ValueError(
+                f"{self.path!r} declares no {_NODE_COUNT}, so nothing can be checked "
+                f"against the mesh; attaching it unchecked would be a guess"
+            )
+        if self.declared_nd != self.n_node:
+            raise ValueError(
+                f"{self.path!r} does not match this mesh: declares {_NODE_COUNT} "
+                f"{self.declared_nd} but the mesh has {self.n_node} nodes"
+            )
+
+    def _read_timestep(
+        self, fields: list[str], records: Iterator[tuple[str, list[str]]]
+    ) -> None:
+        """Read one ``TS <time>`` card and the node value rows that follow it.
+
+        The node count is checked before the first value is read. The old dialect carries
+        no active flag -- MDAL hardcodes it false -- so a block of values always follows
+        the time directly.
+        """
+        self._check_nd()
+        _require_fields(_TIMESTEP, fields, _TS_FIELDS_OLD, self.path)
+        self.times.append(_as_float(fields[0], _TIMESTEP, self.path))
+        columns = 2 if self.vector else 1
+        block = np.empty((self.n_node, columns), dtype=np.float64)
+        for row in range(self.n_node):
+            try:
+                keyword, extra = next(records)
+            except StopIteration:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} ends inside a {_TIMESTEP} block: expected "
+                    f"{self.n_node} rows, found {row}"
+                ) from None
+            tokens = [keyword, *extra]
+            if len(tokens) < columns:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has a short {_TIMESTEP} row: expected {columns} "
+                    f"value(s), found {len(tokens)}"
+                )
+            for column in range(columns):
+                block[row, column] = _as_float(tokens[column], _TIMESTEP, self.path)
+        self.values.append(block)
+
+    def _variables(self) -> dict[str, ParsedVariable]:
+        """Build the single group's variables, named after the file.
+
+        A vector group becomes ``<name>_x``/``<name>_y``, as in the new dialect; a scalar
+        group is the bare name. The name is the file stem, which is how MDAL names an
+        old-format group (it has no ``NAME`` card).
+        """
+        import os
+
+        base = os.path.splitext(os.path.basename(self.path))[0] or "dataset"
+        times = np.array(self.times, dtype=np.float64)
+        stacked = np.stack(self.values)
+        attributes = (
+            {"time_units": self.time_units} if self.time_units is not None else {}
+        )
+        if self.vector:
+            return {
+                f"{base}_{suffix}": ParsedVariable(
+                    location="node",
+                    shape=stacked[:, :, offset].shape,
+                    values=stacked[:, :, offset],
+                    time_values=times,
+                    attributes=dict(attributes),
+                )
+                for offset, suffix in ((0, "x"), (1, "y"))
+            }
+        return {
+            base: ParsedVariable(
+                location="node",
+                shape=stacked[:, :, 0].shape,
+                values=stacked[:, :, 0],
+                time_values=times,
+                attributes=dict(attributes),
+            )
+        }
 
 
 def build_minimal_fixture(path: str) -> None:
@@ -1084,7 +1266,6 @@ class _DatScan:
         self.path = path
         self.n_node = n_node
         self.n_face = n_face
-        self.new_dialect = False
         self.declared_nd: int | None = None
         self.declared_nc: int | None = None
         self.objtype: str | None = None
@@ -1126,7 +1307,9 @@ class _DatScan:
         SMS versions, and refusing an unknown one would reject files that read fine.
         """
         if upper == _DATASET:
-            self.new_dialect = True
+            # The header card; the dialect was already decided by read_data (a DATASET
+            # file is why this new-format scan was chosen), so nothing to do here.
+            pass
         elif upper == _OBJTYPE:
             # Recorded for completeness. No SMS writer puts a location in it, so it is
             # deliberately not used to resolve one -- see the class's limitations.
@@ -1208,20 +1391,14 @@ class _DatScan:
         The element counts are checked here, before the first value is consumed, which
         is the point of checking them at all.
 
-        The two dialects differ exactly here: the new one writes ``TS <istat> <time>``
-        and the old one ``TS <time>``. Reading an old file with the new arity takes the
-        time for the active flag and the first value for the time, which yields a
-        plausible one-timestep series instead of an error.
+        A new-format ``TS`` is ``<istat> <time>``; the old dialect's ``TS <time>`` is
+        read by :class:`_DatOldScan`, which ``read_data`` routes a no-``DATASET`` file to,
+        so this path is only ever the new arity.
         """
         self._check_counts()
-        if self.new_dialect:
-            _require_fields(_TIMESTEP, fields, _TS_FIELDS_NEW, self.path)
-            istat = _as_int(fields[0], _TIMESTEP, self.path)
-            time = _as_float(fields[1], _TIMESTEP, self.path)
-        else:
-            _require_fields(_TIMESTEP, fields, _TS_FIELDS_OLD, self.path)
-            istat = 0
-            time = _as_float(fields[0], _TIMESTEP, self.path)
+        _require_fields(_TIMESTEP, fields, _TS_FIELDS_NEW, self.path)
+        istat = _as_int(fields[0], _TIMESTEP, self.path)
+        time = _as_float(fields[1], _TIMESTEP, self.path)
         group.times.append(time)
         if istat:
             group.active.append(self._pull_active(records))
