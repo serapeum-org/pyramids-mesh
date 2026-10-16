@@ -464,3 +464,28 @@ class TestXmsTinCoverageGaps:
         text = "TIN\nBEGT\nVERT 3\n0 0 1 0\n1 0 1 0\n1 1 1 0\nTRI 1\na b c\nENDT\n"
         with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
             XmsTinDriver().read(_write(tmp_path, text, "ni.tin"))
+
+
+class TestInterchangeCountErrors:
+    """Missing VERT/element counts raise a named error, not a bare IndexError."""
+
+    def test_ply_element_line_without_count_is_refused(self, tmp_path):
+        """A PLY ``element`` line missing its count is named, not a bare IndexError."""
+        text = """ply
+format ascii 1.0
+element vertex
+property float x
+end_header
+"""
+        with pytest.raises(
+            FileFormatNotSupportedError, match="without a name and count"
+        ):
+            PlyDriver().read(_write(tmp_path, text))
+
+    def test_tin_vert_card_without_count_is_refused(self, tmp_path):
+        """A TIN ``VERT`` card missing its count is named, not a bare IndexError."""
+        text = "TIN\nBEGT\nVERT\n0 0 1 0\nTRI 1\n1 1 1\nENDT\n"
+        with pytest.raises(
+            FileFormatNotSupportedError, match="VERT card without a count"
+        ):
+            XmsTinDriver().read(_write(tmp_path, text, "vc.tin"))

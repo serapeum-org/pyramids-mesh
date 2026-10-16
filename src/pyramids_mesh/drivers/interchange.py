@@ -391,7 +391,13 @@ class _PlyReader:
 
     def _set_element(self, tokens: list[str]) -> str:
         """Open a ``vertex`` or ``face`` element block and record its count."""
-        name, count = tokens[1], int(tokens[2])
+        if len(tokens) < 3:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has an element line without a name and count: "
+                f"{tokens!r}"
+            )
+        name = tokens[1]
+        count = _as_int(tokens[2], f"element {name}", self.path)
         if name == "vertex":
             self.vertex_count = count
         elif name == "face":
@@ -592,9 +598,11 @@ class _TinReader:
         for keyword, fields in records:
             upper = keyword.upper()
             if upper == _TIN_VERTICES:
-                self._read_vertices(records, int(fields[0]), node_x, node_y, node_z)
+                count = self._block_count(_TIN_VERTICES, fields)
+                self._read_vertices(records, count, node_x, node_y, node_z)
             elif upper == _TIN_TRIANGLES:
-                self._read_triangles(records, int(fields[0]), faces)
+                count = self._block_count(_TIN_TRIANGLES, fields)
+                self._read_triangles(records, count, faces)
         if not node_x:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has no {_TIN_VERTICES} block"
@@ -604,6 +612,14 @@ class _TinReader:
                 f"{self.path!r} has no {_TIN_TRIANGLES} block"
             )
         return node_x, node_y, node_z, _pad_faces(faces, self.path)
+
+    def _block_count(self, card: str, fields: list[str]) -> int:
+        """Return a VERT/TRI block's declared count, naming a card that omits it."""
+        if not fields:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has a {card} card without a count"
+            )
+        return _as_int(fields[0], card, self.path)
 
     def _read_vertices(self, records, count, node_x, node_y, node_z) -> None:
         """Read ``count`` ``x y z [lock]`` vertex lines."""
