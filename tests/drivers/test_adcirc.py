@@ -151,3 +151,51 @@ def test_read_of_a_non_grid_path_is_a_format_error(tmp_path):
 def test_declares_read_mesh_and_lazy():
     """The driver advertises read_mesh, read_data and lazy_data."""
     assert set(AdcircDriver.capabilities) == {"read_mesh", "read_data", "lazy_data"}
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "title\nabc def\n1 0.0 0.0 1.0\n",  # non-integer NE/NP -> ValueError guard
+        "title\n0 5\n1 0.0 0.0 1.0\n",  # non-positive element count
+        "title\n1 1\n1 2\n",  # first node line too short
+        "title\n1 1\nx y z w\n",  # non-numeric node fields -> ValueError guard
+    ],
+)
+def test_sniff_declines_malformed_fort14(tmp_path, content):
+    """can_open declines a .14 file whose header or first node line is not ADCIRC-shaped."""
+    bad = tmp_path / "fort.14"
+    bad.write_text(content, encoding="utf-8")
+    assert AdcircDriver().can_open(str(bad)) is False
+
+
+def test_can_open_declines_when_sniff_raises(tmp_path, monkeypatch):
+    """A sniff that raises unexpectedly is warned and treated as declining, never raised."""
+    grid = tmp_path / "fort.14"
+    grid.write_text("title\n1 1\n1 0.0 0.0 1.0\n", encoding="utf-8")
+    driver = AdcircDriver()
+
+    def _boom(_path):
+        raise OSError("boom")
+
+    monkeypatch.setattr(driver, "_sniff", _boom)
+    with pytest.warns(UserWarning, match="failed to sniff"):
+        assert driver.can_open(str(grid)) is False
+
+
+def test_read_attr_returns_none_on_runtime_error():
+    """_read_attr swallows a GDAL RuntimeError raised by Read() and returns None."""
+    from pyramids_mesh.drivers.adcirc import _read_attr
+
+    class _Attr:
+        def GetName(self):
+            return "units"
+
+        def Read(self):
+            raise RuntimeError("unreadable")
+
+    class _Array:
+        def GetAttributes(self):
+            return [_Attr()]
+
+    assert _read_attr(_Array(), "units") is None

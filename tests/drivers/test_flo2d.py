@@ -7,6 +7,7 @@ max depth) and ``TIMDEP.HDF5`` (600-step results). The tests read the committed 
 
 import pyramids  # noqa: F401  # isort:skip
 
+import shutil
 import warnings
 from pathlib import Path
 
@@ -14,7 +15,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids_mesh.drivers.flo2d import Flo2dDriver
+from pyramids_mesh.drivers.flo2d import Flo2dDriver, _Flo2dReader
 
 _DATA = Path(__file__).parent.parent / "data" / "flo2d"
 
@@ -133,3 +134,46 @@ def test_read_of_a_non_flo2d_path_is_a_format_error(tmp_path):
     other.write_text("not flo-2d")
     with pytest.raises(FileFormatNotSupportedError, match="not a FLO-2D project"):
         Flo2dDriver().read(str(other))
+
+
+def test_malformed_depfp_table_is_a_format_error(tmp_path):
+    """A DEPFP.OUT that is not the '<id> <x> <y> <depth>' table is a clean format error."""
+    (tmp_path / "DEPFP.OUT").write_text("1\n2\n3\n")  # one column, not four
+    with pytest.raises(FileFormatNotSupportedError, match="expected"):
+        _Flo2dReader(str(tmp_path), lazy=True)._read_coords()
+
+
+def test_min_gap_returns_none_for_a_single_distinct_value():
+    """``_min_gap`` returns None when fewer than two distinct coordinates exist."""
+    assert _Flo2dReader._min_gap(np.array([5.0, 5.0, 5.0])) is None
+    assert _Flo2dReader._min_gap(np.array([0.0, 50.0, 100.0])) == 50.0
+
+
+def test_results_hdf5_without_the_timdep_group_yields_no_time_series(tmp_path):
+    """A TIMDEP.HDF5 lacking the results group leaves only the static max-depth variable."""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    shutil.copy(_DATA / "DEPFP.OUT", proj / "DEPFP.OUT")
+    # a real HDF5 that genuinely has no 'TIMDEP NETCDF OUTPUT RESULTS' group
+    shutil.copy(_DATA.parent / "xdmf" / "out.h5", proj / "TIMDEP.HDF5")
+    names = list(_read(proj).data_variable_names)
+    assert "max_floodplain_depth" in names
+    assert "FLOW DEPTH" not in names
+
+
+def test_add_quantity_skips_a_group_without_values_or_times():
+    """A TIMDEP quantity group missing Values/Times is skipped, adding no variable."""
+
+    class _Group:
+        def GetMDArrayNames(self):
+            return ["Mins"]  # neither Values nor Times
+
+    class _Results:
+        def OpenGroup(self, quantity):
+            return _Group()
+
+    variables: dict = {}
+    _Flo2dReader(str(_DATA), lazy=True)._add_quantity(
+        "unused.hdf5", _Results(), "FLOW DEPTH", 240, variables
+    )
+    assert variables == {}

@@ -16,10 +16,11 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids_mesh.drivers.hecras import HecRasDriver
+from pyramids_mesh.drivers.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasReader
 
 _DATA = Path(__file__).parent.parent / "data" / "hecras"
 _PLAN = _DATA / "BaldEagleDamBrk.p18.hdf"
+_FACE_FP = "Faces FacePoint Indexes"
 
 
 def _read():
@@ -127,3 +128,122 @@ def test_results_only_companion_is_refused(tmp_path):
     foreign.write_bytes((_DATA.parent / "xmdf" / "minimal.xmdf").read_bytes())
     with pytest.raises(FileFormatNotSupportedError):
         HecRasDriver().read(str(foreign))
+
+
+def test_sniff_declines_hdf5_magic_but_unopenable(tmp_path):
+    """A file with the HDF5 magic but an unreadable body is declined, not raised."""
+    bad = tmp_path / "bad.hdf"
+    bad.write_bytes(b"\x89HDF\r\n\x1a\n" + b"\x00" * 64)  # magic only; GDAL cannot open it
+    assert HecRasDriver().can_open(str(bad)) is False
+
+
+# --- white-box coverage of the reader's defensive branches, driven by stand-in GDAL
+# group/array objects (no fabricated HEC-RAS HDF5; just the decision each branch makes) ---
+
+
+class _Arr:
+    """A stand-in GDAL MD-array that only reads back a fixed value."""
+
+    def __init__(self, value):
+        self._value = np.asarray(value)
+
+    def ReadAsArray(self):
+        return self._value
+
+
+class _Grp:
+    """A stand-in GDAL group exposing named subgroups and arrays."""
+
+    def __init__(self, groups=None, arrays=None):
+        self._groups = dict(groups or {})
+        self._arrays = dict(arrays or {})
+
+    def GetGroupNames(self):
+        return list(self._groups)
+
+    def OpenGroup(self, name):
+        return self._groups[name]
+
+    def GetMDArrayNames(self):
+        return list(self._arrays)
+
+    def OpenMDArray(self, name):
+        return _Arr(self._arrays[name])
+
+
+class _DS:
+    """A stand-in GDAL dataset wrapping one root group."""
+
+    def __init__(self, root):
+        self._root = root
+
+    def GetRootGroup(self):
+        return self._root
+
+
+def _nest_to(parts, target):
+    """Wrap ``target`` so ``root.OpenGroup(parts[0])...OpenGroup(parts[-1])`` is ``target``."""
+    grp = target
+    for part in reversed(parts):
+        grp = _Grp(groups={part: grp})
+    return grp
+
+
+def _reader():
+    """A reader bound to a dummy path (the stand-ins carry the data)."""
+    return _HecRasReader("fake.hdf", lazy=True)
+
+
+class TestReaderDefensiveBranches:
+    """Each refusal / absent-array branch of the reader, via stand-in GDAL objects."""
+
+    def test_missing_geometry_group_is_refused(self):
+        """A file with no ``Geometry`` group is refused."""
+        ds = _DS(_Grp(groups={}))
+        with pytest.raises(FileFormatNotSupportedError, match="no 'Geometry'"):
+            _reader()._areas_group(ds)
+
+    def test_missing_flow_areas_group_is_refused(self):
+        """A ``Geometry`` group without ``2D Flow Areas`` is refused."""
+        ds = _DS(_Grp(groups={"Geometry": _Grp(groups={})}))
+        with pytest.raises(FileFormatNotSupportedError, match="no '2D Flow Areas'"):
+            _reader()._areas_group(ds)
+
+    def test_select_area_without_geometry_bearing_area_is_refused(self):
+        """A flow-areas group whose areas carry no facepoint geometry is refused."""
+        areas = _Grp(groups={"A": _Grp(arrays={})})
+        with pytest.raises(FileFormatNotSupportedError, match="no area carries"):
+            _reader()._select_area(areas)
+
+    def test_cell_slice_without_cell_info_is_refused(self):
+        """A flow-areas group with no ``Cell Info`` array is refused."""
+        areas = _Grp(groups={"A": _Grp(arrays={_FACE_FP: [[0, 1]]})}, arrays={})
+        with pytest.raises(FileFormatNotSupportedError, match="no 'Cell Info'"):
+            _reader()._cell_slice(areas, "A")
+
+    def test_cell_slice_with_zero_real_cells_is_refused(self):
+        """A ``Cell Info`` row reporting zero cells for the area is refused."""
+        areas = _Grp(
+            groups={"A": _Grp(arrays={_FACE_FP: [[0, 1]]})},
+            arrays={"Cell Info": [[0, 0]]},
+        )
+        with pytest.raises(FileFormatNotSupportedError, match="reports 0 cells"):
+            _reader()._cell_slice(areas, "A")
+
+    def test_centres_absent_cell_points_returns_none(self):
+        """With no ``Cell Points`` array the face centres are left unset."""
+        assert _reader()._centres(_Grp(arrays={}), 0, 5) == (None, None)
+
+    def test_summary_variables_without_the_results_tree_is_empty(self):
+        """No summary-output group tree yields no summary variables."""
+        assert _reader()._summary_variables(_DS(_Grp(groups={})), "A", 5) == {}
+
+    def test_summary_variables_without_the_area_is_empty(self):
+        """The summary tree present but missing the area yields no variables."""
+        ds = _DS(_nest_to(_SUMMARY_PATH, _Grp(groups={})))
+        assert _reader()._summary_variables(ds, "A", 5) == {}
+
+    def test_summary_variables_without_the_named_arrays_is_empty(self):
+        """The area present but carrying none of the summary arrays yields no variables."""
+        ds = _DS(_nest_to(_SUMMARY_PATH, _Grp(groups={"A": _Grp(arrays={})})))
+        assert _reader()._summary_variables(ds, "A", 5) == {}

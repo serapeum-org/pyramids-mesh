@@ -14,8 +14,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+import xml.etree.ElementTree as ET
+
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids_mesh.drivers.xdmf import XdmfDriver
+from pyramids_mesh.drivers.xdmf import (
+    XdmfDriver,
+    _XdmfReader,
+    _read_md_array,
+    _resolve_reference,
+)
 
 _XDMF = Path(__file__).parent.parent / "data" / "xdmf" / "out.xdmf"
 
@@ -128,3 +135,56 @@ def test_unsupported_topology_is_refused(tmp_path):
     )
     with pytest.raises(FileFormatNotSupportedError, match="TopologyType"):
         XdmfDriver().read(str(xdmf))
+
+
+def test_resolve_reference_without_a_file_prefix():
+    """A reference with no ``file:`` prefix resolves to a path with an empty dataset name."""
+    path, dataset = _resolve_reference("sibling.h5", "/base")
+    assert path.replace("\\", "/").endswith("/base/sibling.h5")
+    assert dataset == ""
+
+
+def test_read_md_array_walks_nested_group_names():
+    """A group-nested dataset name is walked group by group before the array is read."""
+
+    class _Array:
+        def ReadAsArray(self):
+            return np.arange(3)
+
+    class _Group:
+        def OpenGroup(self, name):
+            return self
+
+        def OpenMDArray(self, name):
+            return _Array()
+
+    out = _read_md_array(_Group(), "grp/sub/data")
+    assert out.tolist() == [0, 1, 2]
+
+
+def test_mesh_grid_without_geometry_and_topology_is_refused():
+    """A document whose grids carry no Geometry+Topology pair is refused."""
+    reader = _XdmfReader(str(_XDMF), lazy=True)
+    with pytest.raises(FileFormatNotSupportedError, match="no grid carries both"):
+        reader._mesh_grid([])
+
+
+def test_geometry_xyz_sets_node_z():
+    """An ``XYZ`` geometry contributes a ``node_z`` from the third coordinate column."""
+    reader = _XdmfReader(str(_XDMF), lazy=True)
+    reader._read = lambda data_item: np.array(
+        [[0.0, 0.0, 1.0], [1.0, 0.0, 2.0], [1.0, 1.0, 3.0], [0.0, 1.0, 4.0]]
+    )
+    grid = ET.fromstring(
+        '<Grid><Geometry GeometryType="XYZ">'
+        "<DataItem>x.h5:/d</DataItem></Geometry></Grid>"
+    )
+    node_x, node_y, node_z = reader._geometry(grid)
+    assert node_z is not None
+    assert node_z.tolist() == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_variables_without_a_collection_is_empty():
+    """With no temporal ``Collection`` grid, there are no result variables."""
+    reader = _XdmfReader(str(_XDMF), lazy=True)
+    assert reader._variables([], n_node=4, n_face=2) == {}
