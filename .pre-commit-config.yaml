@@ -5,9 +5,14 @@ repos:
     hooks:
       - id: end-of-file-fixer
         name: "[py -  check] validate yaml"
+        # Committed sample files under tests/data are byte-faithful real data (an
+        # Esri TIN's prj.adf is text and would otherwise gain a trailing newline);
+        # never rewrite them.
+        exclude: ^tests/data/
       - id: trailing-whitespace
         name: "[file - format] trim trailing whitespace"
         args: [ --markdown-linebreak-ext=md ]
+        exclude: ^tests/data/
       - id: check-added-large-files
         name: "[file -  check] large file"
         args: [ --maxkb=5000 ]
@@ -29,6 +34,7 @@ repos:
       - id: mixed-line-ending
         name: "[file - format] mixed line ending"
         args: [ --fix=auto ]
+        exclude: ^tests/data/
       - id: pretty-format-json
         name: "[json - format] pretty json"
         args: [ --autofix,
