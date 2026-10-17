@@ -132,3 +132,108 @@ def test_sniff_declines_non_tuflow_and_junk(tmp_path):
     directory = tmp_path / "d.nc"
     directory.mkdir()
     assert driver.can_open(str(directory)) is False
+
+
+class TestOptionalArraysAbsent:
+    """The reader's optional-array branches, exercised without a crafted NetCDF file.
+
+    ``node_Zb``, ``cell_X``/``cell_Y`` and ``ResTime`` are optional in the format. The real
+    committed sample carries all three, so their *absent* branches are checked directly:
+    each method consults the name set alone before touching the file, so an empty name set
+    takes the absent path without reading any bytes -- no fabricated data, just the branch.
+    """
+
+    def test_node_z_is_none_when_node_zb_absent(self):
+        """``_node_z`` returns ``None`` when the file carries no ``node_Zb``."""
+        reader = _TuflowFvReader("absent.nc", lazy=True)
+        assert reader._node_z(None, set()) is None
+
+    def test_face_centres_are_none_when_cell_xy_absent(self):
+        """``_face_centres`` returns ``(None, None)`` without both ``cell_X`` and ``cell_Y``."""
+        reader = _TuflowFvReader("absent.nc", lazy=True)
+        # only one of the pair present -> still declined
+        assert reader._face_centres(None, {"cell_X"}) == (None, None)
+        assert reader._face_centres(None, set()) == (None, None)
+
+    def test_times_are_none_when_restime_absent(self):
+        """``_times`` returns ``None`` when the ``ResTime`` coordinate is absent."""
+        reader = _TuflowFvReader("absent.nc", lazy=True)
+        assert reader._times(None, set()) is None
+
+
+def test_require_refuses_a_file_missing_a_defining_array():
+    """``_require`` raises when a defining array (node list / connectivity) is missing."""
+    reader = _TuflowFvReader("partial.nc", lazy=True)
+    with pytest.raises(FileFormatNotSupportedError, match="not a TUFLOW FV result"):
+        reader._require({"node_X", "node_Y"})  # cell_node missing
+
+
+class _FakeDim:
+    """A stand-in for a GDAL dimension: just a name and a size."""
+
+    def __init__(self, name: str, size: int = 7) -> None:
+        self._name = name
+        self._size = size
+
+    def GetName(self) -> str:
+        return self._name
+
+    def GetSize(self) -> int:
+        return self._size
+
+
+class _FakeArray:
+    """A stand-in for a GDAL MD-array that reports only its dimensions."""
+
+    def __init__(self, dim_names: tuple[str, ...]) -> None:
+        self._dims = [_FakeDim(name) for name in dim_names]
+
+    def GetDimensions(self) -> list:
+        return self._dims
+
+
+class _FakeGroup:
+    """A stand-in GDAL group that opens the fake arrays it was given."""
+
+    def __init__(self, arrays: dict) -> None:
+        self._arrays = arrays
+
+    def OpenMDArray(self, name: str) -> _FakeArray:
+        return self._arrays[name]
+
+
+class TestVariableSelection:
+    """``_variables`` selects face arrays and skips the rest -- the loop's two continues.
+
+    Driving the selection logic with a fake group isolates the branch decisions from any
+    file: no TUFLOW FV bytes are fabricated, only the shape of the decision is asserted.
+    """
+
+    def test_array_whose_last_dim_is_not_a_cell_dim_is_skipped(self):
+        """A non-cell array (e.g. a coordinate) is not shipped as a face variable."""
+        reader = _TuflowFvReader("fake.nc", lazy=True)
+        group = _FakeGroup({"somewhere": _FakeArray(("Time", "Scalar"))})
+        result = reader._variables(
+            group, {"somewhere"}, {"NumCells2D": 5}, times=None, n_face=5
+        )
+        assert result == {}
+
+    def test_cell_array_of_the_wrong_width_is_skipped(self):
+        """A cell-dim array whose size is not the face count is skipped, not mislabelled."""
+        reader = _TuflowFvReader("fake.nc", lazy=True)
+        group = _FakeGroup({"bar": _FakeArray(("Time", "NumCells2D"))})
+        result = reader._variables(
+            group, {"bar"}, {"NumCells2D": 1}, times=None, n_face=2866
+        )
+        assert result == {}
+
+    def test_static_face_array_has_no_time_axis(self):
+        """A face array without a leading ``Time`` dimension carries no time values."""
+        reader = _TuflowFvReader("fake.nc", lazy=True)
+        group = _FakeGroup({"bed": _FakeArray(("NumCells2D",))})
+        result = reader._variables(
+            group, {"bed"}, {"NumCells2D": 7}, times=np.array([0.0]), n_face=7
+        )
+        assert set(result) == {"bed"}
+        assert result["bed"].location == "face"
+        assert result["bed"].time_values is None

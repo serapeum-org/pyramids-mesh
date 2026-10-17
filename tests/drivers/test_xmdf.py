@@ -19,7 +19,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset
 
-from pyramids_mesh.drivers.xmdf import XmdfDriver
+from pyramids_mesh.drivers.xmdf import XmdfDriver, _XmdfReader
 
 _DATA = Path(__file__).parent.parent / "data" / "xmdf"
 _MESH = _DATA / "minimal.2dm"
@@ -142,3 +142,104 @@ def test_declares_needs_mesh_and_lazy(mesh):
     """The driver advertises needs_mesh, read_data and lazy_data."""
     caps = set(XmdfDriver.capabilities)
     assert caps == {"needs_mesh", "read_data", "lazy_data"}
+
+
+class _FakeAttribute:
+    """A stand-in for a GDAL attribute whose ``Read`` returns a scalar value."""
+
+    def __init__(self, value) -> None:
+        self._value = value
+
+    def Read(self):
+        return self._value
+
+
+class _FakeArray:
+    """A stand-in GDAL MD-array reporting a rank and, optionally, a value to read."""
+
+    def __init__(self, rank: int = 2, value=None) -> None:
+        self._rank = rank
+        self._value = value
+
+    def GetDimensions(self) -> list:
+        return [object()] * self._rank
+
+    def ReadAsArray(self):
+        return self._value
+
+
+class _FakeGroup:
+    """A stand-in GDAL group exposing named arrays and a ``Grouptype`` attribute."""
+
+    def __init__(self, grouptype: str = "DATASET SCALAR", arrays=None) -> None:
+        self._grouptype = grouptype
+        self._arrays = arrays or {}
+
+    def GetAttribute(self, name: str) -> _FakeAttribute:
+        return _FakeAttribute(self._grouptype)
+
+    def GetMDArrayNames(self) -> list:
+        return list(self._arrays)
+
+    def OpenMDArray(self, name: str) -> _FakeArray:
+        return self._arrays[name]
+
+
+def _reader() -> _XmdfReader:
+    """A reader bound to the committed mesh's 25-node, 16-face counts."""
+    return _XmdfReader(str(_XMDF), n_node=25, n_face=16, lazy=True)
+
+
+class TestScalar2dGuard:
+    """``_guard_scalar_2d`` refuses the dataset kinds not shipped yet.
+
+    A vector dataset or a layered-3D (rank > 2) dataset is refused rather than flattened.
+    The committed sample is a 2D scalar, so these refusals are exercised with a fake group
+    carrying the marking attribute -- no fabricated HDF5 bytes, just the guard's decision.
+    """
+
+    def test_vector_dataset_is_refused(self):
+        """A ``VECTOR`` Grouptype is refused, naming scalar as the supported case."""
+        group = _FakeGroup(grouptype="DATASET VECTOR", arrays={"Values": _FakeArray(2)})
+        with pytest.raises(FileFormatNotSupportedError, match="vector dataset"):
+            _reader()._guard_scalar_2d(group, "velocity")
+
+    def test_layered_3d_dataset_is_refused(self):
+        """A rank-3 ``Values`` array (a layered 3D result) is refused, not flattened."""
+        group = _FakeGroup(grouptype="DATASET SCALAR", arrays={"Values": _FakeArray(3)})
+        with pytest.raises(FileFormatNotSupportedError, match="layered 3D"):
+            _reader()._guard_scalar_2d(group, "conc")
+
+
+class TestLocation:
+    """``_location`` places a dataset by its per-step element count against the mesh."""
+
+    def test_face_located_when_count_matches_faces(self):
+        """A per-step width equal to the face count is placed on faces."""
+        assert _reader()._location((3, 16), "x") == "face"
+
+    def test_single_axis_uses_the_sole_length(self):
+        """A one-axis (static, single-step) dataset is placed by its only length."""
+        assert _reader()._location((25,), "x") == "node"
+
+    def test_mismatch_is_a_value_error(self):
+        """A width matching neither nodes nor faces is refused."""
+        with pytest.raises(ValueError, match="do not belong to this mesh"):
+            _reader()._location((3, 99), "x")
+
+
+class TestMaybeActive:
+    """``_maybe_active`` attaches an active sibling only when it fits the faces."""
+
+    def test_no_active_array_attaches_nothing(self):
+        """A dataset without an ``Active`` array yields no sibling."""
+        variables: dict = {}
+        _reader()._maybe_active(_FakeGroup(arrays={}), "d", np.array([0.0]), variables)
+        assert variables == {}
+
+    def test_active_of_the_wrong_width_is_left_off(self):
+        """An active mask whose width is not the face count is left off, not mislabelled."""
+        group = _FakeGroup(arrays={"Active": _FakeArray(value=np.zeros((3, 99), bool))})
+        variables: dict = {}
+        _reader()._maybe_active(group, "d", np.array([0.0, 0.5, 1.0]), variables)
+        assert variables == {}
