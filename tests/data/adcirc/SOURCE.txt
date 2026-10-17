@@ -1,0 +1,5 @@
+fort.14 + fort.63.nc — the ADCIRC "Shinnecock Inlet" example, redistributed under CC0-1.0
+(public-domain dedication) by NOAA's noaa-ocs-modeling/EnsemblePerturbation.
+  https://github.com/noaa-ocs-modeling/EnsemblePerturbation  (CC0-1.0)
+fort.14: NE=5780 triangles, NP=3070 nodes (lon/lat + depth). fort.63.nc: zeta (57 time x 3070
+node) sea-surface elevation; element connectivity 5780 x 3. Counts match between the two files.
