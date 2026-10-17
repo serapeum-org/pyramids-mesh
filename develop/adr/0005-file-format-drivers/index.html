@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -517,16 +517,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -710,146 +700,6 @@
     
   
     SWW (ANUGA)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/xmdf/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    XMDF (HDF5 results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/3di/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3Di (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/tuflowfv/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    TUFLOW FV (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/dfsu/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    DFSU (DHI MIKE)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/esri-tin/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Esri TIN (directory)
   
 
     
@@ -1600,14 +1450,14 @@
 <p>ADR-0003 scoped this package to mesh <strong>generation</strong>, <strong>quality</strong> and <strong>refinement</strong>. That scope was
 written during scaffolding, before the gap analysis it was meant to serve, and it does not match the
 work this repository exists to do.</p>
-<p>The actual gap is <strong>format breadth</strong>. A survey of the mesh-format landscape — the eighteen
-driver families the established mesh I/O libraries cover — found that <code>pyramids-gis</code> reads exactly
-one of them: UGRID NetCDF. The other seventeen are the native file
+<p>The actual gap is <strong>format breadth</strong>. A survey of MDAL — the Mesh Data Abstraction Library that
+QGIS uses, and the reference implementation in this space — found that <code>pyramids-gis</code> reads exactly
+one of MDAL's eighteen driver families: UGRID NetCDF. The other seventeen are the native file
 formats of hydrodynamic and hydraulic solvers — SMS, TUFLOW, TELEMAC, DHI MIKE, FLO-2D, 3Di, ANUGA,
 HEC-RAS — and none of them can be opened today.</p>
-<p>That survey also found the comparison runs the other way for everything else: those libraries do no
+<p>That survey also found the comparison runs the other way for everything else: MDAL performs no
 interpolation, regridding, reprojection, contouring, gap filling, mesh-to-vector conversion or graph
-analysis. <code>pyramids-gis</code> already has all of it. So the only substantial capability they have over
+analysis. <code>pyramids-gis</code> already has all of it. So the only substantial capability MDAL has over
 this stack is <strong>the ability to open other people's mesh files</strong>.</p>
 <p>Reading a format is never out of scope for the stack, but seventeen parsers do not belong in
 <code>pyramids-gis</code> itself: they carry dependencies the core must not take (<code>mikeio</code> alone pulls pandas,
@@ -1615,7 +1465,7 @@ matplotlib, scipy and tqdm), and their test fixtures are binary files measured i
 a PyPI project that already refills its 10 GB limit roughly every twelve releases.</p>
 <h2 id="decision"><a class="toclink" href="#decision">Decision</a><a class="headerlink" href="#decision" title="Permanent link">#</a></h2>
 <p><strong><code>pyramids-mesh</code> reads and writes the file formats of hydrodynamic and hydraulic mesh models —
-2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats — as <code>pyramids.netcdf.ugrid</code>
+2DM, Selafin, DFSU, XMDF, PLY and the rest of MDAL's driver table — as <code>pyramids.netcdf.ugrid</code>
 objects. It owns file-format drivers; every mesh operation belongs upstream in <code>pyramids-gis</code>.</strong></p>
 <ul>
 <li><strong>Generation, quality and refinement are dropped</strong>, not deferred. They were not an intended scope.
@@ -1665,7 +1515,7 @@ full. Only its three-concerns decision was wrong.</p>
   shipped in <code>pyramids-gis 0.68.0</code>, so the floor is now <code>&gt;= 0.68.0</code> and this package's entry points
   are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
   while the registry was unreleased and the entry points inert — is lifted.</li>
-<li>Three concerns these source formats carry and <code>pyramids-gis</code> does not — ragged vertical levels
+<li>Three concerns MDAL supports and <code>pyramids-gis</code> does not — ragged vertical levels
   (<code>DataOnVolumes</code>), per-timestep active/dry flags, and a dataset reference time — are <strong>upstream</strong>
   work. A driver meeting them carries the value through without fabricating data: it raises on a
   genuinely ragged vertical profile rather than padding it, and attaches an active mask as a sibling
@@ -1678,8 +1528,8 @@ full. Only its three-concerns decision was wrong.</p>
 <ul>
 <li><code>planning/design.md</code> — the full architecture: driver protocol, registry and dispatch, the model
   contract, per-format specifications, and the task plan.</li>
-<li>the format-comparison notes in <code>planning/</code> — the driver table and the capability comparison this
-  decision rests on.</li>
+<li><code>planning/mdal-comparison.md</code> — MDAL's driver table and the capability comparison this decision
+  rests on.</li>
 </ul>
 
 

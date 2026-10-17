@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -521,16 +521,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -715,146 +705,6 @@
     
   
     SWW (ANUGA)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="xmdf/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    XMDF (HDF5 results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="3di/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3Di (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="tuflowfv/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    TUFLOW FV (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="dfsu/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    DFSU (DHI MIKE)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="esri-tin/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Esri TIN (directory)
   
 
     
@@ -1491,31 +1341,6 @@ its suffixes, capabilities and documented limitations:</p>
 <td><a href="sww/">SWW</a></td>
 </tr>
 <tr>
-<td><code>xmdf</code></td>
-<td>XMDF HDF5 results</td>
-<td><a href="xmdf/">XMDF</a></td>
-</tr>
-<tr>
-<td><code>3di</code></td>
-<td>3Di results (NetCDF)</td>
-<td><a href="3di/">3Di</a></td>
-</tr>
-<tr>
-<td><code>tuflowfv</code></td>
-<td>TUFLOW FV results (NetCDF, 2D)</td>
-<td><a href="tuflowfv/">TUFLOW FV</a></td>
-</tr>
-<tr>
-<td><code>dfsu</code></td>
-<td>DHI MIKE DFSU (needs <code>dhi</code>)</td>
-<td><a href="dfsu/">DFSU</a></td>
-</tr>
-<tr>
-<td><code>esri_tin</code></td>
-<td>Esri TIN (directory of <code>.adf</code>)</td>
-<td><a href="esri-tin/">Esri TIN</a></td>
-</tr>
-<tr>
 <td><code>ply</code></td>
 <td>Stanford PLY polygon</td>
 <td><a href="ply/">PLY</a></td>
@@ -1551,7 +1376,7 @@ two is <a href="../adr/0005-file-format-drivers/">ADR-0005</a>, which supersedes
 
         <p>Mesh file-format drivers for the pyramids stack.</p>
 <p><code>pyramids-mesh</code> reads and writes the file formats of hydrodynamic and hydraulic
-mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats —
+mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of MDAL's driver table —
 as <code>pyramids.netcdf.ugrid</code> objects. <code>pyramids.netcdf.ugrid</code> owns the UGRID data
 model (<code>Mesh2d</code>, <code>Network1d</code>, <code>UgridDataset</code>), its NetCDF I/O, and every operation
 that follows from a topology already in hand — connectivity and graph algorithms,

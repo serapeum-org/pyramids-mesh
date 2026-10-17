@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -597,16 +597,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -790,146 +780,6 @@
     
   
     SWW (ANUGA)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/xmdf/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    XMDF (HDF5 results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/3di/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3Di (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/tuflowfv/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    TUFLOW FV (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/dfsu/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    DFSU (DHI MIKE)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/esri-tin/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Esri TIN (directory)
   
 
     
@@ -1610,9 +1460,9 @@ people's mesh files</strong>:</p>
 </tr>
 </tbody>
 </table>
-<p>A survey of the mesh-format landscape found <code>pyramids-gis</code> reads exactly one of the eighteen
-driver families the established mesh I/O libraries cover (UGRID NetCDF).
-The other seventeen are what this package is for. In the other direction those libraries do no
+<p>A survey of <a href="https://github.com/lutraconsulting/MDAL">MDAL</a> — the library QGIS uses for mesh
+layers — found <code>pyramids-gis</code> reads exactly one of its eighteen driver families (UGRID NetCDF).
+The other seventeen are what this package is for. In the other direction MDAL performs no
 interpolation, regridding, reprojection or graph analysis, all of which <code>pyramids-gis</code> already has.</p>
 <p>Anything that belongs on the left-hand side of the first table is a change to <code>pyramids-gis</code>, not a
 feature of this package. Report it upstream rather than duplicating it here.</p>

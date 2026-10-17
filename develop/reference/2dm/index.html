@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -521,16 +521,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -687,17 +677,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#writing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Writing
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -806,146 +785,6 @@
     
   
     SWW (ANUGA)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../xmdf/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    XMDF (HDF5 results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../3di/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3Di (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tuflowfv/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    TUFLOW FV (results)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dfsu/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    DFSU (DHI MIKE)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../esri-tin/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Esri TIN (directory)
   
 
     
@@ -1523,17 +1362,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#writing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Writing
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1588,7 +1416,7 @@ other driver in this package follows.</p>
 </tr>
 <tr>
 <td>Capabilities</td>
-<td><code>read_mesh</code>, <code>read_data</code>, <code>multi_mesh</code>, <code>write_mesh</code>, <code>write_data</code></td>
+<td><code>read_mesh</code>, <code>read_data</code>, <code>multi_mesh</code></td>
 </tr>
 <tr>
 <td></td>
@@ -1671,7 +1499,7 @@ a larger one is refused rather than allocated.</p>
 <p>Every one of these is deliberate; none is a silent approximation.</p>
 <ul>
 <li><strong><code>E3L</code>, <code>E8Q</code> and <code>E9Q</code> are refused</strong>, and the whole file with them, naming the
-  element. Treating a mid-side or centre
+  element. MDAL does the same (<code>Err_UnsupportedElement</code>). Treating a mid-side or centre
   node as a corner would distort the element without any error, so no mapping is
   guessed.</li>
 <li><strong><code>E6T</code> is kept as a six-node face.</strong> Its node order is corner, mid-side, corner,
@@ -1692,7 +1520,7 @@ a larger one is refused rather than allocated.</p>
   entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file
   whose <code>ND</code> records <em>disagree</em> about the z column is refused, since the ones without it would
   need a datum invented.</li>
-<li><strong>Records this driver does not model are skipped</strong>: <code>MESHNAME</code>, the
+<li><strong>Records this driver does not model are skipped</strong>, as MDAL skips them: <code>MESHNAME</code>, the
   <code>BEGPARAMDEF</code> block and anything else beyond the nodes, elements and
   <code>NUM_MATERIALS_PER_ELEM</code>. One consequence is that a file naming its own mesh loses that name —
   the topology is always built as <code>mesh2d</code>.</li>
@@ -1709,29 +1537,6 @@ a larger one is refused rather than allocated.</p>
 <li>Values are read eagerly: the format is text, so there is nothing to defer and
   <code>lazy_data</code> is not declared.</li>
 </ul>
-<h2 id="writing"><a class="toclink" href="#writing">Writing</a><a class="headerlink" href="#writing" title="Permanent link">#</a></h2>
-<p><code>UgridDataset.to_file("out.2dm", driver="2dm")</code> writes the mesh back. It emits <code>MESH2D</code>,
-one <code>ND</code> per node, and one <code>E3T</code>/<code>E4Q</code>/<code>E6T</code> per face — the element keyword chosen from
-the face's <strong>real</strong> vertex count, ignoring <code>-1</code> fill.</p>
-<ul>
-<li><strong>The recorded connectivity base is re-applied.</strong> A file read 1-based is written back
-  1-based (<code>original_start_index</code> on the connectivity), so a read/write round trip
-  preserves the numbering.</li>
-<li><strong>Node elevation</strong> comes from a node-located <code>node_z</code> variable when present, else <code>0.0</code>;
-  the <strong>material</strong> column from a face-located <code>material</code> variable, else <code>0</code>.</li>
-<li><strong>Full precision by default.</strong> Coordinates are written with Python's shortest exact
-  <code>float64</code> representation, because a fixed number of decimals silently loses position for
-  projected coordinates in the millions. Pass <code>precision=&lt;n&gt;</code> for <code>n</code> significant digits
-  when a smaller file matters more than an exact round trip.</li>
-<li>A face whose real vertex count is not 3, 4 or 6 has no 2DM element keyword and is
-  refused; a dataset with no face connectivity is not a 2DM mesh and is refused.</li>
-</ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">mesh</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="s2">"copy.2dm"</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">"2dm"</span><span class="p">)</span>              <span class="c1"># exact round trip</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">mesh</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="s2">"small.2dm"</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">"2dm"</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># 8 significant digits</span>
-</code></pre></div>
 
 
 
