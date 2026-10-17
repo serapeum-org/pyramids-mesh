@@ -10,8 +10,11 @@ environment without the extra the import raises and collection would error out.
 
 This conftest sits in ``src/`` -- beside the package, not inside it, so it is never
 shipped in the wheel -- and is loaded whenever collection targets ``src/pyramids_mesh``.
-When the extra cannot be imported it drops ``drivers/dhi.py`` from collection; the
-dedicated ``dhi`` environment has the extra, imports it cleanly, and still doctests it.
+When the extra cannot be imported it drops ``drivers/dhi.py`` from collection so the run
+does not error; where the extra is present (the dedicated ``dhi`` environment, or a local
+dev env that happens to have ``mikeio``) ``dhi.py`` is collected cleanly instead of
+skipped. Its docstring examples are literal ``::`` blocks, not executable ``>>>``
+doctests, so nothing is doctested either way -- the guard only prevents the import error.
 """
 
 collect_ignore = []
