@@ -581,3 +581,54 @@ end_header
 
     assert dataset.mesh.n_node == 3
     assert dataset.mesh.n_face == 1
+
+
+class TestPlyWriter:
+    """Round-trip tests for the PLY writer (W4), against the committed minimal.ply."""
+
+    _COMMITTED = Path(__file__).parent.parent / "data" / "minimal.ply"
+
+    @pytest.mark.parametrize(
+        "fmt", ["ascii", "binary_little_endian", "binary_big_endian"]
+    )
+    def test_round_trip_preserves_mesh_and_node_z(self, tmp_path, fmt):
+        """Nodes, faces and node_z survive read -> write -> read in every encoding."""
+        before = PlyDriver().read(str(self._COMMITTED))
+        out = tmp_path / "out.ply"
+        before.to_file(str(out), driver="ply", format=fmt)
+        after = PlyDriver().read(str(out))
+        assert (after.mesh.n_node, after.mesh.n_face) == (
+            before.mesh.n_node,
+            before.mesh.n_face,
+        )
+        np.testing.assert_array_equal(
+            after.mesh.face_node_connectivity.data,
+            before.mesh.face_node_connectivity.data,
+        )
+        np.testing.assert_allclose(after.mesh.node_x, before.mesh.node_x)
+        np.testing.assert_allclose(after.mesh.node_y, before.mesh.node_y)
+        np.testing.assert_allclose(after.get("node_z").data, before.get("node_z").data)
+
+    def test_binary_header_declares_the_chosen_byte_order(self, tmp_path):
+        """A binary write emits the matching PLY ``format`` line."""
+        before = PlyDriver().read(str(self._COMMITTED))
+        out = tmp_path / "out.ply"
+        before.to_file(str(out), driver="ply", format="binary_big_endian")
+        assert b"format binary_big_endian 1.0" in out.read_bytes()[:64]
+
+    def test_unknown_format_is_refused(self, tmp_path):
+        """A format that is not one of the three PLY encodings is refused."""
+        before = PlyDriver().read(str(self._COMMITTED))
+        with pytest.raises(FileFormatNotSupportedError, match="unknown PLY format"):
+            before.to_file(str(tmp_path / "out.ply"), driver="ply", format="ebcdic")
+
+    def test_write_without_faces_is_refused(self, tmp_path):
+        """A faces-less dataset cannot be written as a PLY mesh."""
+        mesh = type("_Mesh", (), {"face_node_connectivity": None})()
+        ds = type("_Dataset", (), {"mesh": mesh})()
+        with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
+            PlyDriver().write(ds, str(tmp_path / "out.ply"))
+
+    def test_declares_write_mesh(self):
+        """The driver advertises the write_mesh capability."""
+        assert "write_mesh" in PlyDriver.capabilities
