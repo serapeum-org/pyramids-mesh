@@ -125,4 +125,3 @@ mesh = UgridDataset.read_file("domain.2dm")
 mesh.to_file("copy.2dm", driver="2dm")              # exact round trip
 mesh.to_file("small.2dm", driver="2dm", precision=8)  # 8 significant digits
 ```
-
