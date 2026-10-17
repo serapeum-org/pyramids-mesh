@@ -153,7 +153,9 @@ class SelafinDriver(BaseDriver):
     long_name = "TELEMAC Selafin / Serafin"
     suffixes = (".slf", ".srf", ".ser", ".sel")
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh", "read_data", "lazy_data"})
+    capabilities = frozenset(
+        {"read_mesh", "read_data", "lazy_data", "write_mesh", "write_data"}
+    )
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file is a Selafin file, by the endianness probe.
@@ -190,6 +192,118 @@ class SelafinDriver(BaseDriver):
                 sub-domain, or is truncated against the counts its header promises.
         """
         return _SelafinReader(path, lazy=lazy).build()
+
+    def write(self, dataset, path: str, **options) -> None:
+        """Write a mesh and its node-located results back to a Selafin file.
+
+        Emits the same Fortran-record layout the reader parses, through
+        :func:`write_selafin`: the title, the variable names, ``IPARAM``, the
+        ``NELEM``/``NPOIN``/``NDP`` record, the ``IKLE`` connectivity (the base recorded
+        on the mesh is re-applied, so a file read 1-based is written back 1-based),
+        ``IPOBO``, the ``x``/``y`` node arrays, then one time record per step carrying each
+        node-located variable's slab.
+
+        Selafin stores one element width, so every face must share a vertex count; a
+        mixed-width mesh is refused. Only node-located variables are written -- the format
+        has no face-located storage. Coordinates and values are written at ``float64``
+        (double precision) by default, so the round trip is lossless; pass
+        ``precision="single"`` for the smaller, lossy ``float32`` layout.
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            path: The output ``.slf`` path.
+            **options: ``precision`` is ``"double"`` (default) or ``"single"``.
+
+        Raises:
+            FileFormatNotSupportedError: If the dataset has no face connectivity, if its
+                faces do not all share one vertex count (Selafin needs a uniform ``NDP``),
+                or if ``precision`` is neither ``"single"`` nor ``"double"``.
+        """
+        mesh = dataset.mesh
+        connectivity = getattr(mesh, "face_node_connectivity", None)
+        if connectivity is None or connectivity.data is None:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no face connectivity to write "
+                f"as a Selafin mesh"
+            )
+        faces = np.asarray(connectivity.data)
+        base = connectivity.original_start_index
+        if base is None:
+            base = 1
+        ikle = [[int(v) + base for v in row if int(v) != -1] for row in faces]
+        widths = {len(row) for row in ikle}
+        if len(widths) != 1:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r} to Selafin: every element must have the same node "
+                f"count, but the mesh mixes widths {sorted(widths)}"
+            )
+        node_x = np.asarray(mesh.node_x, dtype=np.float64).tolist()
+        node_y = np.asarray(mesh.node_y, dtype=np.float64).tolist()
+        node_pairs = [
+            (name, dataset.get(name))
+            for name in dataset.data_variable_names
+            if dataset.get(name).location == "node"
+        ]
+        names = [self._selafin_name(name, var.units) for name, var in node_pairs]
+        if node_pairs:
+            stamps = dataset.time_values
+            times = (
+                [float(t) for t in stamps]
+                if stamps is not None and len(stamps)
+                else [0.0]
+            )
+        else:
+            times = []
+        values = [
+            [
+                (
+                    np.asarray(var.data, dtype=np.float64)[step]
+                    if np.asarray(var.data).ndim == 2
+                    else np.asarray(var.data, dtype=np.float64)
+                ).tolist()
+                for _name, var in node_pairs
+            ]
+            for step in range(len(times))
+        ]
+        write_selafin(
+            path,
+            node_x=node_x,
+            node_y=node_y,
+            ikle=ikle,
+            variable_names=names,
+            times=times,
+            values=values,
+            double=self._resolve_precision(options.get("precision")),
+        )
+
+    @staticmethod
+    def _resolve_precision(precision) -> bool:
+        """Resolve the ``precision`` option to the double-precision flag ``write_selafin`` takes.
+
+        Returns:
+            bool: ``True`` for double (the default, lossless), ``False`` for single.
+
+        Raises:
+            FileFormatNotSupportedError: On any value other than ``"single"``/``"double"``.
+        """
+        if precision in (None, "double"):
+            return True
+        if precision == "single":
+            return False
+        raise FileFormatNotSupportedError(
+            f"unknown Selafin precision {precision!r}; use 'single' or 'double'"
+        )
+
+    @staticmethod
+    def _selafin_name(name: str, units) -> str:
+        """Pack a variable name and unit into the 32-character Selafin name record.
+
+        The first 16 characters are the name, the next 16 the unit, each space-padded and
+        truncated -- the inverse of the reader's by-position split.
+        """
+        label = f"{name[:_NAME_HALF]:<{_NAME_HALF}}"
+        unit = f"{(units or '')[:_NAME_HALF]:<{_NAME_HALF}}"
+        return label + unit
 
 
 def build_minimal_fixture_selafin(path: str) -> None:
