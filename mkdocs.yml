@@ -123,6 +123,7 @@ nav:
     - Mike21 (DHI mesh): reference/mike21.md
     - Selafin (TELEMAC): reference/selafin.md
     - SWW (ANUGA): reference/sww.md
+    - XMDF (HDF5 results): reference/xmdf.md
     - PLY (Stanford): reference/ply.md
     - XMS TIN: reference/xmstin.md
   - About:

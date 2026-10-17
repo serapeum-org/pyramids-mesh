@@ -29,6 +29,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "sww",
     "ply",
     "xmstin",
+    "xmdf",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

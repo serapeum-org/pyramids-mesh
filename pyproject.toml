@@ -31,7 +31,7 @@ requires-python = ">= 3.11, <4"
 # what puts them on `sys.path` (activate_vendored_osgeo). Nothing here installs
 # or pins a separate GDAL.
 dependencies = [
-    "pyramids-gis >=0.68.0",
+    "pyramids-gis >=0.69.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
@@ -129,6 +129,7 @@ selafin = "pyramids_mesh.drivers.telemac:SelafinDriver"
 sww = "pyramids_mesh.drivers.anuga:SwwDriver"
 ply = "pyramids_mesh.drivers.interchange:PlyDriver"
 xmstin = "pyramids_mesh.drivers.interchange:XmsTinDriver"
+xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
 
 
 [project.urls]

@@ -24,6 +24,7 @@ its suffixes, capabilities and documented limitations:
 | `mike21` | DHI Mike21 mesh frame | [Mike21](mike21.md) |
 | `selafin` | TELEMAC Selafin / Serafin | [Selafin](selafin.md) |
 | `sww` | ANUGA SWW (NetCDF) | [SWW](sww.md) |
+| `xmdf` | XMDF HDF5 results | [XMDF](xmdf.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
 
