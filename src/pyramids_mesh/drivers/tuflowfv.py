@@ -167,7 +167,7 @@ class _TuflowFvReader:
                 self._require(names)
                 dim_sizes = self._dim_sizes(group)
                 self._guard_3d(dim_sizes)
-                n_face = dim_sizes[_CELLS_2D]
+                n_face = self._n_face(dim_sizes)
                 node_x = np.asarray(
                     group.OpenMDArray(_NODE_X).ReadAsArray(), np.float64
                 )
@@ -215,6 +215,22 @@ class _TuflowFvReader:
             for dimension in group.OpenMDArray(name).GetDimensions():
                 sizes[dimension.GetName()] = dimension.GetSize()
         return sizes
+
+    def _n_face(self, dim_sizes: dict[str, int]) -> int:
+        """Return the 2D-cell count, or refuse a file that lacks that dimension.
+
+        The sniff only checks for the defining *arrays*; a file missing the
+        ``NumCells2D`` *dimension* would otherwise crash with a bare ``KeyError``.
+
+        Raises:
+            FileFormatNotSupportedError: If the ``NumCells2D`` dimension is absent.
+        """
+        n_face = dim_sizes.get(_CELLS_2D)
+        if n_face is None:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is not a TUFLOW FV result: no {_CELLS_2D!r} dimension"
+            )
+        return n_face
 
     def _guard_3d(self, dim_sizes: dict[str, int]) -> None:
         """Refuse a layered 3D file -- more 3D cells than 2D cells.

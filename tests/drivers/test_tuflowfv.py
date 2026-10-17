@@ -168,6 +168,17 @@ def test_require_refuses_a_file_missing_a_defining_array():
         reader._require({"node_X", "node_Y"})  # cell_node missing
 
 
+def test_n_face_refuses_a_file_without_the_cell_dimension():
+    """A file that sniffs as TUFLOW FV but lacks the ``NumCells2D`` dimension is refused.
+
+    A clean ``FileFormatNotSupportedError`` naming the missing dimension, not a bare
+    ``KeyError`` from indexing the dimension-size map.
+    """
+    reader = _TuflowFvReader("nodim.nc", lazy=True)
+    with pytest.raises(FileFormatNotSupportedError, match="NumCells2D"):
+        reader._n_face({"NumCells3D": 5})
+
+
 class _FakeDim:
     """A stand-in for a GDAL dimension: just a name and a size."""
 
