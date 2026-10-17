@@ -205,7 +205,8 @@ class _EsriTinReader:
         if "tmsk.adf" not in present or "tmsx.adf" not in present:
             return np.ones(n_triangles, dtype=bool)
         index = self._read_big_endian("tmsx.adf", np.dtype(">i4"))
-        mask_bytes = open(os.path.join(self.path, "tmsk.adf"), "rb").read()
+        with open(os.path.join(self.path, "tmsk.adf"), "rb") as handle:
+            mask_bytes = handle.read()
         mask_begin = int(index[-1])
         start = len(mask_bytes) - mask_begin * 2
         header = np.frombuffer(mask_bytes, dtype=">i4", count=3, offset=start)
