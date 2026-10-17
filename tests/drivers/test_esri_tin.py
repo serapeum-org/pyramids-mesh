@@ -180,6 +180,24 @@ def test_crs_is_none_without_a_usable_projection(tmp_path, prj):
         assert EsriTinDriver().read(str(built)).mesh.crs is None
 
 
+def test_multi_line_projection_wkt_is_not_truncated(tmp_path):
+    """A prj.adf whose WKT spans several physical lines still parses, not truncated.
+
+    Reading only the first line would feed ``ImportFromWkt`` a fragment that fails to
+    parse and silently yields ``crs=None``; the whole text must be used.
+    """
+    wkt = (
+        b'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",\r\n'
+        b'SPHEROID["WGS_1984",6378137.0,298.257223563]],\r\n'
+        b'PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]'
+    )
+    built = _tin_without(tmp_path, prj=wkt)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        crs = EsriTinDriver().read(str(built)).mesh.crs
+    assert crs is not None and (crs == 4326 or (isinstance(crs, str) and "GEOGCS" in crs))
+
+
 def test_projection_without_authority_returns_wkt(tmp_path):
     """A valid WKT that names no authority comes back as the normalised WKT string."""
     # a real geographic WKT with its AUTHORITY stripped -> parses, but no EPSG code

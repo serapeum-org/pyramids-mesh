@@ -230,10 +230,11 @@ class _EsriTinReader:
         if not os.path.isfile(projection):
             return None
         with open(projection, "rb") as handle:
-            text = handle.read().decode("latin-1").splitlines()
-        if not text or not text[0].strip():
+            # The whole file, not just the first line: a producer may wrap the WKT across
+            # several lines, and OGR's parser tolerates the embedded whitespace.
+            wkt = handle.read().decode("latin-1").strip()
+        if not wkt:
             return None
-        wkt = text[0].strip()
         reference = osr.SpatialReference()
         try:
             if reference.ImportFromWkt(wkt) != 0:
