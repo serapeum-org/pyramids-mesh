@@ -122,3 +122,74 @@ def test_missing_component_is_a_format_error(tmp_path):
     # no tnod.adf / tnz.adf
     with pytest.raises(FileFormatNotSupportedError):
         EsriTinDriver().read(str(partial))
+
+
+def test_read_of_a_non_tin_path_is_a_format_error(tmp_path):
+    """read() on a path that is neither a TIN directory nor an .adf file is refused."""
+    other = tmp_path / "notes.txt"
+    other.write_text("not a tin")
+    with pytest.raises(FileFormatNotSupportedError, match="not an Esri TIN"):
+        EsriTinDriver().read(str(other))
+
+
+def _tin_without(tmp_path, *, omit=(), prj=None):
+    """Build a TIN directory from dem's real components, omitting some / setting prj."""
+    built = tmp_path / "tin"
+    built.mkdir()
+    for component in (
+        "tnxy.adf",
+        "tnz.adf",
+        "tnod.adf",
+        "tdenv9.adf",
+        "tmsx.adf",
+        "tmsk.adf",
+        "prj.adf",
+    ):
+        if component in omit:
+            continue
+        if component == "prj.adf" and prj is not None:
+            (built / component).write_bytes(prj)
+            continue
+        (built / component).write_bytes((_DEM / component).read_bytes())
+    return built
+
+
+def test_mask_absent_keeps_every_triangle(tmp_path):
+    """With no tmsk/tmsx, every triangle is kept -- dem's full 556, not the masked 528."""
+    built = _tin_without(tmp_path, omit=("tmsk.adf", "tmsx.adf"))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mesh = EsriTinDriver().read(str(built)).mesh
+    assert mesh.n_face == 556
+
+
+@pytest.mark.parametrize(
+    "prj",
+    [
+        None,  # prj.adf absent entirely
+        b"",  # empty prj.adf
+        b"not valid wkt at all\n",  # unparseable
+    ],
+)
+def test_crs_is_none_without_a_usable_projection(tmp_path, prj):
+    """A missing, empty or unparseable prj.adf leaves crs None rather than guessing."""
+    omit = ("prj.adf",) if prj is None else ()
+    built = _tin_without(tmp_path, omit=omit, prj=prj)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        assert EsriTinDriver().read(str(built)).mesh.crs is None
+
+
+def test_projection_without_authority_returns_wkt(tmp_path):
+    """A valid WKT that names no authority comes back as the normalised WKT string."""
+    # a real geographic WKT with its AUTHORITY stripped -> parses, but no EPSG code
+    wkt = (
+        b'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",'
+        b'SPHEROID["WGS_1984",6378137.0,298.257223563]],'
+        b'PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]'
+    )
+    built = _tin_without(tmp_path, prj=wkt)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        crs = EsriTinDriver().read(str(built)).mesh.crs
+    assert isinstance(crs, str) and "GEOGCS" in crs

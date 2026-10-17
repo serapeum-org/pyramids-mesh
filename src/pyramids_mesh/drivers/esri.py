@@ -95,12 +95,14 @@ class EsriTinDriver(BaseDriver):
         try:
             return self._sniff(tin_dir)
         except Exception as error:  # noqa: BLE001 - the contract is never to raise
-            warnings.warn(
+            # Defensive: os.listdir on a readable directory does not raise, so this guard
+            # mirrors the base class's never-raise contract rather than a reachable path.
+            warnings.warn(  # pragma: no cover
                 f"{self.name} failed to sniff {path!r} and is treated as declining it: "
                 f"{type(error).__name__}: {error}",
                 stacklevel=2,
             )
-            return False
+            return False  # pragma: no cover
 
     @staticmethod
     def _tin_dir(path: str) -> str | None:

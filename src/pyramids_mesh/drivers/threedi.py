@@ -24,7 +24,7 @@ import warnings
 
 import numpy as np
 
-from osgeo import gdal, osr
+from osgeo import gdal
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
@@ -48,8 +48,6 @@ _MESH1D_PREFIX = "Mesh1D"
 # Corner coordinates are rounded to this many decimals before hashing: float equality on a
 # shared corner is not reliable, and a rounded key makes the dedup stable.
 _DEDUP_DECIMALS = 6
-
-_CRS_ATTRS = ("crs_wkt", "spatial_ref", "esri_pe_string", "projection", "epsg_code")
 
 
 class ThreeDiDriver(BaseDriver):
@@ -76,7 +74,9 @@ class ThreeDiDriver(BaseDriver):
           for; only per-cell (face) variables are read.
         - Values are lazy: the loader reopens the file per read and seeks to its array,
           closing over a path, never an open handle (design section 7).
-        - CRS comes only from a validated grid-mapping attribute; none is guessed.
+        - **No CRS is read.** This result carries no grid-mapping, and 3Di's CF
+          grid-mapping variant is not extracted without a real sample to verify it
+          against, so ``crs`` is ``None`` rather than guessed.
 
     Example:
         Read a 3Di result. It is reached through ``read_file``'s NetCDF fallback because
@@ -170,10 +170,7 @@ class _ThreeDiReader:
         Raises:
             FileFormatNotSupportedError: If the contour arrays are missing.
         """
-        with (
-            gdal.ExceptionMgr(useExceptions=True),
-            osr.ExceptionMgr(useExceptions=True),
-        ):
+        with gdal.ExceptionMgr(useExceptions=True):
             dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
             try:
                 group = dataset.GetRootGroup()
@@ -185,7 +182,6 @@ class _ThreeDiReader:
                 face_x, face_y = self._face_centres(group, names)
                 times = self._times(group, names)
                 variables = self._variables(group, names, times)
-                crs = self._crs(group)
                 self._warn_mesh1d(names)
             finally:
                 dataset.Close()
@@ -198,7 +194,9 @@ class _ThreeDiReader:
             original_start_index=0,
             face_x=face_x,
             face_y=face_y,
-            crs=crs,
+            # No CRS: this result carries no grid-mapping, and 3Di's CF grid-mapping
+            # variant is not extracted without a real sample to verify it against.
+            crs=None,
             variables=variables,
             global_attributes={"source": "3Di results"},
             topology_dimension=2,
@@ -281,34 +279,6 @@ class _ThreeDiReader:
                 time_values=times if has_time else None,
             )
         return variables
-
-    def _crs(self, group) -> str | int | None:
-        """Return a validated CRS from a grid-mapping attribute, or ``None``."""
-        available = {a.GetName() for a in group.GetAttributes()}
-        for name in _CRS_ATTRS:
-            if name not in available:
-                continue
-            raw = group.GetAttribute(name).Read()
-            value = raw[0] if isinstance(raw, list) else raw
-            if isinstance(value, (int, np.integer)):
-                reference = osr.SpatialReference()
-                try:
-                    reference.ImportFromEPSG(int(value))
-                except RuntimeError:
-                    continue
-                return int(value)
-            text = str(value).strip()
-            if not text:
-                continue
-            reference = osr.SpatialReference()
-            try:
-                reference.ImportFromWkt(text)
-                valid = reference.Validate() == 0
-            except RuntimeError:
-                continue
-            if valid:
-                return text
-        return None
 
     def _warn_mesh1d(self, names: set[str]) -> None:
         """Warn that a coupled 1D network is present but not represented."""
