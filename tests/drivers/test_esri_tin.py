@@ -7,6 +7,7 @@ and ``dem_with_holes`` (527 nodes, 773 triangles). The tests read the committed 
 
 import pyramids  # noqa: F401  # isort:skip
 
+import hashlib
 import warnings
 from pathlib import Path
 
@@ -35,6 +36,23 @@ def test_reads_nodes_and_masked_triangles():
     assert mesh.n_node == 281
     assert mesh.n_face == 528
     assert mesh.face_node_connectivity.data.shape == (528, 3)
+
+
+def test_mask_selects_the_specific_surface_triangles_not_just_a_count():
+    """The kept triangles are pinned by identity, not only by their count.
+
+    The 556->528 selection is driven by a reverse-engineered bit layout
+    (``(words[tri // 32] >> (tri % 32)) & 1``). A transposed or reversed bit order could
+    keep the same *number* of triangles while dropping the wrong ones, so this locks the
+    exact connectivity (mask selection plus the CCW normalisation applied downstream)
+    against a golden hash derived from the committed ``dem``.
+    """
+    faces = _read(_DEM).mesh.face_node_connectivity.data
+    faces = np.ascontiguousarray(faces, dtype=np.int64)
+    digest = hashlib.sha256(faces.tobytes()).hexdigest()
+    assert digest == (
+        "66abfb8ce2e3841767171803a86d4d0ee3c78bcdb5c92d5f47702be796901937"
+    ), "Esri TIN mask/winding changed; if intended, regenerate the golden hash."
 
 
 def test_mask_drops_hull_frame_triangles():
