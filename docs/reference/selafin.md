@@ -41,9 +41,9 @@ depth = dataset.get("WATER DEPTH").data   # read now; deferred until this line
 - **A layered 3D file is refused.** `IPARAM[6]` is the plane count; 0 and 1 both mean 2D,
   and a value above 1 is a real 3D file. Its `NPOIN` and prism `IKLE` cannot be read as a
   flat 2D mesh without returning all planes' nodes under 6-node faces, and a faithful
-  surface extraction needs a vendor file to verify the plane ordering, so it is refused —
-  as MDAL refuses it. A full 3D read needs the layered mesh model pyramids does not have
-  yet (design §21.1).
+  surface extraction needs a vendor file to verify the plane ordering, so it is refused
+  rather than read as a malformed 2D mesh. A full 3D read needs the layered mesh model
+  pyramids does not have yet (design §21.1).
 - **A parallel sub-domain file is refused.** A non-zero interface-point count
   (`IPARAM[8]`) means local numbering within one partition, so the connectivity would
   index a sub-domain rather than the whole mesh. It is keyed on interface points alone —
@@ -51,7 +51,7 @@ depth = dataset.get("WATER DEPTH").data   # read now; deferred until this line
   the partitions before reading.
 - **Variables are node-located, always** — never inferred from an array length.
 - **The IKLE row/column order could not be checked against a vendor file.** It is read
-  row-major (one element's `NDP` node ids contiguous), as MDAL reads it. A real file that
+  row-major (one element's `NDP` node ids contiguous), as the format specifies. A real file that
   stored it transposed would give a scrambled mesh; this is the detail a vendor sample
   should confirm, tracked for the `vendor_data` suite.
 - **A partial final timestep is dropped with a warning** — a run killed mid-write leaves

@@ -123,6 +123,11 @@ nav:
     - Mike21 (DHI mesh): reference/mike21.md
     - Selafin (TELEMAC): reference/selafin.md
     - SWW (ANUGA): reference/sww.md
+    - XMDF (HDF5 results): reference/xmdf.md
+    - 3Di (results): reference/3di.md
+    - TUFLOW FV (results): reference/tuflowfv.md
+    - DFSU (DHI MIKE): reference/dfsu.md
+    - Esri TIN (directory): reference/esri-tin.md
     - PLY (Stanford): reference/ply.md
     - XMS TIN: reference/xmstin.md
   - About:

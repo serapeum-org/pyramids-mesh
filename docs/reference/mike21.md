@@ -31,8 +31,8 @@ A triangle in a quad mesh is padded with a trailing `0` node id. Since ids are 1
 
 ## Documented limitations
 
-- **The projection field and the node-record column order are read as MDAL reads them,
-  but could not be checked against a vendor file.** If a real Mike21 mesh orders its
+- **The projection field and the node-record column order are read as the format
+  specifies, but could not be checked against a vendor file.** If a real Mike21 mesh orders its
   node columns differently, the coordinates would be wrong in a plausible way. This is
   the part of the driver a vendor sample should confirm — tracked for the `vendor_data`
   suite.

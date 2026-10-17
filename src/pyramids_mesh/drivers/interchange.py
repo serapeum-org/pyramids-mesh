@@ -7,8 +7,8 @@ reached for was dropped, and PLY and the XMS TIN are simple enough to read direc
 the package's own helpers.
 
 Esri TIN -- the third format this task named -- is an undocumented *directory* of binary
-files, reverse-engineered by MDAL. Without a real ArcGIS sample to test against it cannot
-be implemented honestly, so it is deliberately not here; see ``planning/design.md``
+files whose layout is reverse-engineered. Without a real ArcGIS sample to test against it
+cannot be implemented honestly, so it is deliberately not here; see ``planning/design.md``
 section 20 and the task brief.
 """
 

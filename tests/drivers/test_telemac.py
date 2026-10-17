@@ -125,7 +125,7 @@ def test_selafin_date_record_present_and_absent(tmp_path, date_flag):
 def test_selafin_plane_count_zero_or_one_is_2d(tmp_path, planes):
     """A plane count of 0 or 1 is a 2D mesh and reads normally.
 
-    Some tools write 1 for a 2D mesh, which MDAL also accepts; neither value is a real
+    Some tools write 1 for a 2D mesh, which is also valid; neither value is a real
     3D file.
     """
     iparam = [1, 0, 0, 0, 0, 0, planes, 0, 0, 0]
@@ -163,8 +163,8 @@ def test_selafin_parallel_subdomain_file_refused(tmp_path):
     """A file with interface points -- the parallel marker -- is refused.
 
     Interface points are nodes shared between partitions, so a nonzero count means the
-    numbering is local to one sub-domain. Keyed on IPARAM[8] alone, matching MDAL's slot
-    semantics (mdal_selafin.cpp).
+    numbering is local to one sub-domain. Keyed on IPARAM[8] alone, per the Selafin
+    header's slot semantics.
     """
     iparam = [1, 0, 0, 0, 0, 0, 0, 0, 3, 0]
     with pytest.raises(FileFormatNotSupportedError, match="parallel sub-domain"):

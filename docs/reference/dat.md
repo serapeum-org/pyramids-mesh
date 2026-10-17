@@ -42,13 +42,13 @@ property of the format.
 | New | first line is `DATASET` | `BEGSCL`/`BEGVEC` groups, `ND`/`NC`, `NAME`, `TS <istat> <time>`, `ENDDS` |
 | Old | no `DATASET` line | one group whose type is the header line (`VECTOR` ⇒ vector), `ND`, bare `TS <time>` blocks; no `BEGSCL`/`ENDDS`/`NC`/`NAME` |
 
-The dialect is decided by the first line alone, exactly as MDAL decides (`loadNewFormat` vs
-`loadOldFormat`). The `TS` arity differs — new `TS <istat> <time>`, old `TS <time>` — so reading an
+The dialect is decided by the first line alone. The `TS` arity differs — new
+`TS <istat> <time>`, old `TS <time>` — so reading an
 old file with the new arity would take the *time* for the active flag and the first value for the
 time, a plausible one-timestep series instead of an error.
 
 The **old dialect** carries a single node-located group named after the file (it has no `NAME`
-card), with no active block (MDAL hardcodes `hasStatus` false for it). Its `ND` is checked against
+card), with no active block. Its `ND` is checked against
 the mesh just as the new dialect's counts are.
 
 ## Cards
@@ -65,7 +65,7 @@ the mesh just as the new dialect's counts are.
 | `TS <istat> <time>` | one timestep; `istat` means an active block follows |
 | `ENDDS` | close the group |
 
-A card this driver does not model is ignored, as MDAL ignores the ones it does not model: DAT has
+A card this driver does not model is ignored: DAT has
 accumulated optional cards across SMS versions, and refusing an unknown one would reject files
 that read fine.
 
@@ -90,7 +90,7 @@ variable name.
   machinery gives the sibling its parent's location and shape, and a DAT active block counts
   *cells* while a node-located group counts *nodes*.
 - **The active block's position is the one thing no vendor file was available to confirm.** It is
-  read where MDAL reads it: immediately after the `TS` card, before the values. A mismatch is made
+  read immediately after the `TS` card, before the values. A mismatch is made
   loud rather than silent — the flags must all be `0` or `1`, and a block of real values in their
   place is refused. A file whose node and cell counts are *equal* defeats that check, which is
   recorded here because nothing in the data can catch it.

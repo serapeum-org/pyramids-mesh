@@ -29,9 +29,9 @@ people's mesh files**:
 | Writing 2DM, Selafin, DAT, PLY, Mike21 | `pyramids_mesh.drivers` |
 | Driver discovery via the `pyramids.mesh_drivers` entry points | `pyramids-gis` reads, this package registers |
 
-A survey of [MDAL](https://github.com/lutraconsulting/MDAL) — the library QGIS uses for mesh
-layers — found `pyramids-gis` reads exactly one of its eighteen driver families (UGRID NetCDF).
-The other seventeen are what this package is for. In the other direction MDAL performs no
+A survey of the mesh-format landscape found `pyramids-gis` reads exactly one of the eighteen
+driver families the established mesh I/O libraries cover (UGRID NetCDF).
+The other seventeen are what this package is for. In the other direction those libraries do no
 interpolation, regridding, reprojection or graph analysis, all of which `pyramids-gis` already has.
 
 Anything that belongs on the left-hand side of the first table is a change to `pyramids-gis`, not a

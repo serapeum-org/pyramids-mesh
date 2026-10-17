@@ -25,6 +25,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         environment: [py311, py312, py313, py314]
+        # The dhi environment carries mikeio (the DFSU driver's backing library), a heavy
+        # stack with matplotlib, scipy, pandas and mikecore. It is OS-independent, so it
+        # runs as a single extra job on ubuntu rather than across every OS -- enough to
+        # exercise the DFSU driver and cover its module. mikeio needs Python >= 3.12, which
+        # is why dhi cannot join the shared matrix (that includes py311).
+        include:
+          - os: ubuntu-latest
+            environment: dhi
 
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0

@@ -5,7 +5,7 @@ topology, so it declares ``needs_mesh`` and implements ``read_data`` rather than
 (task D2): a results file is attached to a mesh the caller already has, through
 ``UgridDataset.attach_data``. See ``planning/design.md`` section 20.1.
 
-The 2DM structure here was verified against MDAL's ``mdal_2dm.cpp``: a plain-text file
+The 2DM structure here was verified against the 2DM format specification: a plain-text file
 whose first significant line is ``MESH2D``, then one record per line.
 
 ``topology_info`` is ``None`` for this driver -- a 2DM file has no NetCDF variables to
@@ -34,13 +34,13 @@ from pyramids_mesh._text import iter_records, native_id_map
 
 _HEADER = "MESH2D"
 
-# The node count comes from the keyword's second character (MDAL reads it as
+# The node count comes from the keyword's second character (read as
 # ``line[1]`` and asserts 3, 4 or 6), but the full keyword is matched instead: E2L and
 # E3L carry a digit too and are line elements, not faces.
 _FACE_NODE_COUNTS = {"E3T": 3, "E4Q": 4, "E6T": 6}
 
-# MDAL refuses the whole file on these (``Err_UnsupportedElement``) rather than guess a
-# mapping, and so does this driver. E3L is a 1D element MDAL also rejects.
+# The whole file is refused on these rather than guessing a node mapping. E3L is a 1D
+# element that is rejected for the same reason.
 _UNSUPPORTED_ELEMENTS = ("E3L", "E8Q", "E9Q")
 
 _LINE_ELEMENT = "E2L"
@@ -50,7 +50,7 @@ _MATERIALS_TAG = "NUM_MATERIALS_PER_ELEM"
 # An upper bound on the declared material columns. Each one allocates an array of
 # `n_face` floats and a variable, and the count comes from an untrusted file -- reading
 # other people's files is this package's whole job -- so one corrupt line must not be
-# able to ask for thousands. MDAL's practical limit is single digits.
+# able to ask for thousands. The practical limit is single digits.
 _MAX_MATERIAL_COLUMNS = 16
 
 # Kept in step with ``iter_records``' default: the header sniff and the parser must
@@ -69,11 +69,11 @@ _SNIFF_LIMIT = 256 * 1024
 # -- DAT cards (task D2) ----------------------------------------------------------
 #
 # The new dialect opens with DATASET. The old one has no such line and is recognised by
-# any of `_OLD_DIALECT_CARDS` appearing in the sniffed prefix -- MDAL keeps a separate
-# parser for it, and the two differ in TS arity (below).
+# any of `_OLD_DIALECT_CARDS` appearing in the sniffed prefix, and read by a separate
+# parser, and the two differ in TS arity (below).
 _DATASET = "DATASET"
 _OLD_DIALECT_CARDS = ("SCALAR", "VECTOR", "TS", "TIMEUNITS")
-# MDAL keys the old-format group type on this word appearing in the header line.
+# The old-format group type is keyed on this word appearing in the header line.
 _VECTOR_TOKEN = "VECTOR"
 
 _BEGIN_SCALAR = "BEGSCL"
@@ -87,9 +87,9 @@ _TIME_UNITS = "TIMEUNITS"
 _REFERENCE_TIME = "RT_JULIAN"
 _TIMESTEP = "TS"
 
-# Cards that are only meaningful inside an open BEGSCL/BEGVEC group. MDAL raises on each
-# of these outside one, and so does this driver: a NAME or TS with no group to attach to
-# means the file is malformed, and guessing a group would invent structure.
+# Cards that are only meaningful inside an open BEGSCL/BEGVEC group. Each one outside a
+# group is an error: a NAME or TS with no group to attach to means the file is
+# malformed, and guessing a group would invent structure.
 _GROUP_ONLY_CARDS = (_NAME, _TIME_UNITS, _TIMESTEP)
 
 # `TS <istat> <time>` carries at least these many fields per dialect. The old dialect
@@ -141,7 +141,7 @@ class TwoDmDriver(BaseDriver):
     per-node elevation coordinate.
 
     Documented limitations:
-        - ``E3L``, ``E8Q`` and ``E9Q`` are refused outright, as MDAL refuses them;
+        - ``E3L``, ``E8Q`` and ``E9Q`` are refused outright;
           treating a mid-side or centre node as a corner would silently distort the
           element.
         - ``E6T`` is read as a real six-node face, not demoted to its corner triangle.
@@ -159,7 +159,7 @@ class TwoDmDriver(BaseDriver):
           real zero datum, so there is nothing safe to fill the gaps with.
         - ``NUM_MATERIALS_PER_ELEM`` is accepted from 1 to 16 columns. Each column
           allocates a face-length array and a variable from a count a file supplied, so
-          one corrupt line must not be able to ask for thousands; MDAL's practical
+          one corrupt line must not be able to ask for thousands; the practical
           limit is single digits.
         - 2DM carries no CRS, so ``crs`` is always ``None``; it is never guessed from
           the coordinate magnitudes.
@@ -252,7 +252,13 @@ class TwoDmDriver(BaseDriver):
     # here means this format carries values -- material and elevation -- that `read`
     # returns with the topology; there is deliberately no `read_data()`. Only a
     # results-only format declares `needs_mesh` and implements that method.
-    capabilities = frozenset({"read_mesh", "read_data", "multi_mesh"})
+    capabilities = frozenset(
+        {"read_mesh", "read_data", "multi_mesh", "write_mesh", "write_data"}
+    )
+
+    # Face node counts emit their keyword; the inverse of `_FACE_NODE_COUNTS`, used by
+    # the writer to choose E3T/E4Q/E6T from a face's real (non-fill) vertex count.
+    _COUNT_TO_KEYWORD = {3: "E3T", 4: "E4Q", 6: "E6T"}
 
     def mesh_names(self, path: str) -> list[str]:
         """List the topologies the file holds, in surface-then-network order.
@@ -398,7 +404,7 @@ class TwoDmDriver(BaseDriver):
 
         Node and element ids are collected as the file gives them and resolved to
         contiguous indices through :func:`~pyramids_mesh._text.native_id_map` in a
-        second pass, exactly as MDAL does: 2DM ids may have gaps and may be out of
+        second pass: 2DM ids may have gaps and may be out of
         order, so ``id == index + 1`` would mis-wire every face of a renumbered file.
 
         Args:
@@ -422,11 +428,87 @@ class TwoDmDriver(BaseDriver):
         scan.run(path)
         return scan.build(path)
 
+    def write(self, dataset, path: str, **options) -> None:
+        """Write a mesh back to a 2DM file.
+
+        Emits ``MESH2D``, one ``ND`` per node and one ``E3T``/``E4Q``/``E6T`` per face,
+        choosing the element keyword from the face's **real** vertex count (fill ``-1``
+        entries ignored). The connectivity base recorded on the mesh is re-applied, so a
+        file read 1-based is written back 1-based.
+
+        Node elevation is taken from a node-located ``node_z`` variable when present, and
+        the material column from a face-located ``material`` variable; each defaults to
+        ``0`` when absent. Coordinates are written at full ``float64`` precision by
+        default, because a fixed number of decimals silently loses position for projected
+        coordinates in the millions -- a ``%.6f`` easting of 500000.123456789 comes back
+        wrong by metres.
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            path: The output ``.2dm`` path.
+            **options: ``precision`` sets the coordinate format: an int number of
+                significant digits, or the default ``"repr"`` for an exact float64
+                round-trip.
+
+        Raises:
+            FileFormatNotSupportedError: If a face has a vertex count 2DM has no element
+                for (only 3, 4 and 6 are writable), or the dataset carries no faces.
+        """
+        mesh = dataset.mesh
+        connectivity = mesh.face_node_connectivity
+        if connectivity is None or connectivity.data is None:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no face connectivity to write "
+                f"as a 2DM mesh"
+            )
+        faces = np.asarray(connectivity.data)
+        base = connectivity.original_start_index
+        if base is None:
+            base = 1
+        node_x = np.asarray(mesh.node_x, dtype=np.float64)
+        node_y = np.asarray(mesh.node_y, dtype=np.float64)
+        node_z = self._writer_column(dataset, "node_z", len(node_x))
+        material = self._writer_column(dataset, "material", len(faces))
+        fmt = _coordinate_formatter(options.get("precision", "repr"))
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(f"{_HEADER}\n")
+            for index in range(len(node_x)):
+                z = 0.0 if node_z is None else float(node_z[index])
+                handle.write(
+                    f"{_NODE} {index + base} {fmt(node_x[index])} "
+                    f"{fmt(node_y[index])} {fmt(z)}\n"
+                )
+            for row_index, row in enumerate(faces):
+                vertices = [int(v) for v in row if int(v) != -1]
+                keyword = self._COUNT_TO_KEYWORD.get(len(vertices))
+                if keyword is None:
+                    raise FileFormatNotSupportedError(
+                        f"cannot write a {len(vertices)}-vertex face to 2DM; only 3, 4 "
+                        f"and 6 node faces have an element keyword"
+                    )
+                ids = " ".join(str(v + base) for v in vertices)
+                mat = 0 if material is None else int(material[row_index])
+                handle.write(f"{keyword} {row_index + base} {ids} {mat}\n")
+
+    @staticmethod
+    def _writer_column(dataset, name: str, expected: int):
+        """Return a variable's values for the writer, or ``None`` when it is absent.
+
+        The length is checked so a stale variable cannot write a column that does not
+        line up with the nodes or faces; a mismatch drops it rather than writing garbage.
+        """
+        if name not in dataset.data_variable_names:
+            return None
+        values = np.asarray(dataset.get(name).data)
+        if values.shape != (expected,):
+            return None
+        return values
+
 
 class DatDriver(BaseDriver):
     """Reader for the SMS ASCII DAT results format.
 
-    DAT carries values and no topology -- MDAL marks it ``Mesh Frame Support: N/A`` --
+    DAT carries values and no topology -- it is a results-only format --
     so this driver declares ``needs_mesh`` and implements ``read_data`` instead of
     ``read``. The values attach to a mesh the caller already holds, through
     ``UgridDataset.read_file("domain.2dm").attach_data("depth.dat")``.
@@ -460,8 +542,8 @@ class DatDriver(BaseDriver):
           It is deliberately not attached through ``ParsedVariable.active``: that gives
           the sibling its parent's location and shape, and a DAT active block counts
           *cells* while a node-located group counts *nodes*.
-        - **The active block is read where MDAL reads it: right after the ``TS`` card,
-          before the values.** This is the one part of the layout no vendor file was
+        - **The active block is read right after the ``TS`` card, before the values.**
+          This is the one part of the layout no vendor file was
           available to confirm, so a mismatch is made loud rather than silent -- the
           flags must all be ``0`` or ``1``, and a block of real values in their place
           is refused. A file whose node and cell counts are equal defeats that check,
@@ -543,8 +625,8 @@ class DatDriver(BaseDriver):
         """Report whether the file looks like either DAT dialect.
 
         The new dialect is a ``DATASET`` first significant line. The old one has no such
-        card, so a bounded prefix is scanned for the cards MDAL keys its own old-format
-        detection on. Scanning a prefix keeps ``can_open`` cheap on a large results
+        card, so a bounded prefix is scanned for the cards that mark the old format.
+        Scanning a prefix keeps ``can_open`` cheap on a large results
         file, at the cost of missing a dialect marker buried past the limit -- the same
         bound the 2DM sniff accepts.
 
@@ -616,7 +698,7 @@ class DatDriver(BaseDriver):
             dict[str, MeshVariable]: One variable per scalar group, two per vector
                 group, plus one ``<name>_active`` face variable per group that carries
                 an active mask. The old dialect carries a single group named after the
-                file, read node-located with no active block (MDAL's old-format model).
+                file, read node-located with no active block (the old-format model).
 
         Raises:
             FileFormatNotSupportedError: If the file matches neither dialect, a card
@@ -634,7 +716,7 @@ class DatDriver(BaseDriver):
             scan.run()
             variables = scan.build()
         else:
-            # No DATASET header: the old dialect, which MDAL reads with a separate
+            # No DATASET header: the old dialect, read by a separate
             # parser -- one group whose type comes from the header line, ND, and bare
             # TS <time> blocks, with no BEGSCL/ENDDS/NC/NAME cards.
             variables = _DatOldScan(path, n_node=n_node).build()
@@ -675,7 +757,7 @@ def build_minimal_fixture_dat(path: str) -> None:
 def _first_significant_card(path: str) -> str | None:
     """Return the upper-cased first significant card of a DAT file, or ``None``.
 
-    The dialect turns on this alone, exactly as MDAL decides: a ``DATASET`` first line is
+    The dialect turns on this alone: a ``DATASET`` first line is
     the new format, anything else is the old one. Blank and comment lines are skipped, so
     a leading comment does not change the verdict.
     """
@@ -687,11 +769,11 @@ def _first_significant_card(path: str) -> str | None:
 class _DatOldScan:
     """The pre-DATASET DAT dialect: one group from the header, then TS value blocks.
 
-    MDAL reads this with a parser separate from the new format (``loadOldFormat``): the
+    This dialect uses a parser separate from the new format: the
     first line sets the single group's type (vector if it contains ``VECTOR``, else
     scalar), ``ND`` gives the node count, and each ``TS <time>`` starts a timestep whose
     values follow one row per node. There is no ``BEGSCL``/``BEGVEC``, no ``ENDDS``, no
-    ``NC`` and no ``NAME`` -- the group is named after the file, as MDAL names it.
+    ``NC`` and no ``NAME`` -- the group is named after the file, by convention.
 
     The values are node-located, and the declared ``ND`` is checked against the mesh
     before any value is read, the same safeguard the new dialect applies: a results file
@@ -722,7 +804,7 @@ class _DatOldScan:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} is empty: an old-format DAT starts with a type header"
             ) from None
-        # MDAL keys the type on the word VECTOR appearing anywhere in the header line.
+        # The type is keyed on the word VECTOR appearing anywhere in the header line.
         self.vector = _VECTOR_TOKEN in header.upper()
         for keyword, fields in records:
             self._consume(keyword.upper(), fields, records)
@@ -739,10 +821,10 @@ class _DatOldScan:
         fields: list[str],
         records: Iterator[tuple[str, list[str]]],
     ) -> None:
-        """Dispatch one old-format card; unknown cards are ignored, as MDAL ignores them.
+        """Dispatch one old-format card; an unknown card is ignored.
 
         ``SCALAR``/``VECTOR`` are type hints the header already settled, so they do
-        nothing here -- matching MDAL, which comments "just ignore".
+        nothing here.
         """
         if upper == _NODE_COUNT:
             self.declared_nd = self._single_int(upper, fields)
@@ -781,7 +863,7 @@ class _DatOldScan:
         """Read one ``TS <time>`` card and the node value rows that follow it.
 
         The node count is checked before the first value is read. The old dialect carries
-        no active flag -- MDAL hardcodes it false -- so a block of values always follows
+        no active flag, so a block of values always follows
         the time directly.
         """
         self._check_nd()
@@ -811,7 +893,7 @@ class _DatOldScan:
         """Build the single group's variables, named after the file.
 
         A vector group becomes ``<name>_x``/``<name>_y``, as in the new dialect; a scalar
-        group is the bare name. The name is the file stem, which is how MDAL names an
+        group is the bare name. The name is the file stem, the convention for an
         old-format group (it has no ``NAME`` card).
         """
         import os
@@ -931,8 +1013,8 @@ class _Scan:
         """Dispatch one record onto the matching collector."""
         if upper in _UNSUPPORTED_ELEMENTS:
             raise FileFormatNotSupportedError(
-                f"{path!r} uses the {upper} element, which is not supported; MDAL "
-                f"refuses such a file rather than guessing a node mapping"
+                f"{path!r} uses the {upper} element, which is not supported; such a "
+                f"file is refused rather than guessing a node mapping"
             )
         if upper == _MATERIALS_TAG:
             _require_fields(upper, fields, 1, path)
@@ -1134,6 +1216,34 @@ class _Scan:
         return variables
 
 
+def _coordinate_formatter(precision):
+    """Return a function formatting a float for a 2DM coordinate column.
+
+    ``"repr"`` (the default) uses Python's shortest round-tripping representation, which
+    reproduces a float64 exactly; an integer requests that many significant digits. Full
+    precision is the default because a fixed number of decimals loses position for
+    projected coordinates in the millions.
+
+    Args:
+        precision: ``"repr"`` or an int number of significant digits.
+
+    Returns:
+        A callable mapping a float to its formatted string.
+
+    Raises:
+        ValueError: If ``precision`` is neither ``"repr"`` nor a positive integer.
+    """
+    if precision == "repr":
+        # repr(float(...)) gives the shortest exact round-trip; repr on a numpy scalar
+        # would print "np.float64(...)", so coerce to a Python float first.
+        return lambda value: repr(float(value))
+    if isinstance(precision, int) and precision > 0:
+        return lambda value: f"{value:.{precision}g}"
+    raise ValueError(
+        f"precision must be 'repr' or a positive integer, not {precision!r}"
+    )
+
+
 def _header_verdict(chunk: bytes) -> bool | None:
     """Judge the first significant line of a chunk of complete lines.
 
@@ -1302,8 +1412,8 @@ class _DatScan:
     ) -> None:
         """Dispatch one card onto the matching collector.
 
-        A card this driver does not model is ignored rather than refused, as MDAL
-        ignores the ones it does not model: DAT has accumulated optional cards across
+        A card this driver does not model is ignored rather than refused: DAT has
+        accumulated optional cards across
         SMS versions, and refusing an unknown one would reject files that read fine.
         """
         if upper == _DATASET:
@@ -1357,7 +1467,7 @@ class _DatScan:
         if self.current is not None:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} opens a {upper} group while another is still open; "
-                f"MDAL refuses that rather than guessing where the first one ended"
+                f"this is refused rather than guessing where the first one ended"
             )
         self.current = _DatGroup(vector=upper == _BEGIN_VECTOR)
 
@@ -1411,8 +1521,8 @@ class _DatScan:
 
         Raises:
             FileFormatNotSupportedError: If any flag is not ``0`` or ``1``. That is the
-                only check available on the block's position: this driver reads it where
-                MDAL reads it, before the values, and a block of real values landing
+                only check available on the block's position: this driver reads it
+                before the values, and a block of real values landing
                 here would otherwise be taken as flags and the values shifted by a whole
                 block. The check cannot fire when the node and cell counts are equal.
         """

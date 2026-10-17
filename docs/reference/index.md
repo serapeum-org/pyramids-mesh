@@ -24,6 +24,11 @@ its suffixes, capabilities and documented limitations:
 | `mike21` | DHI Mike21 mesh frame | [Mike21](mike21.md) |
 | `selafin` | TELEMAC Selafin / Serafin | [Selafin](selafin.md) |
 | `sww` | ANUGA SWW (NetCDF) | [SWW](sww.md) |
+| `xmdf` | XMDF HDF5 results | [XMDF](xmdf.md) |
+| `3di` | 3Di results (NetCDF) | [3Di](3di.md) |
+| `tuflowfv` | TUFLOW FV results (NetCDF, 2D) | [TUFLOW FV](tuflowfv.md) |
+| `dfsu` | DHI MIKE DFSU (needs `dhi`) | [DFSU](dfsu.md) |
+| `esri_tin` | Esri TIN (directory of `.adf`) | [Esri TIN](esri-tin.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
 

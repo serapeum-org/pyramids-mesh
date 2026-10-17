@@ -10,15 +10,15 @@ ADR-0003 scoped this package to mesh **generation**, **quality** and **refinemen
 written during scaffolding, before the gap analysis it was meant to serve, and it does not match the
 work this repository exists to do.
 
-The actual gap is **format breadth**. A survey of MDAL — the Mesh Data Abstraction Library that
-QGIS uses, and the reference implementation in this space — found that `pyramids-gis` reads exactly
-one of MDAL's eighteen driver families: UGRID NetCDF. The other seventeen are the native file
+The actual gap is **format breadth**. A survey of the mesh-format landscape — the eighteen
+driver families the established mesh I/O libraries cover — found that `pyramids-gis` reads exactly
+one of them: UGRID NetCDF. The other seventeen are the native file
 formats of hydrodynamic and hydraulic solvers — SMS, TUFLOW, TELEMAC, DHI MIKE, FLO-2D, 3Di, ANUGA,
 HEC-RAS — and none of them can be opened today.
 
-That survey also found the comparison runs the other way for everything else: MDAL performs no
+That survey also found the comparison runs the other way for everything else: those libraries do no
 interpolation, regridding, reprojection, contouring, gap filling, mesh-to-vector conversion or graph
-analysis. `pyramids-gis` already has all of it. So the only substantial capability MDAL has over
+analysis. `pyramids-gis` already has all of it. So the only substantial capability they have over
 this stack is **the ability to open other people's mesh files**.
 
 Reading a format is never out of scope for the stack, but seventeen parsers do not belong in
@@ -29,7 +29,7 @@ a PyPI project that already refills its 10 GB limit roughly every twelve release
 ## Decision
 
 **`pyramids-mesh` reads and writes the file formats of hydrodynamic and hydraulic mesh models —
-2DM, Selafin, DFSU, XMDF, PLY and the rest of MDAL's driver table — as `pyramids.netcdf.ugrid`
+2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats — as `pyramids.netcdf.ugrid`
 objects. It owns file-format drivers; every mesh operation belongs upstream in `pyramids-gis`.**
 
 - **Generation, quality and refinement are dropped**, not deferred. They were not an intended scope.
@@ -80,7 +80,7 @@ full. Only its three-concerns decision was wrong.
   shipped in `pyramids-gis 0.68.0`, so the floor is now `>= 0.68.0` and this package's entry points
   are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
   while the registry was unreleased and the entry points inert — is lifted.
-- Three concerns MDAL supports and `pyramids-gis` does not — ragged vertical levels
+- Three concerns these source formats carry and `pyramids-gis` does not — ragged vertical levels
   (`DataOnVolumes`), per-timestep active/dry flags, and a dataset reference time — are **upstream**
   work. A driver meeting them carries the value through without fabricating data: it raises on a
   genuinely ragged vertical profile rather than padding it, and attaches an active mask as a sibling
@@ -93,5 +93,5 @@ full. Only its three-concerns decision was wrong.
 
 - `planning/design.md` — the full architecture: driver protocol, registry and dispatch, the model
   contract, per-format specifications, and the task plan.
-- `planning/mdal-comparison.md` — MDAL's driver table and the capability comparison this decision
-  rests on.
+- the format-comparison notes in `planning/` — the driver table and the capability comparison this
+  decision rests on.
