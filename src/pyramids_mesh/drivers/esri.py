@@ -214,6 +214,22 @@ class _EsriTinReader:
         words = np.frombuffer(
             mask_bytes, dtype=">u4", count=word_count, offset=start + 12
         )
+        return self._unmask(words, n_triangles)
+
+    def _unmask(self, words: np.ndarray, n_triangles: int) -> np.ndarray:
+        """Decode the mask bitstream into a keep mask (a set bit excludes a triangle).
+
+        Each triangle's bit lives at ``words[i // 32]`` bit ``i % 32`` (LSB-first).
+
+        Raises:
+            FileFormatNotSupportedError: If the word block is too short to cover every
+                triangle -- a corrupt ``tmsk.adf`` -- rather than a bare ``IndexError``.
+        """
+        if words.size * 32 < n_triangles:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has a corrupt Esri TIN mask: {words.size} words cover "
+                f"{words.size * 32} triangles, fewer than the {n_triangles} in the table"
+            )
         triangle = np.arange(n_triangles)
         bits = (words[triangle // 32] >> (triangle % 32)) & 1
         return bits == 0

@@ -16,7 +16,7 @@ import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset
-from pyramids_mesh.drivers.esri import EsriTinDriver
+from pyramids_mesh.drivers.esri import EsriTinDriver, _EsriTinReader
 
 _DATA = Path(__file__).parent.parent / "data" / "esri_tin"
 _DEM = _DATA / "dem"
@@ -148,6 +148,28 @@ def test_read_of_a_non_tin_path_is_a_format_error(tmp_path):
     other.write_text("not a tin")
     with pytest.raises(FileFormatNotSupportedError, match="not an Esri TIN"):
         EsriTinDriver().read(str(other))
+
+
+class TestUnmask:
+    """The mask bit-decoder keeps unset-bit triangles and refuses a too-short word block."""
+
+    def test_keeps_triangles_whose_bit_is_unset(self):
+        """A set bit excludes a triangle; an unset bit keeps it (LSB-first in each word)."""
+        reader = _EsriTinReader(str(_DEM))
+        words = np.array([0b0000_0101], dtype=np.uint32)  # triangles 0 and 2 masked out
+        keep = reader._unmask(words, 4)
+        assert keep.tolist() == [False, True, False, True]
+
+    def test_refuses_a_word_block_too_short_for_the_triangles(self):
+        """A mask with fewer words than the triangle table needs is a clean format error.
+
+        Guards against a bare ``IndexError`` from ``words[triangle // 32]`` on a corrupt
+        ``tmsk.adf`` whose word count does not cover every triangle.
+        """
+        reader = _EsriTinReader(str(_DEM))
+        one_word = np.zeros(1, dtype=np.uint32)  # covers 32 triangles
+        with pytest.raises(FileFormatNotSupportedError, match="corrupt Esri TIN mask"):
+            reader._unmask(one_word, 100)
 
 
 def _tin_without(tmp_path, *, omit=(), prj=None):
