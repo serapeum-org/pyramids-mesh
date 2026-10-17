@@ -5,9 +5,9 @@ left behind a loader that seeks straight to a record, while the topology and the
 time records are read eagerly. Fortran unformatted records with undeclared endianness and
 an optional double-precision variant, read through the helpers in ``_binary.py``.
 
-The record layout here was read from MDAL's ``mdal_selafin.cpp``. One detail could not be
-checked against a vendor file -- the row-versus-column order of the ``IKLE`` connectivity
-block -- so it is read as MDAL reads it (row-major, one element's nodes contiguous) and
+The record layout here was read from the Selafin format specification. One detail could
+not be checked against a vendor file -- the row-versus-column order of the ``IKLE``
+connectivity block -- so it is read row-major (one element's nodes contiguous) and
 called out in the driver's documented limitations. See ``planning/design.md`` section
 20.1.
 """
@@ -47,7 +47,7 @@ _NAME_LENGTH = 32
 _NAME_HALF = 16
 
 # IPARAM is ten ints. These are the entries this driver acts on, 0-based into the array
-# MDAL reads (the TELEMAC docs number them 1-10).
+# as read (the TELEMAC docs number them 1-10).
 _IPARAM_COUNT = 10
 _IPARAM_X_ORIGIN = 2
 _IPARAM_Y_ORIGIN = 3
@@ -55,7 +55,7 @@ _IPARAM_PLANES = 6
 # Interface points: nodes shared between partitions, so nonzero only in a parallel
 # sub-domain file and zero in any serial one. This is the single reliable parallel
 # marker -- IPARAM[7] (boundary points) is a mesh property, not a parallel flag, and
-# MDAL keys on neither (mdal_selafin.cpp reads IPOBO regardless).
+# neither gates the read (IPOBO is read regardless).
 _IPARAM_INTERFACE_POINTS = 8
 _IPARAM_DATE_FLAG = 9
 _DATE_FIELDS = 6
@@ -87,7 +87,7 @@ class SelafinDriver(BaseDriver):
           ``NPOIN`` and prism ``IKLE`` cannot be read as a flat 2D mesh without returning
           all planes' nodes under 6-node faces. A full 3D read needs the layered mesh
           model pyramids does not have yet (design section 21.1), so the file is refused
-          -- as MDAL refuses it -- rather than yielding a plausible, wrong mesh.
+          rather than yielding a plausible, wrong mesh.
         - **A parallel sub-domain file is refused.** A non-zero interface-point count
           (``IPARAM[8]``) means local numbering within one partition, so the connectivity
           would index a sub-domain rather than the whole mesh. It is keyed on interface
@@ -96,8 +96,8 @@ class SelafinDriver(BaseDriver):
         - **Selafin variables are node-located, always.** The location is not inferred
           from an array length.
         - **The IKLE row/column order could not be checked against a vendor file.** It is
-          read row-major -- one element's ``NDP`` node ids contiguous -- as MDAL reads
-          it. A real file that stores it transposed would give a scrambled mesh; this is
+          read row-major -- one element's ``NDP`` node ids contiguous -- as the format
+          specifies. A real file that stores it transposed would give a scrambled mesh; this is
           the detail a vendor sample should confirm.
         - There is no CRS in the format, so ``crs`` is ``None``; it is never inferred
           from the coordinate magnitudes.
@@ -450,13 +450,13 @@ class _SelafinReader:
         """Refuse a layered 3D file rather than return a malformed pseudo-2D mesh.
 
         ``IPARAM[6]`` is the plane count. 0 and 1 both mean a 2D mesh -- some tools write
-        1 for 2D, which MDAL also accepts -- so only a value above 1 is a real 3D file.
+        1 for 2D, which is also accepted -- so only a value above 1 is a real 3D file.
         For one, ``NPOIN`` is the full 3D node count and ``IKLE`` is prism connectivity,
         so reading them as a flat 2D mesh yields all planes' nodes with 6-node "faces":
         plausible and wrong. A full 3D read needs the layered mesh model pyramids does
         not have yet (design section 21.1), and extracting the surface plane cannot be
         done faithfully without a vendor file to verify the plane ordering against, so
-        the file is refused -- as MDAL refuses it ("would need additional parsing").
+        the file is refused rather than read as a malformed 2D mesh.
         """
         planes = int(self.iparam[_IPARAM_PLANES])
         if planes > 1:

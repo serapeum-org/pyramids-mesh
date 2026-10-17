@@ -81,8 +81,8 @@ def test_dat_new_format_parses(mesh, tmp_path):
 def test_dat_old_format_without_dataset_card_parses(mesh, tmp_path):
     """A genuine old-format file (no DATASET, SCALAR header, bare TS) reads.
 
-    The old dialect carries one group named after the file -- MDAL has no NAME card in
-    it -- so the variable here is ``results`` from ``results.dat``.
+    The old dialect carries one group named after the file -- it has no NAME card --
+    so the variable here is ``results`` from ``results.dat``.
     """
     text = """SCALAR
 ND 4
@@ -320,7 +320,7 @@ ENDDS
 
 @pytest.mark.parametrize("card", ["NAME depth", "TIMEUNITS SECONDS", "TS 0 0.0"])
 def test_dat_group_only_card_outside_a_group_raises(mesh, tmp_path, card):
-    """``NAME``, ``TIMEUNITS`` and ``TS`` outside a group are refused, as MDAL does."""
+    """``NAME``, ``TIMEUNITS`` and ``TS`` outside a group are refused."""
     text = f"""DATASET
 ND 4
 {card}
@@ -487,7 +487,7 @@ ENDDS
 
 
 def test_dat_unknown_card_is_ignored(mesh, tmp_path):
-    """A card this driver does not model is skipped, as MDAL skips its unknowns."""
+    """A card this driver does not model is skipped."""
     text = _NEW_DIALECT.replace("NAME depth\n", "NAME depth\nSOMETHINGELSE 1 2 3\n")
     attached = _attach(mesh, tmp_path, text)
 
@@ -639,7 +639,7 @@ def test_dat_old_format_short_vector_row_is_refused(mesh, tmp_path):
 
 
 def test_dat_old_format_unknown_card_is_ignored(mesh, tmp_path):
-    """An unknown card in the old dialect is skipped, as MDAL skips its unknowns."""
+    """An unknown card in the old dialect is skipped."""
     text = "SCALAR\nND 4\nWHATEVER 1 2\nTS 0.0\n1.0\n2.0\n3.0\n4.0\n"
     attached = _attach(mesh, tmp_path, text, name="depth.dat")
 

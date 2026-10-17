@@ -1,14 +1,14 @@
 """One-off drivers with no shared parser: Mike21, with H2i and ADCIRC still to come.
 
 Mike21 ``.mesh`` is plain text despite the DHI name, so it needs no extra and lives in
-phase 2 next to 2DM rather than with the DFS drivers. H2i and ADCIRC appear only in
-MDAL's README prose with no driver-table row, so their support there is unstated --
+phase 2 next to 2DM rather than with the DFS drivers. H2i and ADCIRC have no
+driver-table entry in the reference landscape, so their support there is unstated --
 verify against a real file before implementing. Tasks D4 and D12; see
 ``planning/design.md`` section 20.1.
 
-The Mike21 structure here was read from MDAL's ``mdal_mike21.cpp``. Two details could
+The Mike21 structure here was read from the format specification. Two details could
 not be checked against a vendor file -- the header's projection field and the node-record
-column order -- so they are read as MDAL reads them and called out in the driver's
+column order -- so they are read as the format specifies and called out in the driver's
 documented limitations rather than presented as certain.
 """
 
@@ -69,8 +69,8 @@ class Mike21Driver(BaseDriver):
     file's z column is read as written, never fabricated.
 
     Documented limitations:
-        - **The projection field and the node-record column order are read as MDAL
-          reads them, but could not be checked against a vendor file.** If a real Mike21
+        - **The projection field and the node-record column order are read as the
+          format specifies, but could not be checked against a vendor file.** If a real Mike21
           mesh orders its node columns differently, the coordinates would be wrong in a
           plausible way; this is the part of the driver a vendor sample should confirm.
         - **The projection is mapped to a CRS only when it is real.** A WKT string or an

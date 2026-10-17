@@ -31,8 +31,8 @@ mesh = UgridDataset.read_file("surface.tin")
 ## Esri TIN
 
 The task that produced this reader also named **Esri TIN**, which is deliberately *not*
-implemented: it is an undocumented directory of binary files, reverse-engineered by MDAL,
-and there is no vendor sample to test an honest parser against. It is tracked for when a
+implemented: it is an undocumented directory of binary files whose layout is
+reverse-engineered, and there is no vendor sample to test an honest parser against. It is tracked for when a
 real ArcGIS TIN directory is available.
 
 ## API

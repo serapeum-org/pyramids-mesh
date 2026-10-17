@@ -41,7 +41,7 @@ def detect_endianness(
 
     Reads the leading ``int32``; if it is not the expected record length the byte order
     is swapped and it is read again. If neither matches, the file is not of this format.
-    This is exactly how MDAL probes a Selafin file.
+    This is the standard way to probe a Selafin file.
 
     The probe only works on an asymmetric value, so four bytes that read the same in
     either order are refused rather than resolved to ``"<"`` -- that would be a guess

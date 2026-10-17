@@ -638,8 +638,8 @@ ND 2 1.0 0.0 0.0
 def test_2dm_unknown_keywords_are_ignored(tmp_path):
     """Records this driver does not model are skipped, not treated as an error.
 
-    A real 2DM carries parameter blocks and metadata beside the topology; MDAL
-    ignores what it does not recognise and so does this driver.
+    A real 2DM carries parameter blocks and metadata beside the topology; this driver
+    ignores what it does not recognise.
     """
     text = """MESH2D
 MESHNAME "my mesh"

@@ -62,7 +62,7 @@ a larger one is refused rather than allocated.
 Every one of these is deliberate; none is a silent approximation.
 
 - **`E3L`, `E8Q` and `E9Q` are refused**, and the whole file with them, naming the
-  element. MDAL does the same (`Err_UnsupportedElement`). Treating a mid-side or centre
+  element. Treating a mid-side or centre
   node as a corner would distort the element without any error, so no mapping is
   guessed.
 - **`E6T` is kept as a six-node face.** Its node order is corner, mid-side, corner,
@@ -83,7 +83,7 @@ Every one of these is deliberate; none is a silent approximation.
   entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file
   whose `ND` records *disagree* about the z column is refused, since the ones without it would
   need a datum invented.
-- **Records this driver does not model are skipped**, as MDAL skips them: `MESHNAME`, the
+- **Records this driver does not model are skipped**: `MESHNAME`, the
   `BEGPARAMDEF` block and anything else beyond the nodes, elements and
   `NUM_MATERIALS_PER_ELEM`. One consequence is that a file naming its own mesh loses that name —
   the topology is always built as `mesh2d`.

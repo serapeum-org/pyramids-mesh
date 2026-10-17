@@ -1,7 +1,7 @@
 """Mesh file-format drivers for the pyramids stack.
 
 `pyramids-mesh` reads and writes the file formats of hydrodynamic and hydraulic
-mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of MDAL's driver table —
+mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats —
 as `pyramids.netcdf.ugrid` objects. `pyramids.netcdf.ugrid` owns the UGRID data
 model (`Mesh2d`, `Network1d`, `UgridDataset`), its NetCDF I/O, and every operation
 that follows from a topology already in hand — connectivity and graph algorithms,
