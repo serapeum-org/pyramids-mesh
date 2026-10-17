@@ -19,7 +19,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset
 
-from pyramids_mesh.drivers.xmdf import XmdfDriver, _XmdfReader
+from pyramids_mesh.drivers.xmdf import _GROUPTYPE, XmdfDriver, _XmdfReader
 
 _DATA = Path(__file__).parent.parent / "data" / "xmdf"
 _MESH = _DATA / "minimal.2dm"
@@ -168,6 +168,16 @@ class _FakeArray:
         return self._value
 
 
+class _FakeNamed:
+    """A stand-in for a GDAL attribute handle that only reports its name."""
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def GetName(self) -> str:
+        return self._name
+
+
 class _FakeGroup:
     """A stand-in GDAL group exposing named arrays and a ``Grouptype`` attribute."""
 
@@ -177,6 +187,9 @@ class _FakeGroup:
 
     def GetAttribute(self, name: str) -> _FakeAttribute:
         return _FakeAttribute(self._grouptype)
+
+    def GetAttributes(self) -> list:
+        return [_FakeNamed(_GROUPTYPE)]
 
     def GetMDArrayNames(self) -> list:
         return list(self._arrays)
@@ -209,6 +222,22 @@ class TestScalar2dGuard:
         group = _FakeGroup(grouptype="DATASET SCALAR", arrays={"Values": _FakeArray(3)})
         with pytest.raises(FileFormatNotSupportedError, match="layered 3D"):
             _reader()._guard_scalar_2d(group, "conc")
+
+
+class TestCollectRootDataset:
+    """``_collect`` handles a DATASET group sitting at the HDF5 root (empty path)."""
+
+    def test_root_level_dataset_is_named_without_crashing(self):
+        """A dataset at the root is recorded with a literal fallback name, not a crash.
+
+        A well-formed XMDF nests datasets under containers, but a DATASET group found at
+        the root (``path == ()``) must still be named rather than raising ``AttributeError``
+        on a non-existent ``_XmdfReader.name``.
+        """
+        group = _FakeGroup(grouptype="DATASET SCALAR", arrays={"Values": _FakeArray(2)})
+        found: list = []
+        _reader()._collect(group, (), found)
+        assert found == [("dataset", ())]
 
 
 class TestLocation:

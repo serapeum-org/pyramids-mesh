@@ -256,7 +256,9 @@ class _XmdfReader:
         reach the variable list.
         """
         if self._is_dataset(group):
-            found.append((path[-1] if path else self.name, path))
+            # A dataset at the root has no container name to borrow; name it literally
+            # rather than reaching for a non-existent attribute.
+            found.append((path[-1] if path else "dataset", path))
             return
         for child_name in group.GetGroupNames():
             if child_name in _SUMMARY_CONTAINERS:
