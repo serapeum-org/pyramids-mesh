@@ -521,6 +521,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -841,6 +851,146 @@
     
   
     SWW (ANUGA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../xmdf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    XMDF (HDF5 results)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3di/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3Di (results)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuflowfv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUFLOW FV (results)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dfsu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DFSU (DHI MIKE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../esri-tin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Esri TIN (directory)
   
 
     
@@ -1568,9 +1718,9 @@ variable's per-timestep slab is left behind a loader that seeks straight to it.<
 <li><strong>A layered 3D file is refused.</strong> <code>IPARAM[6]</code> is the plane count; 0 and 1 both mean 2D,
   and a value above 1 is a real 3D file. Its <code>NPOIN</code> and prism <code>IKLE</code> cannot be read as a
   flat 2D mesh without returning all planes' nodes under 6-node faces, and a faithful
-  surface extraction needs a vendor file to verify the plane ordering, so it is refused —
-  as MDAL refuses it. A full 3D read needs the layered mesh model pyramids does not have
-  yet (design §21.1).</li>
+  surface extraction needs a vendor file to verify the plane ordering, so it is refused
+  rather than read as a malformed 2D mesh. A full 3D read needs the layered mesh model
+  pyramids does not have yet (design §21.1).</li>
 <li><strong>A parallel sub-domain file is refused.</strong> A non-zero interface-point count
   (<code>IPARAM[8]</code>) means local numbering within one partition, so the connectivity would
   index a sub-domain rather than the whole mesh. It is keyed on interface points alone —
@@ -1578,7 +1728,7 @@ variable's per-timestep slab is left behind a loader that seeks straight to it.<
   the partitions before reading.</li>
 <li><strong>Variables are node-located, always</strong> — never inferred from an array length.</li>
 <li><strong>The IKLE row/column order could not be checked against a vendor file.</strong> It is read
-  row-major (one element's <code>NDP</code> node ids contiguous), as MDAL reads it. A real file that
+  row-major (one element's <code>NDP</code> node ids contiguous), as the format specifies. A real file that
   stored it transposed would give a scrambled mesh; this is the detail a vendor sample
   should confirm, tracked for the <code>vendor_data</code> suite.</li>
 <li><strong>A partial final timestep is dropped with a warning</strong> — a run killed mid-write leaves
@@ -1633,7 +1783,7 @@ loader that seeks to it.</p>
   <code>NPOIN</code> and prism <code>IKLE</code> cannot be read as a flat 2D mesh without returning
   all planes' nodes under 6-node faces. A full 3D read needs the layered mesh
   model pyramids does not have yet (design section 21.1), so the file is refused
-  -- as MDAL refuses it -- rather than yielding a plausible, wrong mesh.</li>
+  rather than yielding a plausible, wrong mesh.</li>
 <li><strong>A parallel sub-domain file is refused.</strong> A non-zero interface-point count
   (<code>IPARAM[8]</code>) means local numbering within one partition, so the connectivity
   would index a sub-domain rather than the whole mesh. It is keyed on interface
@@ -1642,8 +1792,8 @@ loader that seeks to it.</p>
 <li><strong>Selafin variables are node-located, always.</strong> The location is not inferred
   from an array length.</li>
 <li><strong>The IKLE row/column order could not be checked against a vendor file.</strong> It is
-  read row-major -- one element's <code>NDP</code> node ids contiguous -- as MDAL reads
-  it. A real file that stores it transposed would give a scrambled mesh; this is
+  read row-major -- one element's <code>NDP</code> node ids contiguous -- as the format
+  specifies. A real file that stores it transposed would give a scrambled mesh; this is
   the detail a vendor sample should confirm.</li>
 <li>There is no CRS in the format, so <code>crs</code> is <code>None</code>; it is never inferred
   from the coordinate magnitudes.</li>
@@ -1874,7 +2024,7 @@ second_step
 <a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">          ``NPOIN`` and prism ``IKLE`` cannot be read as a flat 2D mesh without returning</span>
 <a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">          all planes' nodes under 6-node faces. A full 3D read needs the layered mesh</span>
 <a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">          model pyramids does not have yet (design section 21.1), so the file is refused</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">          -- as MDAL refuses it -- rather than yielding a plausible, wrong mesh.</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">          rather than yielding a plausible, wrong mesh.</span>
 <a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        - **A parallel sub-domain file is refused.** A non-zero interface-point count</span>
 <a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">          (``IPARAM[8]``) means local numbering within one partition, so the connectivity</span>
 <a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">          would index a sub-domain rather than the whole mesh. It is keyed on interface</span>
@@ -1883,8 +2033,8 @@ second_step
 <a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        - **Selafin variables are node-located, always.** The location is not inferred</span>
 <a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">          from an array length.</span>
 <a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">        - **The IKLE row/column order could not be checked against a vendor file.** It is</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">          read row-major -- one element's ``NDP`` node ids contiguous -- as MDAL reads</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">          it. A real file that stores it transposed would give a scrambled mesh; this is</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">          read row-major -- one element's ``NDP`` node ids contiguous -- as the format</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">          specifies. A real file that stores it transposed would give a scrambled mesh; this is</span>
 <a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">          the detail a vendor sample should confirm.</span>
 <a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        - There is no CRS in the format, so ``crs`` is ``None``; it is never inferred</span>
 <a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">          from the coordinate magnitudes.</span>
