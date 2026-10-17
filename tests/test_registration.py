@@ -35,7 +35,9 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.
-OPTIONAL_DRIVERS: set[str] = set()
+OPTIONAL_DRIVERS: set[str] = {
+    "dfsu",  # the dhi extra (mikeio)
+}
 
 
 def test_dependency_free_drivers_are_registered():

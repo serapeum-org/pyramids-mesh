@@ -47,15 +47,14 @@ dependencies = [
 # dependency (ADR-0005).
 #
 # One extra per dependency-backed driver family. A driver whose extra is absent
-# raises `OptionalPackageDoesNotExist` from `require_optional` at driver-module
-# import, and pyramids' registry skips it with a warning — so a bare install stays
-# small and every other driver keeps working.
+# cannot import its backing library at driver-module import, so pyramids' registry
+# skips it with a warning — a bare install stays small and every other driver keeps
+# working.
 
-# DHI MIKE: DFSU (unstructured) and DFS2 (structured grid). MDAL does not parse
-# these at all — its DFS support is an external driver needing DHI's proprietary
-# NuGet packages on Windows + Visual Studio + MFC. mikeio is DHI's own Python
-# library and the only portable route. It is the heaviest extra here: it pulls
-# mikecore, pandas, matplotlib, scipy and tqdm.
+# DHI MIKE: DFSU (unstructured) and DFS2 (structured grid). These proprietary binary
+# containers cannot be parsed without DHI's own library; mikeio is the only portable
+# route. It is the heaviest extra here: it pulls mikecore, pandas, matplotlib, scipy
+# and tqdm.
 dhi = ["mikeio >=3.0.0"]
 
 all = ["pyramids-mesh[dhi]"]
@@ -132,6 +131,7 @@ xmstin = "pyramids_mesh.drivers.interchange:XmsTinDriver"
 xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
 3di = "pyramids_mesh.drivers.threedi:ThreeDiDriver"
 tuflowfv = "pyramids_mesh.drivers.tuflowfv:TuflowFvDriver"
+dfsu = "pyramids_mesh.drivers.dhi:DfsuDriver"
 
 
 [project.urls]
