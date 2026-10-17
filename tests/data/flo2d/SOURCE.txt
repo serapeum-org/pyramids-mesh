@@ -1,0 +1,6 @@
+TIMDEP.HDF5 + DEPFP.OUT — a genuine FLO-2D PRO model (240-element flume, 4 x 60 cells of
+50-unit spacing) from FLO-2D Software Inc.'s AI Workshop dataset (GPL-3.0; this repository is
+also GPL-3.0).
+  https://github.com/FLO-2DSoftware/FLO-2D-AI-Workshop-Data  (GPL-3.0)
+DEPFP.OUT: per-element "<id> <x> <y> <max floodplain depth>". TIMDEP.HDF5: groups
+"TIMDEP NETCDF OUTPUT RESULTS" with datasets FLOW DEPTH, Velocity MAG, Velocity, Times.
