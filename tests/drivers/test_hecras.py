@@ -133,7 +133,9 @@ def test_results_only_companion_is_refused(tmp_path):
 def test_sniff_declines_hdf5_magic_but_unopenable(tmp_path):
     """A file with the HDF5 magic but an unreadable body is declined, not raised."""
     bad = tmp_path / "bad.hdf"
-    bad.write_bytes(b"\x89HDF\r\n\x1a\n" + b"\x00" * 64)  # magic only; GDAL cannot open it
+    bad.write_bytes(
+        b"\x89HDF\r\n\x1a\n" + b"\x00" * 64
+    )  # magic only; GDAL cannot open it
     assert HecRasDriver().can_open(str(bad)) is False
 
 
