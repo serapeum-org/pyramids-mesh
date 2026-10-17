@@ -31,6 +31,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "xmstin",
     "xmdf",
     "3di",
+    "tuflowfv",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

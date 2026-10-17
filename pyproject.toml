@@ -131,6 +131,7 @@ ply = "pyramids_mesh.drivers.interchange:PlyDriver"
 xmstin = "pyramids_mesh.drivers.interchange:XmsTinDriver"
 xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
 3di = "pyramids_mesh.drivers.threedi:ThreeDiDriver"
+tuflowfv = "pyramids_mesh.drivers.tuflowfv:TuflowFvDriver"
 
 
 [project.urls]
