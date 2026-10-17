@@ -272,6 +272,12 @@ py311 = { features = ["py311", "dev"], solve-group = "py311" }
 py312 = { features = ["py312", "dev"], solve-group = "py312" }
 py313 = { features = ["py313", "dev"], solve-group = "py313" }
 py314 = { features = ["py314", "dev"], solve-group = "py314" }
+# The dhi extra (mikeio) wired into its own environment now that the DFSU driver has
+# landed. mikeio needs Python >= 3.12, so it cannot join the shared `dev` feature (the
+# matrix includes py311); it gets a dedicated py314 environment with its own solve-group,
+# so the heavy mikeio stack (mikecore, matplotlib, scipy, pandas) never perturbs the other
+# environments' locks. CI adds `dhi` to the test matrix so the DFSU driver is exercised.
+dhi = { features = ["py314", "dev", "dhi"], solve-group = "dhi" }
 
 
 # Interpreter pins, one feature per environment in the matrix. `default`, `dev`
@@ -302,3 +308,9 @@ python = "3.12.*"
 python = { version = "3.13.*", build = "*_cp313" }
 [tool.pixi.feature.py314.dependencies]
 python = { version = "3.14.*", build = "*_cp314" }
+
+# The dhi extra's backing library. Kept in its own feature, used only by the `dhi`
+# environment above, so the matrix environments stay free of the heavy mikeio stack and
+# py311 (which mikeio does not support) keeps resolving.
+[tool.pixi.feature.dhi.pypi-dependencies]
+mikeio = ">=3.0.0"
