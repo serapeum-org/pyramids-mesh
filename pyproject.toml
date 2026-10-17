@@ -132,6 +132,7 @@ xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
 3di = "pyramids_mesh.drivers.threedi:ThreeDiDriver"
 tuflowfv = "pyramids_mesh.drivers.tuflowfv:TuflowFvDriver"
 dfsu = "pyramids_mesh.drivers.dhi:DfsuDriver"
+esri_tin = "pyramids_mesh.drivers.esri:EsriTinDriver"
 
 
 [project.urls]

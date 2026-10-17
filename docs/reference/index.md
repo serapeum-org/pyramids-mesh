@@ -28,6 +28,7 @@ its suffixes, capabilities and documented limitations:
 | `3di` | 3Di results (NetCDF) | [3Di](3di.md) |
 | `tuflowfv` | TUFLOW FV results (NetCDF, 2D) | [TUFLOW FV](tuflowfv.md) |
 | `dfsu` | DHI MIKE DFSU (needs `dhi`) | [DFSU](dfsu.md) |
+| `esri_tin` | Esri TIN (directory of `.adf`) | [Esri TIN](esri-tin.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
 
