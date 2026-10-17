@@ -269,6 +269,26 @@ class TestCollectRootDataset:
         assert found == [("dataset", ())]
 
 
+class TestDuplicateDatasetNames:
+    """Two datasets sharing a leaf name are refused, not silently overwritten."""
+
+    def test_duplicate_leaf_names_are_refused(self):
+        """Same leaf name under different containers raises, naming both group paths.
+
+        Keyed by leaf name, a plain-dict build would let the second dataset overwrite the
+        first and silently lose results; the reader must refuse it (as the DAT driver does).
+        """
+        found = [("Depth", ("RunA", "Depth")), ("Depth", ("RunB", "Depth"))]
+        with pytest.raises(FileFormatNotSupportedError, match="two datasets named"):
+            _reader()._guard_unique_names(found)
+
+    def test_unique_leaf_names_pass(self):
+        """Distinct leaf names are accepted."""
+        _reader()._guard_unique_names(
+            [("Depth", ("RunA", "Depth")), ("Vel", ("RunA", "Vel"))]
+        )
+
+
 class TestLocation:
     """``_location`` places a dataset by its per-step element count against the mesh."""
 

@@ -243,12 +243,35 @@ class _XmdfReader:
                         f"{self.path!r} holds no XMDF dataset group (a group with a "
                         f"{_GROUPTYPE!r} of {_DATASET_PREFIX!r} and a {_VALUES!r} array)"
                     )
+                self._guard_unique_names(found)
                 variables: dict[str, ParsedVariable] = {}
                 for name, group_path in found:
                     self._add_dataset(dataset, name, group_path, variables)
             finally:
                 dataset.Close()
         return variables
+
+    def _guard_unique_names(self, found: list) -> None:
+        """Refuse two datasets that share a leaf name, so none is silently overwritten.
+
+        Variables are keyed by the dataset group's leaf name; two datasets with the same
+        leaf name under different containers (e.g. ``/RunA/Depth`` and ``/RunB/Depth``)
+        would collapse to one dict key and the second would overwrite the first. The sibling
+        DAT driver refuses duplicate names for the same reason.
+
+        Raises:
+            FileFormatNotSupportedError: If any leaf name occurs more than once, naming both
+                group paths.
+        """
+        seen: dict[str, tuple[str, ...]] = {}
+        for name, group_path in found:
+            if name in seen:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has two datasets named {name!r} (at "
+                    f"{seen[name]} and {group_path}); XMDF dataset names must be unique "
+                    f"so results are not silently overwritten"
+                )
+            seen[name] = group_path
 
     def _collect(self, group, path: tuple[str, ...], found: list) -> None:
         """Recursively gather dataset groups, skipping summary containers.
