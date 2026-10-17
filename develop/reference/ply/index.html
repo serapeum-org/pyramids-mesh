@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -505,6 +505,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1002,6 +1010,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pyramids_mesh.drivers.interchange.PlyDriver.write" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1036,6 +1055,118 @@
     
   
     XMS TIN
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../xdmf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    XDMF (XML+HDF5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flo2d/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FLO-2D (flood)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hecras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HEC-RAS 2D
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adcirc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADCIRC
   
 
     
@@ -1592,6 +1723,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pyramids_mesh.drivers.interchange.PlyDriver.write" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1840,7 +1982,48 @@ dataset.get("node_z").data.tolist()
 <span class="normal"><a href="#__codelineno-0-177">177</a></span>
 <span class="normal"><a href="#__codelineno-0-178">178</a></span>
 <span class="normal"><a href="#__codelineno-0-179">179</a></span>
-<span class="normal"><a href="#__codelineno-0-180">180</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="k">class</span><span class="w"> </span><span class="nc">PlyDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-180">180</a></span>
+<span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span>
+<span class="normal"><a href="#__codelineno-0-194">194</a></span>
+<span class="normal"><a href="#__codelineno-0-195">195</a></span>
+<span class="normal"><a href="#__codelineno-0-196">196</a></span>
+<span class="normal"><a href="#__codelineno-0-197">197</a></span>
+<span class="normal"><a href="#__codelineno-0-198">198</a></span>
+<span class="normal"><a href="#__codelineno-0-199">199</a></span>
+<span class="normal"><a href="#__codelineno-0-200">200</a></span>
+<span class="normal"><a href="#__codelineno-0-201">201</a></span>
+<span class="normal"><a href="#__codelineno-0-202">202</a></span>
+<span class="normal"><a href="#__codelineno-0-203">203</a></span>
+<span class="normal"><a href="#__codelineno-0-204">204</a></span>
+<span class="normal"><a href="#__codelineno-0-205">205</a></span>
+<span class="normal"><a href="#__codelineno-0-206">206</a></span>
+<span class="normal"><a href="#__codelineno-0-207">207</a></span>
+<span class="normal"><a href="#__codelineno-0-208">208</a></span>
+<span class="normal"><a href="#__codelineno-0-209">209</a></span>
+<span class="normal"><a href="#__codelineno-0-210">210</a></span>
+<span class="normal"><a href="#__codelineno-0-211">211</a></span>
+<span class="normal"><a href="#__codelineno-0-212">212</a></span>
+<span class="normal"><a href="#__codelineno-0-213">213</a></span>
+<span class="normal"><a href="#__codelineno-0-214">214</a></span>
+<span class="normal"><a href="#__codelineno-0-215">215</a></span>
+<span class="normal"><a href="#__codelineno-0-216">216</a></span>
+<span class="normal"><a href="#__codelineno-0-217">217</a></span>
+<span class="normal"><a href="#__codelineno-0-218">218</a></span>
+<span class="normal"><a href="#__codelineno-0-219">219</a></span>
+<span class="normal"><a href="#__codelineno-0-220">220</a></span>
+<span class="normal"><a href="#__codelineno-0-221">221</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="k">class</span><span class="w"> </span><span class="nc">PlyDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="w">    </span><span class="sd">"""Reader for the Stanford PLY polygon format.</span>
 <a id="__codelineno-0-112" name="__codelineno-0-112"></a>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">    Reads ASCII and both binary byte orders. A PLY is a geometry format with elevation</span>
@@ -1888,7 +2071,7 @@ dataset.get("node_z").data.tolist()
 <a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Stanford PLY"</span>
 <a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".ply"</span><span class="p">,)</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">})</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"write_mesh"</span><span class="p">,</span> <span class="s2">"write_data"</span><span class="p">})</span>
 <a id="__codelineno-0-159" name="__codelineno-0-159"></a>
 <a id="__codelineno-0-160" name="__codelineno-0-160"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="w">        </span><span class="sd">"""Report whether the file opens with the ``ply`` magic line."""</span>
@@ -1911,6 +2094,47 @@ dataset.get("node_z").data.tolist()
 <a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">                property type, a face of fewer than three vertices, or a truncated body.</span>
 <a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">        """</span>
 <a id="__codelineno-0-180" name="__codelineno-0-180"></a>        <span class="k">return</span> <span class="n">_PlyReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="w">        </span><span class="sd">"""Write a mesh back to a PLY file.</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">        Emits a ``vertex`` element of ``double x/y/z`` and a ``face`` element of a</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">        ``property list uchar int vertex_indices``, in ASCII (the default) or either</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a><span class="sd">        binary byte order. Node elevation is taken from a node-located ``node_z``</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a><span class="sd">        variable when present, else ``0``; face indices stay 0-based, as PLY requires.</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="sd">        Arbitrary per-vertex properties the reader surfaced as node variables (colours,</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a><span class="sd">        normals) are **not** written back -- only ``x``/``y``/``z`` -- so a round trip is</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">        geometrically faithful but drops those extras (design sections 6 and 20.3).</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a>
+<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-195" name="__codelineno-0-195"></a><span class="sd">            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.</span>
+<a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="sd">            path: The output ``.ply`` path.</span>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">            **options: ``format`` selects ``"ascii"`` (default),</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">                ``"binary_little_endian"`` or ``"binary_big_endian"``.</span>
+<a id="__codelineno-0-199" name="__codelineno-0-199"></a>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">            FileFormatNotSupportedError: If the dataset carries no faces, or ``format`` is</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">                not one of the three PLY encodings.</span>
+<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">        """</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a>        <span class="n">mesh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a>        <span class="n">connectivity</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a>        <span class="k">if</span> <span class="n">connectivity</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-207" name="__codelineno-0-207"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a>                <span class="sa">f</span><span class="s2">"cannot write </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">: the dataset has no face connectivity to write "</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a>                <span class="sa">f</span><span class="s2">"as a PLY mesh"</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a>            <span class="p">)</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a>        <span class="n">fmt</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"format"</span><span class="p">,</span> <span class="s2">"ascii"</span><span class="p">)</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a>        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_PLY_FORMATS</span><span class="p">:</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a>                <span class="sa">f</span><span class="s2">"cannot write </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">: unknown PLY format </span><span class="si">{</span><span class="n">fmt</span><span class="si">!r}</span><span class="s2">; use 'ascii', "</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>                <span class="sa">f</span><span class="s2">"'binary_little_endian' or 'binary_big_endian'"</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>            <span class="p">)</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a>        <span class="n">node_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a>        <span class="n">node_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a>        <span class="n">node_z</span> <span class="o">=</span> <span class="n">_writer_node_z</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">node_x</span><span class="p">))</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a>        <span class="n">faces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">connectivity</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a>        <span class="n">_write_ply</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">node_x</span><span class="p">,</span> <span class="n">node_y</span><span class="p">,</span> <span class="n">node_z</span><span class="p">,</span> <span class="n">faces</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2967,6 +3191,200 @@ surfaceonly does not offer a 'network1d' topology in 'flat.tiny'</p>
 <a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="n">parsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span>
 <a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="n">parsed</span> <span class="o">=</span> <span class="n">validate_and_normalise</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span>
 <a id="__codelineno-0-485" name="__codelineno-0-485"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">mesh_name</span><span class="o">=</span><span class="n">mesh_name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="pyramids_mesh.drivers.interchange.PlyDriver.write" class="doc doc-heading"><a href="#pyramids_mesh.drivers.interchange.PlyDriver.write" class="toclink">
+            <code class="highlight language-python"><span class="n">write</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></code>
+
+</a><a href="#pyramids_mesh.drivers.interchange.PlyDriver.write" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Write a mesh back to a PLY file.</p>
+<p>Emits a <code>vertex</code> element of <code>double x/y/z</code> and a <code>face</code> element of a
+<code>property list uchar int vertex_indices</code>, in ASCII (the default) or either
+binary byte order. Node elevation is taken from a node-located <code>node_z</code>
+variable when present, else <code>0</code>; face indices stay 0-based, as PLY requires.</p>
+<p>Arbitrary per-vertex properties the reader surfaced as node variables (colours,
+normals) are <strong>not</strong> written back -- only <code>x</code>/<code>y</code>/<code>z</code> -- so a round trip is
+geometrically faithful but drops those extras (design sections 6 and 20.3).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dataset</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The :class:<code>~pyramids.netcdf.ugrid.UgridDataset</code> to write.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The output <code>.ply</code> path.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**options</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>format</code> selects <code>"ascii"</code> (default),
+<code>"binary_little_endian"</code> or <code>"binary_big_endian"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pyramids.base._errors.FileFormatNotSupportedError">FileFormatNotSupportedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the dataset carries no faces, or <code>format</code> is
+not one of the three PLY encodings.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/pyramids_mesh/drivers/interchange.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span>
+<span class="normal"><a href="#__codelineno-0-194">194</a></span>
+<span class="normal"><a href="#__codelineno-0-195">195</a></span>
+<span class="normal"><a href="#__codelineno-0-196">196</a></span>
+<span class="normal"><a href="#__codelineno-0-197">197</a></span>
+<span class="normal"><a href="#__codelineno-0-198">198</a></span>
+<span class="normal"><a href="#__codelineno-0-199">199</a></span>
+<span class="normal"><a href="#__codelineno-0-200">200</a></span>
+<span class="normal"><a href="#__codelineno-0-201">201</a></span>
+<span class="normal"><a href="#__codelineno-0-202">202</a></span>
+<span class="normal"><a href="#__codelineno-0-203">203</a></span>
+<span class="normal"><a href="#__codelineno-0-204">204</a></span>
+<span class="normal"><a href="#__codelineno-0-205">205</a></span>
+<span class="normal"><a href="#__codelineno-0-206">206</a></span>
+<span class="normal"><a href="#__codelineno-0-207">207</a></span>
+<span class="normal"><a href="#__codelineno-0-208">208</a></span>
+<span class="normal"><a href="#__codelineno-0-209">209</a></span>
+<span class="normal"><a href="#__codelineno-0-210">210</a></span>
+<span class="normal"><a href="#__codelineno-0-211">211</a></span>
+<span class="normal"><a href="#__codelineno-0-212">212</a></span>
+<span class="normal"><a href="#__codelineno-0-213">213</a></span>
+<span class="normal"><a href="#__codelineno-0-214">214</a></span>
+<span class="normal"><a href="#__codelineno-0-215">215</a></span>
+<span class="normal"><a href="#__codelineno-0-216">216</a></span>
+<span class="normal"><a href="#__codelineno-0-217">217</a></span>
+<span class="normal"><a href="#__codelineno-0-218">218</a></span>
+<span class="normal"><a href="#__codelineno-0-219">219</a></span>
+<span class="normal"><a href="#__codelineno-0-220">220</a></span>
+<span class="normal"><a href="#__codelineno-0-221">221</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="w">    </span><span class="sd">"""Write a mesh back to a PLY file.</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">    Emits a ``vertex`` element of ``double x/y/z`` and a ``face`` element of a</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">    ``property list uchar int vertex_indices``, in ASCII (the default) or either</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a><span class="sd">    binary byte order. Node elevation is taken from a node-located ``node_z``</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a><span class="sd">    variable when present, else ``0``; face indices stay 0-based, as PLY requires.</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="sd">    Arbitrary per-vertex properties the reader surfaced as node variables (colours,</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a><span class="sd">    normals) are **not** written back -- only ``x``/``y``/``z`` -- so a round trip is</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">    geometrically faithful but drops those extras (design sections 6 and 20.3).</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a>
+<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-195" name="__codelineno-0-195"></a><span class="sd">        dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.</span>
+<a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="sd">        path: The output ``.ply`` path.</span>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">        **options: ``format`` selects ``"ascii"`` (default),</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">            ``"binary_little_endian"`` or ``"binary_big_endian"``.</span>
+<a id="__codelineno-0-199" name="__codelineno-0-199"></a>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">        FileFormatNotSupportedError: If the dataset carries no faces, or ``format`` is</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">            not one of the three PLY encodings.</span>
+<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">    """</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a>    <span class="n">mesh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a>    <span class="n">connectivity</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a>    <span class="k">if</span> <span class="n">connectivity</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-207" name="__codelineno-0-207"></a>        <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a>            <span class="sa">f</span><span class="s2">"cannot write </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">: the dataset has no face connectivity to write "</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a>            <span class="sa">f</span><span class="s2">"as a PLY mesh"</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a>        <span class="p">)</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a>    <span class="n">fmt</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"format"</span><span class="p">,</span> <span class="s2">"ascii"</span><span class="p">)</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a>    <span class="k">if</span> <span class="n">fmt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_PLY_FORMATS</span><span class="p">:</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a>        <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a>            <span class="sa">f</span><span class="s2">"cannot write </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">: unknown PLY format </span><span class="si">{</span><span class="n">fmt</span><span class="si">!r}</span><span class="s2">; use 'ascii', "</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>            <span class="sa">f</span><span class="s2">"'binary_little_endian' or 'binary_big_endian'"</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>        <span class="p">)</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a>    <span class="n">node_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a>    <span class="n">node_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a>    <span class="n">node_z</span> <span class="o">=</span> <span class="n">_writer_node_z</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">node_x</span><span class="p">))</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a>    <span class="n">faces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">connectivity</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a>    <span class="n">_write_ply</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">node_x</span><span class="p">,</span> <span class="n">node_y</span><span class="p">,</span> <span class="n">node_z</span><span class="p">,</span> <span class="n">faces</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

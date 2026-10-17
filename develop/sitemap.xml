@@ -65,6 +65,10 @@
          <lastmod>2026-10-17</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/adcirc/</loc>
+         <lastmod>2026-10-17</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/dat/</loc>
          <lastmod>2026-10-17</lastmod>
     </url>
@@ -74,6 +78,14 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/esri-tin/</loc>
+         <lastmod>2026-10-17</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/flo2d/</loc>
+         <lastmod>2026-10-17</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/hecras/</loc>
          <lastmod>2026-10-17</lastmod>
     </url>
     <url>
@@ -94,6 +106,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/tuflowfv/</loc>
+         <lastmod>2026-10-17</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/xdmf/</loc>
          <lastmod>2026-10-17</lastmod>
     </url>
     <url>
