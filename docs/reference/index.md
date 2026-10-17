@@ -25,6 +25,7 @@ its suffixes, capabilities and documented limitations:
 | `selafin` | TELEMAC Selafin / Serafin | [Selafin](selafin.md) |
 | `sww` | ANUGA SWW (NetCDF) | [SWW](sww.md) |
 | `xmdf` | XMDF HDF5 results | [XMDF](xmdf.md) |
+| `3di` | 3Di results (NetCDF) | [3Di](3di.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
 

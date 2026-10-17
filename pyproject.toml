@@ -130,6 +130,7 @@ sww = "pyramids_mesh.drivers.anuga:SwwDriver"
 ply = "pyramids_mesh.drivers.interchange:PlyDriver"
 xmstin = "pyramids_mesh.drivers.interchange:XmsTinDriver"
 xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
+3di = "pyramids_mesh.drivers.threedi:ThreeDiDriver"
 
 
 [project.urls]
