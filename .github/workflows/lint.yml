@@ -19,6 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # Mirrors pyramids-eo: the dev pixi env is set up so any hook that shells
+      # back into the project has it available. The three `language: system`
+      # hooks (pytest-check, doctest, notebook-check) are skipped below, so the
+      # env is not activated here; the formatters and linters run in pre-commit's
+      # own isolated environments and read their config from pyproject.toml.
+      - name: Set up pixi dev env
+        uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0  # pixi/v1.2.1
+        with:
+          environments: dev
+          cache: true
+          # pixi.lock is lock-file format v7, which older pixi refuses to read;
+          # match tests.yml / github-release.yml.
+          version: v0.73.0
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
@@ -31,11 +45,6 @@ jobs:
 
       - run: python -m pip install pre-commit==4.5.1
 
-      # No pixi environment is set up for this job on purpose: every hook that
-      # needs the package importable is a `language: system` hook, and all three
-      # are skipped below. The formatters and linters (black, flake8, pydocstyle,
-      # the pre-commit-hooks set, beautysh, shell-lint) run in pre-commit's own
-      # isolated environments and read their config from pyproject.toml.
       - name: Run pre-commit hooks
         run: pre-commit run --all-files --show-diff-on-failure --color=always
         env:
@@ -43,7 +52,9 @@ jobs:
           # single runner, and `doctest` is the `static` job below — all three are
           # `language: system` hooks that would run against the runner's bare
           # Python, where neither pyramids nor this package is installed.
-          SKIP: pytest-check,doctest,notebook-check
+          # no-commit-to-branch and gitleaks match pyramids-eo's skip set (this
+          # repo has neither hook yet, so they are harmless no-ops until added).
+          SKIP: no-commit-to-branch,gitleaks,pytest-check,doctest,notebook-check
 
   # Src doctests. Need the full `dev` pixi env (an importable package, and the
   # vendored osgeo that `import pyramids` activates) but are not platform- or

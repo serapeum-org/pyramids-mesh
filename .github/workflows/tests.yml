@@ -9,6 +9,14 @@ on:
     branches: [main]
   pull_request:
 
+# Cancel a superseded run: a new push to the same ref (a PR branch, or main)
+# cancels the previous in-progress run instead of letting both compete for the
+# hosted-runner pool. Keyed on github.ref, so a PR never cancels a main run and
+# vice versa — only a newer commit on the same ref supersedes the older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   main-package:
     runs-on: ${{ matrix.os }}

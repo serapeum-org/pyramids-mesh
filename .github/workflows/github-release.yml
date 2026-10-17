@@ -36,7 +36,17 @@ on:
         default: false
 
 jobs:
+  # Build the pure wheel and run it across the OS/Python matrix (and the dhi
+  # extra) BEFORE cutting anything. The release job needs it, so a wheel that
+  # cannot install or import on a supported target blocks the tag/release/PyPI
+  # chain instead of shipping. Mirrors pyramids-eo.
+  pure-wheel-test:
+    uses: ./.github/workflows/pure-wheel-test.yml
+    with:
+      branch: ${{ inputs.release-branch }}
+
   release:
+    needs: pure-wheel-test
     runs-on: ubuntu-latest
     permissions:
       contents: write

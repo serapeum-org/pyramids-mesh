@@ -67,9 +67,12 @@ jobs:
     - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         fetch-depth: 0
-        # Pin to the immutable SHA recorded on the originating run, not the
-        # mutable `head_branch` label (CWE-829: actions/untrusted-checkout).
-        ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+        # head_branch (not head_sha): github-release pushes the version-bump +
+        # pixi.lock commits AFTER the workflow_run head_sha is captured, so the
+        # branch tip carries the released version while head_sha would check out
+        # the pre-bump tree. The fork guard in `if:` above keeps this from
+        # checking out untrusted code. Same choice as pypi-release.yml.
+        ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
     - name: Extract version from pyproject.toml
       id: version
