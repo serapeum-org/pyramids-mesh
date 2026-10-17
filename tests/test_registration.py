@@ -33,6 +33,10 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "3di",
     "tuflowfv",
     "esri_tin",
+    "xdmf",
+    "flo2d",
+    "hecras",
+    "adcirc",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

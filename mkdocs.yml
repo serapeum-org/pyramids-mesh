@@ -130,6 +130,10 @@ nav:
     - Esri TIN (directory): reference/esri-tin.md
     - PLY (Stanford): reference/ply.md
     - XMS TIN: reference/xmstin.md
+    - XDMF (XML+HDF5): reference/xdmf.md
+    - FLO-2D (flood): reference/flo2d.md
+    - HEC-RAS 2D: reference/hecras.md
+    - ADCIRC: reference/adcirc.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

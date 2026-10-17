@@ -31,6 +31,10 @@ its suffixes, capabilities and documented limitations:
 | `esri_tin` | Esri TIN (directory of `.adf`) | [Esri TIN](esri-tin.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
+| `xdmf` | XDMF (XML index over HDF5) | [XDMF](xdmf.md) |
+| `flo2d` | FLO-2D (directory of files) | [FLO-2D](flo2d.md) |
+| `hecras` | HEC-RAS 2D (HDF5 plan file) | [HEC-RAS 2D](hecras.md) |
+| `adcirc` | ADCIRC (`fort.14` + `fort.63.nc`) | [ADCIRC](adcirc.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
