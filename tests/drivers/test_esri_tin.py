@@ -213,7 +213,9 @@ def test_multi_line_projection_wkt_is_not_truncated(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         crs = EsriTinDriver().read(str(built)).mesh.crs
-    assert crs is not None and (crs == 4326 or (isinstance(crs, str) and "GEOGCS" in crs))
+    assert crs is not None and (
+        crs == 4326 or (isinstance(crs, str) and "GEOGCS" in crs)
+    )
 
 
 def test_projection_without_authority_returns_wkt(tmp_path):
