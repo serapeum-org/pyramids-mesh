@@ -1059,12 +1059,28 @@ E3T 1 1 2 3 1
         caps = set(TwoDmDriver.capabilities)
         assert {"write_mesh", "write_data"} <= caps
 
-    def test_write_network_only_mesh_without_faces_is_refused(self, tmp_path):
-        """Writing a dataset with no face connectivity is refused with a clear message."""
-        # Build directly: a UgridDataset round-trip needs faces; use an E2L-only file,
-        # which reads as a Network1d (no faces) -> to_file on it is not a 2DM mesh write.
+    def test_e2l_only_file_reads_as_a_network_not_a_mesh(self, tmp_path):
+        """An E2L-only (1D link) file reads as a Network1d, which has no faces to write."""
         text = "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nE2L 1 1 2 1\n"
         src = _write(tmp_path, text, "net.2dm")
         result = TwoDmDriver().read(src)
-        # a Network1d has no to_file(driver=) mesh write; the writer guards on faces
-        assert not isinstance(result, UgridDataset)
+        assert isinstance(result, Network1d)
+
+    @pytest.mark.parametrize(
+        "connectivity",
+        [
+            None,  # mesh carries no face_node_connectivity at all
+            type("_NoData", (), {"data": None})(),  # connectivity present but empty
+        ],
+    )
+    def test_write_without_face_connectivity_is_refused(self, tmp_path, connectivity):
+        """The writer refuses a faces-less dataset, naming the missing connectivity.
+
+        Exercises the guard directly (the E2L-only read above only proves the *read*
+        yields a faces-less object); a dataset whose mesh has no face connectivity -- or a
+        connectivity whose data is ``None`` -- cannot be written as a 2DM mesh.
+        """
+        mesh = type("_Mesh", (), {"face_node_connectivity": connectivity})()
+        dataset = type("_Dataset", (), {"mesh": mesh})()
+        with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
+            TwoDmDriver().write(dataset, str(tmp_path / "out.2dm"))
