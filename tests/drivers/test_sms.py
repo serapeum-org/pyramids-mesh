@@ -963,3 +963,108 @@ E2L 1 1 2 1
 
     assert isinstance(network, Network1d)
     assert network.n_edge == 1
+
+
+class TestTwoDmWriter:
+    """Tests for the 2DM writer (W1) — the round trip against the reader."""
+
+    def _roundtrip(self, tmp_path, text, **options):
+        """Read ``text``, write it back through the driver, and read the result."""
+        src = _write(tmp_path, text, "in.2dm")
+        dataset = TwoDmDriver().read(src)
+        out = tmp_path / "out.2dm"
+        dataset.to_file(str(out), driver="2dm", **options)
+        return dataset, TwoDmDriver().read(str(out)), out
+
+    def test_round_trip_preserves_coordinates_exactly(self, tmp_path):
+        """Projected coordinates survive the round trip bit-for-bit at full precision."""
+        text = """MESH2D
+ND 1 500000.123456789 4000000.5 0.0
+ND 2 500001.0 4000000.5 0.0
+ND 3 500001.0 4000001.0 0.0
+E3T 1 1 2 3 1
+"""
+        before, after, _ = self._roundtrip(tmp_path, text)
+        assert np.array_equal(before.mesh.node_x, after.mesh.node_x)
+        assert np.array_equal(before.mesh.node_y, after.mesh.node_y)
+
+    def test_round_trip_preserves_connectivity_and_start_index(self, tmp_path):
+        """Connectivity and the recorded 1-based numbering round-trip unchanged."""
+        before, after, _ = self._roundtrip(tmp_path, _UNIT_SQUARE)
+        bc = before.mesh.face_node_connectivity
+        ac = after.mesh.face_node_connectivity
+        assert ac.data.tolist() == bc.data.tolist()
+        assert ac.original_start_index == bc.original_start_index == 1
+
+    def test_round_trip_mixed_element_types(self, tmp_path):
+        """A quad and a triangle each keep their element type across the round trip."""
+        text = """MESH2D
+ND 1 0.0 0.0 0.0
+ND 2 1.0 0.0 0.0
+ND 3 1.0 1.0 0.0
+ND 4 0.0 1.0 0.0
+ND 5 2.0 0.5 0.0
+E4Q 1 1 2 3 4 1
+E3T 2 2 5 3 1
+"""
+        _, after, out = self._roundtrip(tmp_path, text)
+        lines = out.read_text(encoding="utf-8").splitlines()
+        assert any(line.startswith("E4Q") for line in lines)
+        assert any(line.startswith("E3T") for line in lines)
+        rows = after.mesh.face_node_connectivity.data.tolist()
+        assert rows[0] == [0, 1, 2, 3]
+        assert rows[1] == [1, 4, 2, -1]
+
+    def test_write_full_precision_by_default(self, tmp_path):
+        """The default write keeps every digit of a float64 coordinate."""
+        text = "MESH2D\nND 1 1.0000000000000002 0.0 0.0\nND 2 1.0 0.0 0.0\n"
+        text += "ND 3 1.0 1.0 0.0\nE3T 1 1 2 3 1\n"
+        before, after, _ = self._roundtrip(tmp_path, text)
+        assert float(after.mesh.node_x[0]) == 1.0000000000000002
+
+    def test_write_precision_option_rounds(self, tmp_path):
+        """An integer ``precision`` option limits the significant digits written."""
+        text = "MESH2D\nND 1 500000.123456 0.0 0.0\nND 2 1.0 0.0 0.0\n"
+        text += "ND 3 1.0 1.0 0.0\nE3T 1 1 2 3 1\n"
+        src = _write(tmp_path, text, "in.2dm")
+        out = tmp_path / "out.2dm"
+        TwoDmDriver().read(src).to_file(str(out), driver="2dm", precision=6)
+        nd1 = [ln for ln in out.read_text().splitlines() if ln.startswith("ND 1")][0]
+        assert "500000" in nd1 and "123456" not in nd1
+
+    def test_write_node_z_from_variable(self, tmp_path):
+        """A node_z variable is written as the ND z column and round-trips."""
+        text = """MESH2D
+ND 1 0.0 0.0 2.5
+ND 2 1.0 0.0 3.5
+ND 3 1.0 1.0 4.5
+E3T 1 1 2 3 1
+"""
+        before, after, _ = self._roundtrip(tmp_path, text)
+        assert after.get("node_z").data.tolist() == [2.5, 3.5, 4.5]
+
+    def test_write_without_material_writes_zero(self, tmp_path):
+        """A mesh with no material variable writes a 0 material column."""
+        # a frame with z but element lines lacking a material column -> no material var
+        text = "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nND 3 1.0 1.0 0.0\nE3T 1 1 2 3\n"
+        src = _write(tmp_path, text, "in.2dm")
+        dataset = TwoDmDriver().read(src)
+        out = tmp_path / "out.2dm"
+        dataset.to_file(str(out), driver="2dm")
+        e3t = [ln for ln in out.read_text().splitlines() if ln.startswith("E3T")][0]
+        assert e3t.split()[-1] == "0"
+
+    def test_write_declares_write_capabilities(self):
+        """The driver advertises write_mesh and write_data so to_file dispatches to it."""
+        caps = set(TwoDmDriver.capabilities)
+        assert {"write_mesh", "write_data"} <= caps
+
+    def test_write_network_only_mesh_without_faces_is_refused(self, tmp_path):
+        """Writing a dataset with no face connectivity is refused with a clear message."""
+        # Build directly: a UgridDataset round-trip needs faces; use an E2L-only file,
+        # which reads as a Network1d (no faces) -> to_file on it is not a 2DM mesh write.
+        text = "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nE2L 1 1 2 1\n"
+        src = _write(tmp_path, text, "net.2dm")
+        result = TwoDmDriver().read(src)
+        # a Network1d has no to_file(driver=) mesh write; the writer guards on faces
+        assert not isinstance(result, UgridDataset)

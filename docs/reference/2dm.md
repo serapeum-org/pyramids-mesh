@@ -7,7 +7,7 @@ other driver in this package follows.
 |---|---|
 | Driver name | `2dm` |
 | Suffixes | `.2dm` |
-| Capabilities | `read_mesh`, `read_data`, `multi_mesh` |
+| Capabilities | `read_mesh`, `read_data`, `multi_mesh`, `write_mesh`, `write_data` |
 | | `read_data` and `multi_mesh` are **declarative** — they describe the driver in `info(drivers=True)` and require no method. There is no `read_data()` to call: `read_data` here means the file carries values (material, elevation) that `read` returns alongside the topology. A results-only format declares `needs_mesh` instead and *does* implement the method. |
 | Extra required | none |
 | Returns | `UgridDataset` for the surface mesh, `Network1d` for the `E2L` network |
@@ -99,3 +99,30 @@ Every one of these is deliberate; none is a silent approximation.
 - **Read-only for now.** `write_mesh` arrives with the 2DM writer (task W1).
 - Values are read eagerly: the format is text, so there is nothing to defer and
   `lazy_data` is not declared.
+
+## Writing
+
+`UgridDataset.to_file("out.2dm", driver="2dm")` writes the mesh back. It emits `MESH2D`,
+one `ND` per node, and one `E3T`/`E4Q`/`E6T` per face — the element keyword chosen from
+the face's **real** vertex count, ignoring `-1` fill.
+
+- **The recorded connectivity base is re-applied.** A file read 1-based is written back
+  1-based (`original_start_index` on the connectivity), so a read/write round trip
+  preserves the numbering.
+- **Node elevation** comes from a node-located `node_z` variable when present, else `0.0`;
+  the **material** column from a face-located `material` variable, else `0`.
+- **Full precision by default.** Coordinates are written with Python's shortest exact
+  `float64` representation, because a fixed number of decimals silently loses position for
+  projected coordinates in the millions. Pass `precision=<n>` for `n` significant digits
+  when a smaller file matters more than an exact round trip.
+- A face whose real vertex count is not 3, 4 or 6 has no 2DM element keyword and is
+  refused; a dataset with no face connectivity is not a 2DM mesh and is refused.
+
+```python
+from pyramids.netcdf.ugrid import UgridDataset
+
+mesh = UgridDataset.read_file("domain.2dm")
+mesh.to_file("copy.2dm", driver="2dm")              # exact round trip
+mesh.to_file("small.2dm", driver="2dm", precision=8)  # 8 significant digits
+```
+

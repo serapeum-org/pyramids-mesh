@@ -252,7 +252,13 @@ class TwoDmDriver(BaseDriver):
     # here means this format carries values -- material and elevation -- that `read`
     # returns with the topology; there is deliberately no `read_data()`. Only a
     # results-only format declares `needs_mesh` and implements that method.
-    capabilities = frozenset({"read_mesh", "read_data", "multi_mesh"})
+    capabilities = frozenset(
+        {"read_mesh", "read_data", "multi_mesh", "write_mesh", "write_data"}
+    )
+
+    # Face node counts emit their keyword; the inverse of `_FACE_NODE_COUNTS`, used by
+    # the writer to choose E3T/E4Q/E6T from a face's real (non-fill) vertex count.
+    _COUNT_TO_KEYWORD = {3: "E3T", 4: "E4Q", 6: "E6T"}
 
     def mesh_names(self, path: str) -> list[str]:
         """List the topologies the file holds, in surface-then-network order.
@@ -421,6 +427,82 @@ class TwoDmDriver(BaseDriver):
         scan = _Scan()
         scan.run(path)
         return scan.build(path)
+
+    def write(self, dataset, path: str, **options) -> None:
+        """Write a mesh back to a 2DM file.
+
+        Emits ``MESH2D``, one ``ND`` per node and one ``E3T``/``E4Q``/``E6T`` per face,
+        choosing the element keyword from the face's **real** vertex count (fill ``-1``
+        entries ignored). The connectivity base recorded on the mesh is re-applied, so a
+        file read 1-based is written back 1-based.
+
+        Node elevation is taken from a node-located ``node_z`` variable when present, and
+        the material column from a face-located ``material`` variable; each defaults to
+        ``0`` when absent. Coordinates are written at full ``float64`` precision by
+        default, because a fixed number of decimals silently loses position for projected
+        coordinates in the millions -- a ``%.6f`` easting of 500000.123456789 comes back
+        wrong by metres.
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            path: The output ``.2dm`` path.
+            **options: ``precision`` sets the coordinate format: an int number of
+                significant digits, or the default ``"repr"`` for an exact float64
+                round-trip.
+
+        Raises:
+            FileFormatNotSupportedError: If a face has a vertex count 2DM has no element
+                for (only 3, 4 and 6 are writable), or the dataset carries no faces.
+        """
+        mesh = dataset.mesh
+        connectivity = mesh.face_node_connectivity
+        if connectivity is None or connectivity.data is None:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no face connectivity to write "
+                f"as a 2DM mesh"
+            )
+        faces = np.asarray(connectivity.data)
+        base = connectivity.original_start_index
+        if base is None:
+            base = 1
+        node_x = np.asarray(mesh.node_x, dtype=np.float64)
+        node_y = np.asarray(mesh.node_y, dtype=np.float64)
+        node_z = self._writer_column(dataset, "node_z", len(node_x))
+        material = self._writer_column(dataset, "material", len(faces))
+        fmt = _coordinate_formatter(options.get("precision", "repr"))
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(f"{_HEADER}\n")
+            for index in range(len(node_x)):
+                z = 0.0 if node_z is None else float(node_z[index])
+                handle.write(
+                    f"{_NODE} {index + base} {fmt(node_x[index])} "
+                    f"{fmt(node_y[index])} {fmt(z)}\n"
+                )
+            for row_index, row in enumerate(faces):
+                vertices = [int(v) for v in row if int(v) != -1]
+                keyword = self._COUNT_TO_KEYWORD.get(len(vertices))
+                if keyword is None:
+                    raise FileFormatNotSupportedError(
+                        f"cannot write a {len(vertices)}-vertex face to 2DM; only 3, 4 "
+                        f"and 6 node faces have an element keyword"
+                    )
+                ids = " ".join(str(v + base) for v in vertices)
+                mat = 0 if material is None else int(material[row_index])
+                handle.write(f"{keyword} {row_index + base} {ids} {mat}\n")
+
+    @staticmethod
+    def _writer_column(dataset, name: str, expected: int):
+        """Return a variable's values for the writer, or ``None`` when it is absent.
+
+        The length is checked so a stale variable cannot write a column that does not
+        line up with the nodes or faces; a mismatch drops it rather than writing garbage.
+        """
+        if name not in dataset.data_variable_names:
+            return None
+        values = np.asarray(dataset.get(name).data)
+        if values.shape != (expected,):
+            return None
+        return values
 
 
 class DatDriver(BaseDriver):
@@ -1132,6 +1214,34 @@ class _Scan:
                 values=np.array(column, dtype=np.float64),
             )
         return variables
+
+
+def _coordinate_formatter(precision):
+    """Return a function formatting a float for a 2DM coordinate column.
+
+    ``"repr"`` (the default) uses Python's shortest round-tripping representation, which
+    reproduces a float64 exactly; an integer requests that many significant digits. Full
+    precision is the default because a fixed number of decimals loses position for
+    projected coordinates in the millions.
+
+    Args:
+        precision: ``"repr"`` or an int number of significant digits.
+
+    Returns:
+        A callable mapping a float to its formatted string.
+
+    Raises:
+        ValueError: If ``precision`` is neither ``"repr"`` nor a positive integer.
+    """
+    if precision == "repr":
+        # repr(float(...)) gives the shortest exact round-trip; repr on a numpy scalar
+        # would print "np.float64(...)", so coerce to a Python float first.
+        return lambda value: repr(float(value))
+    if isinstance(precision, int) and precision > 0:
+        return lambda value: f"{value:.{precision}g}"
+    raise ValueError(
+        f"precision must be 'repr' or a positive integer, not {precision!r}"
+    )
 
 
 def _header_verdict(chunk: bytes) -> bool | None:
