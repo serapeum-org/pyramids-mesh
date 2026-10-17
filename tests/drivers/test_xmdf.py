@@ -64,6 +64,18 @@ def test_active_becomes_face_located_sibling(mesh):
     assert active.data.shape == (3, 16)
 
 
+def test_active_sibling_is_lazy_like_its_parent(mesh):
+    """The active-mask sibling is loader-backed under a lazy attach, not materialised.
+
+    The parent values are lazy, so the ``<name>_active`` sibling must be too -- it reports
+    a data source and holds no in-memory array until read.
+    """
+    active = mesh.attach_data(str(_XMDF)).get("Minimum dt_active")
+    assert active.has_data_source
+    assert active._data is None
+    assert active.data.shape == (3, 16)
+
+
 def test_final_summary_is_not_read_as_a_timestep(mesh):
     """The ``/Final`` snapshot is skipped, so the temporal dataset is not doubled."""
     attached = mesh.attach_data(str(_XMDF))
@@ -154,15 +166,32 @@ class _FakeAttribute:
         return self._value
 
 
-class _FakeArray:
-    """A stand-in GDAL MD-array reporting a rank and, optionally, a value to read."""
+class _FakeDim:
+    """A stand-in GDAL dimension that reports only its size."""
 
-    def __init__(self, rank: int = 2, value=None) -> None:
-        self._rank = rank
+    def __init__(self, size: int) -> None:
+        self._size = size
+
+    def GetSize(self) -> int:
+        return self._size
+
+
+class _FakeArray:
+    """A stand-in GDAL MD-array reporting its dimensions and, optionally, a value.
+
+    Pass ``rank`` when only the number of axes matters (the guard checks), or ``shape``
+    when the sizes matter (the active-mask width check).
+    """
+
+    def __init__(self, rank: int | None = None, value=None, shape=None) -> None:
+        if shape is not None:
+            self._dims = [_FakeDim(size) for size in shape]
+        else:
+            self._dims = [_FakeDim(0) for _ in range(rank or 0)]
         self._value = value
 
     def GetDimensions(self) -> list:
-        return [object()] * self._rank
+        return self._dims
 
     def ReadAsArray(self):
         return self._value
@@ -263,12 +292,16 @@ class TestMaybeActive:
     def test_no_active_array_attaches_nothing(self):
         """A dataset without an ``Active`` array yields no sibling."""
         variables: dict = {}
-        _reader()._maybe_active(_FakeGroup(arrays={}), "d", np.array([0.0]), variables)
+        _reader()._maybe_active(
+            _FakeGroup(arrays={}), "d", (), np.array([0.0]), variables
+        )
         assert variables == {}
 
     def test_active_of_the_wrong_width_is_left_off(self):
         """An active mask whose width is not the face count is left off, not mislabelled."""
-        group = _FakeGroup(arrays={"Active": _FakeArray(value=np.zeros((3, 99), bool))})
+        group = _FakeGroup(arrays={"Active": _FakeArray(shape=(3, 99))})
         variables: dict = {}
-        _reader()._maybe_active(group, "d", np.array([0.0, 0.5, 1.0]), variables)
+        _reader()._maybe_active(
+            group, "d", ("grp",), np.array([0.0, 0.5, 1.0]), variables
+        )
         assert variables == {}

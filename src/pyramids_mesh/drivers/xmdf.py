@@ -192,19 +192,22 @@ class _XmdfLoader:
     reading it reopens the file, walks to the dataset's ``Values`` array, and closes.
     """
 
-    def __init__(self, path: str, group_path: tuple[str, ...]) -> None:
+    def __init__(
+        self, path: str, group_path: tuple[str, ...], array_name: str = _VALUES
+    ) -> None:
         self.path = path
         self.group_path = group_path
+        self.array_name = array_name
 
     def __call__(self) -> np.ndarray:
-        """Reopen the file and read this dataset's ``Values`` array."""
+        """Reopen the file and read this dataset's array (``Values`` or ``Active``)."""
         with gdal.ExceptionMgr(useExceptions=True):
             dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
             try:
                 group = dataset.GetRootGroup()
                 for name in self.group_path:
                     group = group.OpenGroup(name)
-                return np.asarray(group.OpenMDArray(_VALUES).ReadAsArray())
+                return np.asarray(group.OpenMDArray(self.array_name).ReadAsArray())
             finally:
                 dataset.Close()
 
@@ -299,7 +302,7 @@ class _XmdfReader:
             time_values=times,
             attributes=attributes,
         )
-        self._maybe_active(group, name, times, variables)
+        self._maybe_active(group, name, group_path, times, variables)
 
     def _guard_scalar_2d(self, group, name: str) -> None:
         """Refuse a vector or layered-3D dataset -- only 2D scalar ships for now.
@@ -350,22 +353,32 @@ class _XmdfReader:
         return attributes
 
     def _maybe_active(
-        self, group, name: str, times: np.ndarray, variables: dict
+        self,
+        group,
+        name: str,
+        group_path: tuple[str, ...],
+        times: np.ndarray,
+        variables: dict,
     ) -> None:
         """Attach a face-located ``<name>_active`` sibling when the mask fits the faces.
 
         The mask counts faces while the parent may be node-located, so it is a standalone
         variable, not ``ParsedVariable.active``. It is only attached when its width is the
-        mesh's face count; a mask of another width is left off rather than mislabelled.
+        mesh's face count; a mask of another width is left off rather than mislabelled. The
+        shape is read from the array's dimensions, so under a lazy attach the sibling is
+        loader-backed like its parent -- the mask bytes are not read until the value is.
         """
         if _ACTIVE not in group.GetMDArrayNames():
             return
-        active = np.asarray(group.OpenMDArray(_ACTIVE).ReadAsArray())
-        if active.ndim != 2 or active.shape[1] != self.n_face:
+        active = group.OpenMDArray(_ACTIVE)
+        shape = tuple(d.GetSize() for d in active.GetDimensions())
+        if len(shape) != 2 or shape[1] != self.n_face:
             return
+        loader = _XmdfLoader(self.path, group_path, _ACTIVE)
         variables[f"{name}_active"] = ParsedVariable(
             location="face",
-            shape=active.shape,
-            values=active,
+            shape=shape,
+            loader=loader if self.lazy else None,
+            values=None if self.lazy else loader(),
             time_values=times,
         )
