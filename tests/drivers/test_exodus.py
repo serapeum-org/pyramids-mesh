@@ -19,7 +19,7 @@ import pytest
 
 from pyramids.netcdf.ugrid import UgridDataset
 
-from pyramids_mesh.drivers.exodus import ExodusDriver, _pad_blocks
+from pyramids_mesh.drivers.exodus import ExodusDriver, _ExodusReader, _pad_blocks
 
 _DATA = Path(__file__).parent.parent / "data" / "exodus"
 _QUAD = _DATA / "nontrivial_node_num_map.exo"
@@ -91,6 +91,57 @@ def test_two_dimensional_file_has_no_node_z():
     dataset = _read(_QUAD)
     assert ExodusDriver()._parse(str(_QUAD), lazy=False).node_z is None
     assert "node_z" not in set(dataset.data_variable_names)
+
+
+class _FakeArray:
+    """A stand-in GDAL MDArray returning a fixed NumPy array from ``ReadAsArray``."""
+
+    def __init__(self, data):
+        self._data = np.asarray(data)
+
+    def ReadAsArray(self):  # noqa: N802  (GDAL's casing)
+        """Return the backing array, as GDAL's ``ReadAsArray`` would."""
+        return self._data
+
+
+class _FakeGroup:
+    """A stand-in GDAL group mapping array names to ``_FakeArray`` objects."""
+
+    def __init__(self, arrays):
+        self._arrays = {name: _FakeArray(data) for name, data in arrays.items()}
+
+    def OpenMDArray(self, name):  # noqa: N802  (GDAL's casing)
+        """Return the named stand-in array."""
+        return self._arrays[name]
+
+
+def test_all_zero_coordz_is_not_carried_as_node_z():
+    """A planar mesh with an all-zero ``coordz`` column gains no meaningless ``node_z``."""
+    group = _FakeGroup(
+        {
+            "coordx": [0.0, 1.0, 0.0],
+            "coordy": [0.0, 0.0, 1.0],
+            "coordz": [0.0, 0.0, 0.0],
+        }
+    )
+    reader = _ExodusReader("unused.exo")
+    _x, _y, node_z = reader._coordinates(group, {"coordx", "coordy", "coordz"})
+    assert node_z is None
+
+
+def test_non_zero_coordz_becomes_node_z():
+    """A ``coordz`` column with any non-zero value is carried as ``node_z``."""
+    group = _FakeGroup(
+        {
+            "coordx": [0.0, 1.0, 0.0],
+            "coordy": [0.0, 0.0, 1.0],
+            "coordz": [0.0, 0.0, 2.5],
+        }
+    )
+    reader = _ExodusReader("unused.exo")
+    _x, _y, node_z = reader._coordinates(group, {"coordx", "coordy", "coordz"})
+    assert node_z is not None
+    assert float(node_z.max()) == pytest.approx(2.5)
 
 
 def test_mixed_width_blocks_are_fill_padded():

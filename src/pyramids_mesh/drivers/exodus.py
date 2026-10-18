@@ -237,12 +237,19 @@ class _ExodusReader:
         )
 
     def _coordinates(self, group, names: set[str]):
-        """Read node coordinates, with ``coordz`` becoming ``node_z`` for a 3D file."""
+        """Read node coordinates, with ``coordz`` becoming ``node_z`` only when non-zero.
+
+        A planar Exodus mesh may still carry an all-zero ``coordz`` column; it is dropped
+        rather than kept as a meaningless ``node_z``, matching the gmsh and vtk readers
+        which gate ``node_z`` on ``np.any(z != 0)``.
+        """
         node_x = np.asarray(group.OpenMDArray(_COORD_X).ReadAsArray(), np.float64)
         node_y = np.asarray(group.OpenMDArray(_COORD_Y).ReadAsArray(), np.float64)
         node_z = None
         if _COORD_Z in names:
-            node_z = np.asarray(group.OpenMDArray(_COORD_Z).ReadAsArray(), np.float64)
+            coordz = np.asarray(group.OpenMDArray(_COORD_Z).ReadAsArray(), np.float64)
+            if np.any(coordz != 0.0):
+                node_z = coordz
         return node_x, node_y, node_z
 
     def _blocks(self, group, names: set[str]) -> list[tuple[np.ndarray, str | None]]:
