@@ -47,6 +47,24 @@ its suffixes, capabilities and documented limitations:
 | `exodus` | Exodus II (NetCDF-based FEM) | [Exodus II (.exo)](exodus.md) |
 | `su2` | SU2 `.su2` (ASCII FEM) | [SU2 (.su2)](su2.md) |
 | `srh2d` | SRH-2D (`.srhgeom`+`.srhhydro`) | [SRH-2D](srh2d.md) |
+| `modflow6_disu` | MODFLOW 6 DISU (groundwater, unstructured) | [MODFLOW 6 DISU](modflow6_disu.md) |
+| `feflow` | FEFLOW `.fem` (groundwater FEM) | [FEFLOW (.fem)](feflow.md) |
+| `scrip` | SCRIP remap grid (NetCDF) | [SCRIP grid](scrip.md) |
+| `esmf` | ESMF unstructured mesh (NetCDF) | [ESMF mesh](esmf.md) |
+| `geos` | GEOS cubed-sphere native (NetCDF) | [GEOS cubed-sphere](geos.md) |
+| `cgns` | CGNS (CFD, HDF5) | [CGNS (.cgns)](cgns.md) |
+| `med` | MED / Salome (FEM, HDF5) | [MED (.med)](med.md) |
+| `nastran` | Nastran `.bdf`/`.nas`/`.fem` | [Nastran bulk data](nastran.md) |
+| `abaqus` | Abaqus `.inp` (FEM) | [Abaqus (.inp)](abaqus.md) |
+| `avsucd` | AVS-UCD `.inp`/`.avs` | [AVS-UCD](avsucd.md) |
+| `medit` | Medit `.mesh` (INRIA) | [Medit (.mesh)](medit.md) |
+| `netgen` | Netgen `.vol` | [Netgen (.vol)](netgen.md) |
+| `tecplot` | Tecplot FE ASCII | [Tecplot FE](tecplot.md) |
+| `flac3d` | FLAC3D `.f3grid` (geomech) | [FLAC3D (.f3grid)](flac3d.md) |
+| `kratos` | Kratos `.mdpa` (FEM) | [Kratos MDPA](kratos.md) |
+| `openfoam` | OpenFOAM polyMesh (CFD boundary) | [OpenFOAM polyMesh](openfoam.md) |
+| `obj` | OBJ surface (no georef) | [Wavefront OBJ](obj.md) |
+| `stl` | STL surface (no georef) | [STL](stl.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
