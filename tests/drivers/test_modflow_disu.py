@@ -212,3 +212,16 @@ def test_open_close_without_a_file_name_is_a_format_error(tmp_path):
 def test_sniff_declines_a_path_that_cannot_be_opened(tmp_path):
     """_sniff returns False on an OS read error; can_open's isfile guard hides it."""
     assert Modflow6DisuDriver()._sniff(str(tmp_path)) is False
+
+
+def test_cell_count_mismatch_names_the_nodes_dimension(tmp_path):
+    """A DISU CELL2D/NODES mismatch names NODES (not DISV's NCPL) in the error."""
+    disu = tmp_path / "bad.disu"
+    disu.write_text(
+        "BEGIN DIMENSIONS\n  NODES 2\n  NJA 6\n  NVERT 3\nEND DIMENSIONS\n\n"
+        "BEGIN VERTICES\n  1 0.0 0.0\n  2 1.0 0.0\n  3 0.0 1.0\nEND VERTICES\n\n"
+        "BEGIN CELL2D\n  1 0.33 0.33 3 1 2 3\nEND CELL2D\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="NODES 2 but has 1"):
+        Modflow6DisuDriver().read(str(disu))

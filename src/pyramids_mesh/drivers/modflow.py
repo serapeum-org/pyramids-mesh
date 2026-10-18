@@ -313,7 +313,7 @@ class _Modflow6DisvReader:
         return node_x, node_y
 
     def _parse_cells(
-        self, lines: list[str], declared: int | None
+        self, lines: list[str], declared: int | None, dimension_label: str = _NCPL
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Read the ``CELL2D`` block into fill-padded faces and face centres.
 
@@ -323,7 +323,9 @@ class _Modflow6DisvReader:
 
         Args:
             lines: The data lines of the ``CELL2D`` block.
-            declared: ``NCPL`` from the dimensions, used to size and cross-check.
+            declared: the cell-count dimension, used to size and cross-check.
+            dimension_label: the dimension keyword naming that count in an error message
+                (``NCPL`` for DISV, ``NODES`` for DISU).
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray]: The ``(n_face, max_nodes)`` face
@@ -341,7 +343,8 @@ class _Modflow6DisvReader:
         count = declared if declared is not None else len(parsed)
         if len(parsed) != count:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} declares NCPL {count} but has {len(parsed)} CELL2D rows"
+                f"{self.path!r} declares {dimension_label} {count} but has "
+                f"{len(parsed)} CELL2D rows"
             )
         max_nodes = max(len(icvert) for _, _, _, icvert in parsed)
         faces = np.full((count, max_nodes), _FILL, dtype=np.int64)
@@ -526,7 +529,7 @@ class _Modflow6DisuReader(_Modflow6DisvReader):
         vertices = self._resolve_open_close(blocks.get(_VERTICES, []))
         cells = self._resolve_open_close(blocks.get(_CELL2D, []))
         node_x, node_y = self._parse_vertices(vertices, nvert)
-        faces, face_x, face_y = self._parse_cells(cells, dimensions.get(_NODES))
+        faces, face_x, face_y = self._parse_cells(cells, dimensions.get(_NODES), _NODES)
         return ParsedMesh(
             node_x=node_x,
             node_y=node_y,
