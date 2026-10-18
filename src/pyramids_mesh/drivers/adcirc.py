@@ -29,6 +29,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
+from pyramids_mesh.drivers._gr3 import read_gr3_grid, sniff_gr3
 
 _GRID_NAME = "fort.14"
 _RESULT_NAMES = ("fort.63.nc",)  # the NetCDF elevation series read here
@@ -122,28 +123,11 @@ class AdcircDriver(BaseDriver):
         """Report whether the file opens as an ADCIRC ``fort.14`` grid.
 
         Cheap and discriminating: line 2 is the ``NE NP`` count pair (two positive ints)
-        and the first node line is ``id x y depth`` (one int then three floats).
+        and the first node line is ``id x y depth`` (one int then three floats). Shared
+        with the SCHISM reader through :func:`pyramids_mesh.drivers._gr3.sniff_gr3`, since
+        ``fort.14`` and ``.gr3`` open identically.
         """
-        with open(path, "r", encoding="latin-1") as handle:
-            handle.readline()  # title
-            counts = handle.readline().split()
-            node = handle.readline().split()
-        if len(counts) < 2:
-            return False
-        try:
-            n_elem, n_node = int(counts[0]), int(counts[1])
-        except ValueError:
-            return False
-        if n_elem <= 0 or n_node <= 0 or len(node) < 4:
-            return False
-        try:
-            int(node[0])
-            float(node[1])
-            float(node[2])
-            float(node[3])
-        except ValueError:
-            return False
-        return True
+        return sniff_gr3(path)
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
         """Read a ``fort.14`` grid (and a sibling ``fort.63.nc``) into a ParsedMesh.
@@ -185,26 +169,15 @@ class AdcircDriver(BaseDriver):
     def _read_grid(self, grid: str):
         """Parse ``fort.14`` into node coordinates, elevation and triangle connectivity.
 
+        Delegates the node and element blocks to the shared ``fort.14``/``.gr3`` parser
+        with ``allow_quads=False``, so a non-triangular element is refused rather than
+        guessed, as ADCIRC grids are triangulations.
+
         Raises:
             FileFormatNotSupportedError: If an element is not a 3-node triangle.
         """
         with open(grid, "r", encoding="latin-1") as handle:
-            handle.readline()  # title
-            n_elem, n_node = (int(value) for value in handle.readline().split()[:2])
-            nodes = np.empty((n_node, 3), dtype=np.float64)
-            for row in range(n_node):
-                fields = handle.readline().split()
-                nodes[row] = (fields[1], fields[2], fields[3])
-            faces = np.empty((n_elem, 3), dtype=np.int64)
-            for row in range(n_elem):
-                fields = handle.readline().split()
-                if fields[1] != "3":
-                    raise FileFormatNotSupportedError(
-                        f"{grid!r} element {fields[0]} has type {fields[1]!r}; this reader "
-                        f"only reads triangular (type 3) ADCIRC grids"
-                    )
-                faces[row] = (fields[2], fields[3], fields[4])
-        return nodes[:, 0], nodes[:, 1], nodes[:, 2], faces
+            return read_gr3_grid(handle, allow_quads=False, source=grid)
 
     def _read_results(self, directory: str, *, lazy: bool) -> dict[str, ParsedVariable]:
         """Read node result series from a sibling ``fort.63.nc``, if present.
