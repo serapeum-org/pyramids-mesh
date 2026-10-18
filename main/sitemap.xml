@@ -73,6 +73,10 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/deltares1d/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/dfsu/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -81,7 +85,19 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/exodus/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/flo2d/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/fvcom/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/gmsh/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -89,7 +105,19 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/icon/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/mike21/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/modflow6/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/mpas/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -97,7 +125,19 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/schism/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/selafin/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/srh2d/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/su2/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -105,7 +145,15 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/triangle/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/tuflowfv/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/main/reference/vtk/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
