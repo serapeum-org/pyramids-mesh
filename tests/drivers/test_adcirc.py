@@ -67,6 +67,14 @@ def test_zeta_is_node_located_over_time():
     assert zeta.data.shape == (57, 3070)
 
 
+def test_zeta_carries_the_dry_node_nodata_sentinel():
+    """The ADCIRC -99999 dry/missing-node sentinel is recorded as nodata, not real data."""
+    zeta = _read().get("zeta")
+    assert zeta.nodata == -99999.0
+    # the committed sample genuinely contains the sentinel at dry nodes
+    assert bool((zeta.data == -99999.0).any())
+
+
 def test_values_are_lazy():
     """A lazy read reports a source without loading the values."""
     zeta = _read().get("zeta")

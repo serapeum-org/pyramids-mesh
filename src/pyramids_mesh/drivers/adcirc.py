@@ -34,6 +34,8 @@ _GRID_NAME = "fort.14"
 _RESULT_NAMES = ("fort.63.nc",)  # the NetCDF elevation series read here
 # Root NetCDF arrays that are coordinates/topology, not node result series.
 _NON_RESULT = frozenset({"x", "y", "depth", "element", "time", "adcirc_mesh"})
+# ADCIRC marks dry/missing nodes with this sentinel; used when no CF fill attribute.
+_ADCIRC_FILL = -99999.0
 _TIME_DIM = "time"
 _NODE_DIM = "node"
 
@@ -249,6 +251,7 @@ class AdcircDriver(BaseDriver):
                         values=None if lazy else loader(),
                         standard_name=_read_attr(array, "standard_name"),
                         units=_read_attr(array, "units"),
+                        nodata=_read_fill(array),
                         time_values=times,
                     )
             finally:
@@ -265,6 +268,24 @@ def _read_attr(array, name: str):
             except RuntimeError:
                 return None
     return None
+
+
+def _read_fill(array) -> float:
+    """Return the no-data fill value for a result array.
+
+    Reads ``_FillValue`` then ``missing_value`` if declared; otherwise falls back to
+    ADCIRC's conventional dry/missing-node sentinel ``-99999.0`` (ADCIRC marks dry nodes
+    with this value and does not always declare a CF fill attribute), so a dry node is
+    recorded as no-data rather than carried through as a real elevation.
+    """
+    for name in ("_FillValue", "missing_value"):
+        for attribute in array.GetAttributes():
+            if attribute.GetName() == name:
+                try:
+                    return float(np.asarray(attribute.Read()).ravel()[0])
+                except (RuntimeError, ValueError, TypeError, IndexError):
+                    pass
+    return _ADCIRC_FILL
 
 
 class _AdcircLoader:
