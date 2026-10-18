@@ -36,6 +36,15 @@ def test_node_z_is_geometry_not_a_written_data_variable(tmp_path):
     assert "WATER DEPTH" in back.data_variable_names
 
 
+def test_dropping_node_z_warns(tmp_path):
+    """Dropping a carried-in ``node_z`` is announced, since Selafin cannot store it."""
+    with_z = _read(_SLF).with_variable(
+        "node_z", np.zeros(_read(_SLF).mesh.n_node), location="node"
+    )
+    with pytest.warns(UserWarning, match="node_z"):
+        SelafinDriver().write(with_z, str(tmp_path / "warned.slf"))
+
+
 def test_node_series_refuses_a_variable_whose_time_axis_differs():
     """A node variable with fewer steps than the dataset is refused, not index-errored."""
     short = SimpleNamespace(data=np.zeros((3, 4)))

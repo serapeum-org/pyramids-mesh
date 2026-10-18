@@ -239,6 +239,14 @@ class SelafinDriver(BaseDriver):
             )
         node_x = np.asarray(mesh.node_x, dtype=np.float64).tolist()
         node_y = np.asarray(mesh.node_y, dtype=np.float64).tolist()
+        if "node_z" in dataset.data_variable_names:
+            z = dataset.get("node_z")
+            if z is not None and z.location == "node":
+                warnings.warn(
+                    "Selafin stores only node x/y, so the dataset's node_z (bed "
+                    "elevation) is dropped on write; it is geometry, not a result series.",
+                    stacklevel=2,
+                )
         node_pairs = [
             (name, dataset.get(name))
             for name in dataset.data_variable_names
