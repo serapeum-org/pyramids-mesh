@@ -41,9 +41,6 @@ _ZONE = "Z"
 # pyramid five and a tetrahedron four; the count fixes how many ids a zone row holds.
 _ZONE_NODE_COUNTS = {"T4": 4, "W6": 6, "B8": 8, "P5": 5}
 
-# How many bytes of the head the sniff decodes looking for a gridpoint and a zone line.
-_SNIFF_LIMIT = 64 * 1024
-
 
 class Flac3dDriver(BaseDriver):
     """Reader for the Itasca FLAC3D grid (``.f3grid``).
@@ -86,10 +83,12 @@ class Flac3dDriver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the file head carries a ``G`` gridpoint and a ``Z`` zone line.
 
-        A bounded prefix is decoded leniently -- so a binary or empty file answers
-        ``False`` rather than raising -- and scanned for a significant line whose first
-        token is ``G`` and another whose first token is ``Z``. Requiring both keeps a
-        Kratos ``.mdpa`` or an unrelated text file from qualifying.
+        The file is decoded leniently -- so a binary or empty file answers ``False``
+        rather than raising -- and scanned (short-circuiting once both are seen) for a
+        significant line whose first token is ``G`` and another whose first token is
+        ``Z``. Requiring both keeps a Kratos ``.mdpa`` or an unrelated text file from
+        qualifying; the whole file is read because every ``G`` gridpoint precedes the
+        first ``Z`` zone, so a large node block must not push the zone past a fixed window.
 
         Args:
             path: The file to inspect.
@@ -98,7 +97,7 @@ class Flac3dDriver(BaseDriver):
             bool: ``True`` when both a gridpoint and a zone line are found.
         """
         with open(path, "rb") as handle:
-            prefix = handle.read(_SNIFF_LIMIT)
+            prefix = handle.read()
         has_gridpoint = False
         has_zone = False
         for line in prefix.decode("utf-8-sig", errors="replace").splitlines():

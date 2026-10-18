@@ -44,9 +44,6 @@ _ELEMENTS = "ELEMENTS"
 _NODE_COUNT_RE = re.compile(r"(\d+)N$")
 _TWO_DIMENSIONAL = "2D"
 
-# How many bytes of the head the sniff decodes looking for the defining blocks.
-_SNIFF_LIMIT = 64 * 1024
-
 
 class KratosDriver(BaseDriver):
     """Reader for the Kratos Multiphysics model part (``.mdpa``).
@@ -88,10 +85,12 @@ class KratosDriver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the file head carries ``Begin Nodes`` and ``Begin Elements``.
 
-        A bounded prefix is decoded leniently -- so a binary or empty file answers
-        ``False`` rather than raising -- and scanned for a ``Begin Nodes`` and a
-        ``Begin Elements`` block opener. Requiring both keeps a FLAC3D ``.f3grid`` or an
-        unrelated text file from qualifying.
+        The file is decoded leniently -- so a binary or empty file answers ``False``
+        rather than raising -- and scanned (short-circuiting once both are seen) for a
+        ``Begin Nodes`` and a ``Begin Elements`` block opener. Requiring both keeps a
+        FLAC3D ``.f3grid`` or an unrelated text file from qualifying; the whole file is
+        read because the ``Begin Nodes`` block precedes ``Begin Elements``, so a large
+        node block must not push the element opener past a fixed window.
 
         Args:
             path: The file to inspect.
@@ -100,7 +99,7 @@ class KratosDriver(BaseDriver):
             bool: ``True`` when both block openers are found.
         """
         with open(path, "rb") as handle:
-            prefix = handle.read(_SNIFF_LIMIT)
+            prefix = handle.read()
         has_nodes = False
         has_elements = False
         for line in prefix.decode("utf-8-sig", errors="replace").splitlines():

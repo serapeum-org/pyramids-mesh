@@ -416,3 +416,14 @@ def test_grid_with_a_non_zero_coordinate_frame_is_refused(tmp_path):
     )
     with pytest.raises(FileFormatNotSupportedError, match="coordinate frame CP="):
         _read(_write(tmp_path, deck))
+
+
+def test_sniff_reads_past_a_large_node_block(tmp_path):
+    """A deck whose GRID block exceeds any fixed sniff window still opens (face follows)."""
+    grids = "".join(f"GRID,{i},0,0.0,0.0,0.0\n" for i in range(1, 20001))
+    deck = (
+        grids
+        + "GRID,20001,0,1.0,0.0,0.0\nGRID,20002,0,0.0,1.0,0.0\n"
+        + "CTRIA3,1,1,1,20001,20002\n"
+    )
+    assert NastranDriver().can_open(str(_write(tmp_path, deck))) is True

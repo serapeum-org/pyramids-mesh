@@ -48,11 +48,6 @@ _CONTINUATION = ("*", "+")
 # no GRID/CTRIA3/CQUAD4 cards. The sniff declines it explicitly so the two never collide.
 _FEFLOW_MARKERS = ("PROBLEM", "CLASS")
 
-# can_open must not read an unbounded file. The sniff scans a bounded prefix for the
-# defining cards; a FEFLOW marker at the top is caught long before this. The bound matches
-# the SMS driver's.
-_SNIFF_LIMIT = 256 * 1024
-
 # Fixed-field column geometry: ten fields, the first and last 8 columns, the eight data
 # fields 8 columns (small) or 16 (large) wide.
 _FIELD_SMALL = 8
@@ -255,10 +250,12 @@ class NastranDriver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the file is a Nastran deck, declining a FEFLOW ``.fem``.
 
-        A bounded prefix is scanned for a ``GRID`` card and a ``CTRIA3``/``CQUAD4`` card;
-        a FEFLOW ``PROBLEM:``/``CLASS`` header -- the one real collision on the shared
-        ``.fem`` suffix -- declines the file outright. Bytes are decoded leniently, so a
-        binary or empty file answers ``False`` rather than raising.
+        The file is scanned (short-circuiting as soon as both are seen) for a ``GRID``
+        card and a ``CTRIA3``/``CQUAD4`` card; a FEFLOW ``PROBLEM:``/``CLASS`` header --
+        the one real collision on the shared ``.fem`` suffix -- declines the file outright.
+        The whole file is read because the ``GRID`` block precedes the element cards and a
+        large node block must not push them past a fixed window. Bytes are decoded
+        leniently, so a binary or empty file answers ``False`` rather than raising.
 
         Args:
             path: The file to inspect.
@@ -268,7 +265,7 @@ class NastranDriver(BaseDriver):
                 and no FEFLOW header appears.
         """
         with open(path, "rb") as handle:
-            prefix = handle.read(_SNIFF_LIMIT)
+            prefix = handle.read()
         has_grid = False
         has_face = False
         first_significant = True
