@@ -2793,7 +2793,10 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/kratos.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-51"> 51</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-48"> 48</a></span>
+<span class="normal"><a href="#__codelineno-0-49"> 49</a></span>
+<span class="normal"><a href="#__codelineno-0-50"> 50</a></span>
+<span class="normal"><a href="#__codelineno-0-51"> 51</a></span>
 <span class="normal"><a href="#__codelineno-0-52"> 52</a></span>
 <span class="normal"><a href="#__codelineno-0-53"> 53</a></span>
 <span class="normal"><a href="#__codelineno-0-54"> 54</a></span>
@@ -2878,94 +2881,95 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <span class="normal"><a href="#__codelineno-0-133">133</a></span>
 <span class="normal"><a href="#__codelineno-0-134">134</a></span>
 <span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span>
-<span class="normal"><a href="#__codelineno-0-137">137</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="k">class</span><span class="w"> </span><span class="nc">KratosDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="w">    </span><span class="sd">"""Reader for the Kratos Multiphysics model part (``.mdpa``).</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    ``Begin Nodes`` rows become ``node_x``/``node_y`` and, when any is non-zero,</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    ``node_z``; the elements become the fill-padded ``face_node_connectivity``, one face</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    row per element with its leading element and property ids dropped. A file mixing</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    element widths pads the short rows to the widest with ``-1``.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">        - **2D surface elements are preferred, else 3D volume elements become faces.**</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">          When the file declares any ``Element2D*`` type those build the mesh; otherwise</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">          the 3D elements are mapped verbatim -- a ``Element3D4N`` tetrahedron's four node</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">          ids read as a four-node face (the Exodus precedent), not expanded into its</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">          bounding triangles. Winding is judged in the ``xy`` plane like any other face.</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        - **Node ids are resolved through an id map.** Kratos numbers from 1 and may gap</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">          or reorder ids, so connectivity is resolved by position; the ``1`` base is</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">          recorded for a writer.</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">        - **Only Nodes and Elements are read.** ``Conditions``, ``Properties``,</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">          ``ModelPartData`` and ``SubModelPart`` blocks are read past.</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        - The format carries no datum, so ``crs`` is ``None``.</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">        Read a Kratos model part (shown, not run as a doctest -- it reads a committed</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        data file), reached through ``read_file``::</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">            mesh = UgridDataset.read_file("model.mdpa")</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    """</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"kratos"</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Kratos Multiphysics model part"</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".mdpa"</span><span class="p">,)</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">class</span><span class="w"> </span><span class="nc">KratosDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="w">    </span><span class="sd">"""Reader for the Kratos Multiphysics model part (``.mdpa``).</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    ``Begin Nodes`` rows become ``node_x``/``node_y`` and, when any is non-zero,</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">    ``node_z``; the elements become the fill-padded ``face_node_connectivity``, one face</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    row per element with its leading element and property ids dropped. A file mixing</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    element widths pads the short rows to the widest with ``-1``.</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">        - **2D surface elements are preferred, else 3D volume elements become faces.**</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">          When the file declares any ``Element2D*`` type those build the mesh; otherwise</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">          the 3D elements are mapped verbatim -- a ``Element3D4N`` tetrahedron's four node</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">          ids read as a four-node face (the Exodus precedent), not expanded into its</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">          bounding triangles. Winding is judged in the ``xy`` plane like any other face.</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">        - **Node ids are resolved through an id map.** Kratos numbers from 1 and may gap</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">          or reorder ids, so connectivity is resolved by position; the ``1`` base is</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">          recorded for a writer.</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        - **Only Nodes and Elements are read.** ``Conditions``, ``Properties``,</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">          ``ModelPartData`` and ``SubModelPart`` blocks are read past.</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">        - The format carries no datum, so ``crs`` is ``None``.</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        Read a Kratos model part (shown, not run as a doctest -- it reads a committed</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">        data file), reached through ``read_file``::</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">            mesh = UgridDataset.read_file("model.mdpa")</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    """</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"kratos"</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Kratos Multiphysics model part"</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".mdpa"</span><span class="p">,)</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="w">        </span><span class="sd">"""Report whether the file head carries ``Begin Nodes`` and ``Begin Elements``.</span>
 <a id="__codelineno-0-87" name="__codelineno-0-87"></a>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="w">        </span><span class="sd">"""Report whether the file head carries ``Begin Nodes`` and ``Begin Elements``.</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        A bounded prefix is decoded leniently -- so a binary or empty file answers</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">        ``False`` rather than raising -- and scanned for a ``Begin Nodes`` and a</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        ``Begin Elements`` block opener. Requiring both keeps a FLAC3D ``.f3grid`` or an</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">        unrelated text file from qualifying.</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">            bool: ``True`` when both block openers are found.</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        """</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">_SNIFF_LIMIT</span><span class="p">)</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="n">has_nodes</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>        <span class="n">has_elements</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>            <span class="n">tokens</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">!=</span> <span class="n">_BEGIN</span><span class="p">:</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>            <span class="n">block</span> <span class="o">=</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>            <span class="k">if</span> <span class="n">block</span> <span class="o">==</span> <span class="n">_NODES</span><span class="p">:</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a>                <span class="n">has_nodes</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a>            <span class="k">elif</span> <span class="n">block</span> <span class="o">==</span> <span class="n">_ELEMENTS</span><span class="p">:</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a>                <span class="n">has_elements</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a>            <span class="k">if</span> <span class="n">has_nodes</span> <span class="ow">and</span> <span class="n">has_elements</span><span class="p">:</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a>                <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>        <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="w">        </span><span class="sd">"""Read a Kratos ``.mdpa`` into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">            path: The ``.mdpa`` file to read.</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">            lazy: Ignored -- an ``.mdpa`` is plain text and read eagerly.</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">            ParsedMesh: Nodes, the fill-padded face connectivity built from the preferred</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">                element set, and the element type recorded as metadata.</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">            FileFormatNotSupportedError: If the file declares no nodes or no elements, an</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">                element type name carries no node count, an element row is short, or a</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">                numeric field is not a number.</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">        """</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>        <span class="n">scan</span> <span class="o">=</span> <span class="n">_Scan</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="n">scan</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a>        <span class="k">return</span> <span class="n">scan</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        The file is decoded leniently -- so a binary or empty file answers ``False``</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        rather than raising -- and scanned (short-circuiting once both are seen) for a</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        ``Begin Nodes`` and a ``Begin Elements`` block opener. Requiring both keeps a</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        FLAC3D ``.f3grid`` or an unrelated text file from qualifying; the whole file is</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">        read because the ``Begin Nodes`` block precedes ``Begin Elements``, so a large</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        node block must not push the element opener past a fixed window.</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">            bool: ``True`` when both block openers are found.</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">        """</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="n">has_nodes</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="n">has_elements</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a>            <span class="n">tokens</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">!=</span> <span class="n">_BEGIN</span><span class="p">:</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>            <span class="n">block</span> <span class="o">=</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a>            <span class="k">if</span> <span class="n">block</span> <span class="o">==</span> <span class="n">_NODES</span><span class="p">:</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a>                <span class="n">has_nodes</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a>            <span class="k">elif</span> <span class="n">block</span> <span class="o">==</span> <span class="n">_ELEMENTS</span><span class="p">:</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a>                <span class="n">has_elements</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a>            <span class="k">if</span> <span class="n">has_nodes</span> <span class="ow">and</span> <span class="n">has_elements</span><span class="p">:</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>                <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="w">        </span><span class="sd">"""Read a Kratos ``.mdpa`` into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">            path: The ``.mdpa`` file to read.</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">            lazy: Ignored -- an ``.mdpa`` is plain text and read eagerly.</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="sd">            ParsedMesh: Nodes, the fill-padded face connectivity built from the preferred</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">                element set, and the element type recorded as metadata.</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">            FileFormatNotSupportedError: If the file declares no nodes or no elements, an</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">                element type name carries no node count, an element row is short, or a</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">                numeric field is not a number.</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">        """</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>        <span class="n">scan</span> <span class="o">=</span> <span class="n">_Scan</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>        <span class="n">scan</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="k">return</span> <span class="n">scan</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

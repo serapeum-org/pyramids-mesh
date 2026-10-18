@@ -2814,7 +2814,12 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/nastran.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-213">213</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-208">208</a></span>
+<span class="normal"><a href="#__codelineno-0-209">209</a></span>
+<span class="normal"><a href="#__codelineno-0-210">210</a></span>
+<span class="normal"><a href="#__codelineno-0-211">211</a></span>
+<span class="normal"><a href="#__codelineno-0-212">212</a></span>
+<span class="normal"><a href="#__codelineno-0-213">213</a></span>
 <span class="normal"><a href="#__codelineno-0-214">214</a></span>
 <span class="normal"><a href="#__codelineno-0-215">215</a></span>
 <span class="normal"><a href="#__codelineno-0-216">216</a></span>
@@ -2911,110 +2916,109 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <span class="normal"><a href="#__codelineno-0-307">307</a></span>
 <span class="normal"><a href="#__codelineno-0-308">308</a></span>
 <span class="normal"><a href="#__codelineno-0-309">309</a></span>
-<span class="normal"><a href="#__codelineno-0-310">310</a></span>
-<span class="normal"><a href="#__codelineno-0-311">311</a></span>
-<span class="normal"><a href="#__codelineno-0-312">312</a></span>
-<span class="normal"><a href="#__codelineno-0-313">313</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="k">class</span><span class="w"> </span><span class="nc">NastranDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="w">    </span><span class="sd">"""Reader for the Nastran bulk-data (``.bdf``/``.nas``/``.fem``) mesh format.</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    Builds the surface mesh from ``GRID`` nodes and ``CTRIA3``/``CQUAD4`` faces. Node ids</span>
-<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">    are arbitrary labels resolved through an id map, so a gapped or out-of-order deck wires</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    correctly; the connectivity arrives 0-based with the bulk-data base recorded for a</span>
-<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">    writer. ``CTRIA3`` rows are fill-padded to the four columns of ``CQUAD4``. Node</span>
-<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">    elevation (the ``GRID`` ``X3`` column) becomes a ``node_z`` variable when any value is</span>
-<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">    non-zero, matching the Exodus and gmsh readers.</span>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        - **Volumetric and line elements are skipped.** ``CTETRA``/``CPENTA``/``CHEXA``/</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">          ``CPYRA`` solids and ``CBAR``/``CBEAM`` bars are dropped; only ``CTRIA3`` and</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">          ``CQUAD4`` surface faces are read. A genuine 3D mesh is out of scope (design</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">          section 21.1), so a deck of only solids is refused for having no surface.</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        - **Three field layouts are read** -- small (8-column) and large (16-column)</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">          fixed-field, and free (comma-separated). A fixed-field real may embed its</span>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">          exponent sign without an ``E`` (``-2.45-16`` is ``-2.45e-16``).</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">        - **Node ids are arbitrary labels**, mapped to contiguous indices; an element</span>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">          naming an id no ``GRID`` defines is refused, and a duplicate ``GRID`` id is</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">          ambiguous and refused.</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">        - Nastran carries no CRS -- the coordinates are engineering coordinates with no</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">          datum -- so ``crs`` is always ``None``; it is never guessed.</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        - The ``.fem`` suffix is shared with DHI FEFLOW. ``can_open`` requires the Nastran</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">          signature (a ``GRID`` and a ``CTRIA3``/``CQUAD4`` card, no FEFLOW</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="sd">          ``PROBLEM:``/``CLASS`` header), so a FEFLOW ``.fem`` is declined.</span>
+<span class="normal"><a href="#__codelineno-0-310">310</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="k">class</span><span class="w"> </span><span class="nc">NastranDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="w">    </span><span class="sd">"""Reader for the Nastran bulk-data (``.bdf``/``.nas``/``.fem``) mesh format.</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    Builds the surface mesh from ``GRID`` nodes and ``CTRIA3``/``CQUAD4`` faces. Node ids</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">    are arbitrary labels resolved through an id map, so a gapped or out-of-order deck wires</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">    correctly; the connectivity arrives 0-based with the bulk-data base recorded for a</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    writer. ``CTRIA3`` rows are fill-padded to the four columns of ``CQUAD4``. Node</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">    elevation (the ``GRID`` ``X3`` column) becomes a ``node_z`` variable when any value is</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    non-zero, matching the Exodus and gmsh readers.</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        - **Volumetric and line elements are skipped.** ``CTETRA``/``CPENTA``/``CHEXA``/</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">          ``CPYRA`` solids and ``CBAR``/``CBEAM`` bars are dropped; only ``CTRIA3`` and</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">          ``CQUAD4`` surface faces are read. A genuine 3D mesh is out of scope (design</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">          section 21.1), so a deck of only solids is refused for having no surface.</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        - **Three field layouts are read** -- small (8-column) and large (16-column)</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">          fixed-field, and free (comma-separated). A fixed-field real may embed its</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">          exponent sign without an ``E`` (``-2.45-16`` is ``-2.45e-16``).</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">        - **Node ids are arbitrary labels**, mapped to contiguous indices; an element</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">          naming an id no ``GRID`` defines is refused, and a duplicate ``GRID`` id is</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">          ambiguous and refused.</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        - Nastran carries no CRS -- the coordinates are engineering coordinates with no</span>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">          datum -- so ``crs`` is always ``None``; it is never guessed.</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">        - The ``.fem`` suffix is shared with DHI FEFLOW. ``can_open`` requires the Nastran</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">          signature (a ``GRID`` and a ``CTRIA3``/``CQUAD4`` card, no FEFLOW</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">          ``PROBLEM:``/``CLASS`` header), so a FEFLOW ``.fem`` is declined.</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        Read a Nastran deck (shown, not run as a doctest -- it needs a real deck)::</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
 <a id="__codelineno-0-239" name="__codelineno-0-239"></a>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="sd">        Read a Nastran deck (shown, not run as a doctest -- it needs a real deck)::</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">            mesh = UgridDataset.read_file("model.bdf")</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">    """</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"nastran"</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Nastran bulk data"</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".bdf"</span><span class="p">,</span> <span class="s2">".nas"</span><span class="p">,</span> <span class="s2">".fem"</span><span class="p">)</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="w">        </span><span class="sd">"""Report whether the file is a Nastran deck, declining a FEFLOW ``.fem``.</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        A bounded prefix is scanned for a ``GRID`` card and a ``CTRIA3``/``CQUAD4`` card;</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">        a FEFLOW ``PROBLEM:``/``CLASS`` header -- the one real collision on the shared</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        ``.fem`` suffix -- declines the file outright. Bytes are decoded leniently, so a</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">        binary or empty file answers ``False`` rather than raising.</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="sd">            mesh = UgridDataset.read_file("model.bdf")</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">    """</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"nastran"</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Nastran bulk data"</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".bdf"</span><span class="p">,</span> <span class="s2">".nas"</span><span class="p">,</span> <span class="s2">".fem"</span><span class="p">)</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="w">        </span><span class="sd">"""Report whether the file is a Nastran deck, declining a FEFLOW ``.fem``.</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">        The file is scanned (short-circuiting as soon as both are seen) for a ``GRID``</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">        card and a ``CTRIA3``/``CQUAD4`` card; a FEFLOW ``PROBLEM:``/``CLASS`` header --</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">        the one real collision on the shared ``.fem`` suffix -- declines the file outright.</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">        The whole file is read because the ``GRID`` block precedes the element cards and a</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">        large node block must not push them past a fixed window. Bytes are decoded</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        leniently, so a binary or empty file answers ``False`` rather than raising.</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">            path: The file to inspect.</span>
 <a id="__codelineno-0-262" name="__codelineno-0-262"></a>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">            bool: ``True`` only when both a ``GRID`` and a surface element card are found</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">                and no FEFLOW header appears.</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">        """</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">_SNIFF_LIMIT</span><span class="p">)</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">has_face</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_COMMENT</span><span class="p">):</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="n">upper</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>            <span class="c1"># A FEFLOW .fem opens with PROBLEM:/CLASS; key the decline on the first</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="c1"># significant line only, so a Nastran line merely beginning with those words</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>            <span class="c1"># deeper in the deck does not false-decline.</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>            <span class="k">if</span> <span class="n">first_significant</span><span class="p">:</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>                <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">upper</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">marker</span><span class="p">)</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">_FEFLOW_MARKERS</span><span class="p">):</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                    <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>            <span class="n">keyword</span> <span class="o">=</span> <span class="n">_card_name</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>            <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="n">_GRID</span><span class="p">:</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="k">elif</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">_FACE_CARDS</span><span class="p">:</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                <span class="n">has_face</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>            <span class="k">if</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span><span class="p">:</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="k">return</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">            bool: ``True`` only when both a ``GRID`` and a surface element card are found</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">                and no FEFLOW header appears.</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        """</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="n">has_face</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_COMMENT</span><span class="p">):</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="n">upper</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>            <span class="c1"># A FEFLOW .fem opens with PROBLEM:/CLASS; key the decline on the first</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>            <span class="c1"># significant line only, so a Nastran line merely beginning with those words</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="c1"># deeper in the deck does not false-decline.</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>            <span class="k">if</span> <span class="n">first_significant</span><span class="p">:</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>                <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">upper</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">marker</span><span class="p">)</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">_FEFLOW_MARKERS</span><span class="p">):</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>                    <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>            <span class="n">keyword</span> <span class="o">=</span> <span class="n">_card_name</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>            <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="n">_GRID</span><span class="p">:</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>            <span class="k">elif</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">_FACE_CARDS</span><span class="p">:</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>                <span class="n">has_face</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>            <span class="k">if</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span><span class="p">:</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>                <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="k">return</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="w">        </span><span class="sd">"""Read a Nastran deck into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">        </span><span class="sd">"""Read a Nastran deck into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">            path: The deck to read.</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">            lazy: Ignored -- a bulk-data deck is plain text and read eagerly; accepted to</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">                match the driver protocol.</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">            path: The deck to read.</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">            lazy: Ignored -- a bulk-data deck is plain text and read eagerly; accepted to</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">                match the driver protocol.</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">            ParsedMesh: Nodes, the surface faces, and ``node_z`` when elevations are set.</span>
 <a id="__codelineno-0-303" name="__codelineno-0-303"></a>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">            ParsedMesh: Nodes, the surface faces, and ``node_z`` when elevations are set.</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">            FileFormatNotSupportedError: If the deck has no ``GRID`` card, no surface</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">                element, or a malformed field.</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">            ValueError: If an element references an undefined node id, or two ``GRID``</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">                cards share an id.</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">        """</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="k">return</span> <span class="n">_Deck</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">            FileFormatNotSupportedError: If the deck has no ``GRID`` card, no surface</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">                element, or a malformed field.</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">            ValueError: If an element references an undefined node id, or two ``GRID``</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">                cards share an id.</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">        """</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>        <span class="k">return</span> <span class="n">_Deck</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
