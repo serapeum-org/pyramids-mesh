@@ -85,7 +85,7 @@ class ObjDriver(BaseDriver):
     long_name = "Wavefront OBJ"
     suffixes = (".obj",)
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh", "read_data"})
+    capabilities = frozenset({"read_mesh"})
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file carries both a ``v`` and an ``f`` record.
@@ -209,8 +209,19 @@ class _ObjReader:
         return [self._vertex_index(token) for token in fields]
 
     def _vertex_index(self, token: str) -> int:
-        """Return the 1-based vertex index from an ``f`` token, dropping any ``/`` part."""
-        return _as_int(token.split("/")[0], "f", self.path)
+        """Return the 1-based vertex index from an ``f`` token, dropping any ``/`` part.
+
+        Raises:
+            FileFormatNotSupportedError: On a non-positive index -- OBJ's relative
+                (negative) face indices are not supported, and ``0`` is not a valid id.
+        """
+        index = _as_int(token.split("/")[0], "f", self.path)
+        if index < 1:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has a non-positive OBJ face index {index}; relative "
+                f"(negative) indices are not supported"
+            )
+        return index
 
 
 def _pad_faces(rows: list[list[int]], path: str) -> np.ndarray:

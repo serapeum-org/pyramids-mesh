@@ -218,7 +218,7 @@ class TestStlErrors:
 
 
 def test_declares_read_capabilities():
-    """The driver advertises the read capabilities and its name and suffix."""
+    """The driver advertises read_mesh only (it emits geometry, no field data)."""
     assert StlDriver.name == "stl"
     assert StlDriver.suffixes == (".stl",)
-    assert "read_mesh" in StlDriver.capabilities
+    assert set(StlDriver.capabilities) == {"read_mesh"}

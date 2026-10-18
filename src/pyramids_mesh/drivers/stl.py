@@ -97,7 +97,7 @@ class StlDriver(BaseDriver):
     long_name = "STL (stereolithography)"
     suffixes = (".stl",)
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh", "read_data"})
+    capabilities = frozenset({"read_mesh"})
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file is a size-consistent binary or an ASCII STL.

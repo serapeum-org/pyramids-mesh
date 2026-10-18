@@ -197,7 +197,16 @@ class TestObjErrors:
 
 
 def test_declares_read_capabilities():
-    """The driver advertises the read capabilities and its name and suffix."""
+    """The driver advertises read_mesh only (it emits geometry, no field data)."""
     assert ObjDriver.name == "obj"
     assert ObjDriver.suffixes == (".obj",)
-    assert "read_mesh" in ObjDriver.capabilities
+    assert set(ObjDriver.capabilities) == {"read_mesh"}
+
+
+def test_negative_relative_face_index_is_refused(tmp_path):
+    """OBJ relative (negative) face indices are unsupported and refused cleanly."""
+    text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf -1 -2 -3\n"
+    with pytest.raises(
+        FileFormatNotSupportedError, match="non-positive OBJ face index"
+    ):
+        ObjDriver().read(_write(tmp_path, text))
