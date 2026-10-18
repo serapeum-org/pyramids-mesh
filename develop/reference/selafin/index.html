@@ -2290,7 +2290,30 @@ second_step
 <span class="normal"><a href="#__codelineno-0-303">303</a></span>
 <span class="normal"><a href="#__codelineno-0-304">304</a></span>
 <span class="normal"><a href="#__codelineno-0-305">305</a></span>
-<span class="normal"><a href="#__codelineno-0-306">306</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">class</span><span class="w"> </span><span class="nc">SelafinDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-306">306</a></span>
+<span class="normal"><a href="#__codelineno-0-307">307</a></span>
+<span class="normal"><a href="#__codelineno-0-308">308</a></span>
+<span class="normal"><a href="#__codelineno-0-309">309</a></span>
+<span class="normal"><a href="#__codelineno-0-310">310</a></span>
+<span class="normal"><a href="#__codelineno-0-311">311</a></span>
+<span class="normal"><a href="#__codelineno-0-312">312</a></span>
+<span class="normal"><a href="#__codelineno-0-313">313</a></span>
+<span class="normal"><a href="#__codelineno-0-314">314</a></span>
+<span class="normal"><a href="#__codelineno-0-315">315</a></span>
+<span class="normal"><a href="#__codelineno-0-316">316</a></span>
+<span class="normal"><a href="#__codelineno-0-317">317</a></span>
+<span class="normal"><a href="#__codelineno-0-318">318</a></span>
+<span class="normal"><a href="#__codelineno-0-319">319</a></span>
+<span class="normal"><a href="#__codelineno-0-320">320</a></span>
+<span class="normal"><a href="#__codelineno-0-321">321</a></span>
+<span class="normal"><a href="#__codelineno-0-322">322</a></span>
+<span class="normal"><a href="#__codelineno-0-323">323</a></span>
+<span class="normal"><a href="#__codelineno-0-324">324</a></span>
+<span class="normal"><a href="#__codelineno-0-325">325</a></span>
+<span class="normal"><a href="#__codelineno-0-326">326</a></span>
+<span class="normal"><a href="#__codelineno-0-327">327</a></span>
+<span class="normal"><a href="#__codelineno-0-328">328</a></span>
+<span class="normal"><a href="#__codelineno-0-329">329</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">class</span><span class="w"> </span><span class="nc">SelafinDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
 <a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="w">    </span><span class="sd">"""Reader for the TELEMAC Selafin / Serafin format.</span>
 <a id="__codelineno-0-66" name="__codelineno-0-66"></a>
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">    Fortran unformatted records whose byte order is not declared and is detected from the</span>
@@ -2471,7 +2494,7 @@ second_step
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="n">node_pairs</span> <span class="o">=</span> <span class="p">[</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>            <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data_variable_names</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"node_z"</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>        <span class="p">]</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_selafin_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">units</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">node_pairs</span><span class="p">]</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>        <span class="k">if</span> <span class="n">node_pairs</span><span class="p">:</span>
@@ -2483,56 +2506,79 @@ second_step
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a>            <span class="p">)</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a>        <span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>            <span class="n">times</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>            <span class="p">[</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a>                <span class="p">(</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)[</span><span class="n">step</span><span class="p">]</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>                    <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>                <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>                <span class="k">for</span> <span class="n">_name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">node_pairs</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>            <span class="p">]</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="p">]</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="n">write_selafin</span><span class="p">(</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="n">node_x</span><span class="o">=</span><span class="n">node_x</span><span class="p">,</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="n">node_y</span><span class="o">=</span><span class="n">node_y</span><span class="p">,</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>            <span class="n">ikle</span><span class="o">=</span><span class="n">ikle</span><span class="p">,</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">variable_names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>            <span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="n">double</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolve_precision</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"precision"</span><span class="p">)),</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>        <span class="p">)</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>    <span class="nd">@staticmethod</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_precision</span><span class="p">(</span><span class="n">precision</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="w">        </span><span class="sd">"""Resolve the ``precision`` option to the double-precision flag ``write_selafin`` takes.</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">            bool: ``True`` for double (the default, lossless), ``False`` for single.</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">            FileFormatNotSupportedError: On any value other than ``"single"``/``"double"``.</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">        """</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="k">if</span> <span class="n">precision</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"double"</span><span class="p">):</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="k">if</span> <span class="n">precision</span> <span class="o">==</span> <span class="s2">"single"</span><span class="p">:</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>            <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>        <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>            <span class="sa">f</span><span class="s2">"unknown Selafin precision </span><span class="si">{</span><span class="n">precision</span><span class="si">!r}</span><span class="s2">; use 'single' or 'double'"</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="p">)</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>    <span class="nd">@staticmethod</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_selafin_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="w">        </span><span class="sd">"""Pack a variable name and unit into the 32-character Selafin name record.</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        The first 16 characters are the name, the next 16 the unit, each space-padded and</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        truncated -- the inverse of the reader's by-position split.</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">        """</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="p">[:</span><span class="n">_NAME_HALF</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">_NAME_HALF</span><span class="si">}}</span><span class="s2">"</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="n">unit</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">(</span><span class="n">units</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">''</span><span class="p">)[:</span><span class="n">_NAME_HALF</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">_NAME_HALF</span><span class="si">}}</span><span class="s2">"</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="k">return</span> <span class="n">label</span> <span class="o">+</span> <span class="n">unit</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_series</span><span class="p">(</span><span class="n">node_pairs</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="n">write_selafin</span><span class="p">(</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>            <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>            <span class="n">node_x</span><span class="o">=</span><span class="n">node_x</span><span class="p">,</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>            <span class="n">node_y</span><span class="o">=</span><span class="n">node_y</span><span class="p">,</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>            <span class="n">ikle</span><span class="o">=</span><span class="n">ikle</span><span class="p">,</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>            <span class="n">variable_names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>            <span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>            <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="n">double</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolve_precision</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"precision"</span><span class="p">)),</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="p">)</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>    <span class="nd">@staticmethod</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_node_series</span><span class="p">(</span><span class="n">node_pairs</span><span class="p">,</span> <span class="n">n_times</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="w">        </span><span class="sd">"""Build the per-step value blocks for the node variables.</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">        Each 2-D (time-varying) variable must share the dataset's time axis; a static</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">        (1-D) field is repeated on every step. A variable whose own time axis differs is</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">        refused with a clear error rather than being silently truncated or index-erroring.</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">            node_pairs: ``(name, variable)`` pairs of the node-located variables to write.</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">            n_times: The dataset's time-step count (the shared Selafin time axis).</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">            list: One block per time step, each a list of per-variable node value lists.</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">            FileFormatNotSupportedError: If a time-varying variable's first-axis length is</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">                not ``n_times``.</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">        """</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="n">prepared</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">node_pairs</span><span class="p">:</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>            <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n_times</span><span class="p">:</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                    <span class="sa">f</span><span class="s2">"cannot write node variable </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> to Selafin: its time axis has "</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> steps but the dataset's is </span><span class="si">{</span><span class="n">n_times</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                <span class="p">)</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>            <span class="n">prepared</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="k">return</span> <span class="p">[</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>            <span class="p">[(</span><span class="n">array</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">array</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">array</span> <span class="ow">in</span> <span class="n">prepared</span><span class="p">]</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_times</span><span class="p">)</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>        <span class="p">]</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a>    <span class="nd">@staticmethod</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_precision</span><span class="p">(</span><span class="n">precision</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="w">        </span><span class="sd">"""Resolve the ``precision`` option to the double-precision flag ``write_selafin`` takes.</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">            bool: ``True`` for double (the default, lossless), ``False`` for single.</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">            FileFormatNotSupportedError: On any value other than ``"single"``/``"double"``.</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">        """</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>        <span class="k">if</span> <span class="n">precision</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"double"</span><span class="p">):</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>            <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="k">if</span> <span class="n">precision</span> <span class="o">==</span> <span class="s2">"single"</span><span class="p">:</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>            <span class="sa">f</span><span class="s2">"unknown Selafin precision </span><span class="si">{</span><span class="n">precision</span><span class="si">!r}</span><span class="s2">; use 'single' or 'double'"</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="p">)</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="nd">@staticmethod</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_selafin_name</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="w">        </span><span class="sd">"""Pack a variable name and unit into the 32-character Selafin name record.</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">        The first 16 characters are the name, the next 16 the unit, each space-padded and</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        truncated -- the inverse of the reader's by-position split.</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        """</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="p">[:</span><span class="n">_NAME_HALF</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">_NAME_HALF</span><span class="si">}}</span><span class="s2">"</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="n">unit</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">(</span><span class="n">units</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">''</span><span class="p">)[:</span><span class="n">_NAME_HALF</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">_NAME_HALF</span><span class="si">}}</span><span class="s2">"</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="k">return</span> <span class="n">label</span> <span class="o">+</span> <span class="n">unit</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3779,17 +3825,7 @@ or if <code>precision</code> is neither <code>"single"</code> nor <code>"double"
 <span class="normal"><a href="#__codelineno-0-264">264</a></span>
 <span class="normal"><a href="#__codelineno-0-265">265</a></span>
 <span class="normal"><a href="#__codelineno-0-266">266</a></span>
-<span class="normal"><a href="#__codelineno-0-267">267</a></span>
-<span class="normal"><a href="#__codelineno-0-268">268</a></span>
-<span class="normal"><a href="#__codelineno-0-269">269</a></span>
-<span class="normal"><a href="#__codelineno-0-270">270</a></span>
-<span class="normal"><a href="#__codelineno-0-271">271</a></span>
-<span class="normal"><a href="#__codelineno-0-272">272</a></span>
-<span class="normal"><a href="#__codelineno-0-273">273</a></span>
-<span class="normal"><a href="#__codelineno-0-274">274</a></span>
-<span class="normal"><a href="#__codelineno-0-275">275</a></span>
-<span class="normal"><a href="#__codelineno-0-276">276</a></span>
-<span class="normal"><a href="#__codelineno-0-277">277</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="w">    </span><span class="sd">"""Write a mesh and its node-located results back to a Selafin file.</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">    Emits the same Fortran-record layout the reader parses, through</span>
@@ -3838,7 +3874,7 @@ or if <code>precision</code> is neither <code>"single"</code> nor <code>"double"
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="n">node_pairs</span> <span class="o">=</span> <span class="p">[</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data_variable_names</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"node_z"</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="p">]</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_selafin_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">units</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">node_pairs</span><span class="p">]</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">if</span> <span class="n">node_pairs</span><span class="p">:</span>
@@ -3850,27 +3886,17 @@ or if <code>precision</code> is neither <code>"single"</code> nor <code>"double"
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a>        <span class="p">)</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="n">times</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="p">[</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a>            <span class="p">(</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)[</span><span class="n">step</span><span class="p">]</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>                <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>            <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>            <span class="k">for</span> <span class="n">_name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">node_pairs</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="p">]</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="p">]</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">write_selafin</span><span class="p">(</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">node_x</span><span class="p">,</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">node_y</span><span class="p">,</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">ikle</span><span class="o">=</span><span class="n">ikle</span><span class="p">,</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">variable_names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="n">double</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolve_precision</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"precision"</span><span class="p">)),</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="p">)</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_series</span><span class="p">(</span><span class="n">node_pairs</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">write_selafin</span><span class="p">(</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>        <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">node_x</span><span class="p">,</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">node_y</span><span class="p">,</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="n">ikle</span><span class="o">=</span><span class="n">ikle</span><span class="p">,</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="n">variable_names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="n">double</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolve_precision</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"precision"</span><span class="p">)),</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
