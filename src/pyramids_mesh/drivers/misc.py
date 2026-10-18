@@ -228,7 +228,9 @@ class Mike21Driver(BaseDriver):
             **options: Unused; accepted for a uniform writer signature.
 
         Raises:
-            FileFormatNotSupportedError: If the dataset carries no faces.
+            FileFormatNotSupportedError: If the dataset carries no faces, or any face has
+                a vertex count other than 3 or 4 (Mike21 has only triangle and quad
+                element types).
         """
         mesh = dataset.mesh
         connectivity = mesh.face_node_connectivity
@@ -241,6 +243,19 @@ class Mike21Driver(BaseDriver):
         base = connectivity.original_start_index
         if base is None:
             base = 1
+        real_counts = (
+            np.sum(faces != -1, axis=1)
+            if faces.ndim == 2
+            else np.array([np.sum(faces != -1)])
+        )
+        unsupported = sorted(
+            {int(c) for c in np.unique(real_counts) if c not in (3, 4)}
+        )
+        if unsupported:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: Mike21 has only triangle (3) and quad (4) "
+                f"elements, but the mesh has face(s) with {unsupported} vertices"
+            )
         node_x = np.asarray(mesh.node_x, dtype=np.float64)
         node_y = np.asarray(mesh.node_y, dtype=np.float64)
         node_z = _writer_node_z(dataset, len(node_x))

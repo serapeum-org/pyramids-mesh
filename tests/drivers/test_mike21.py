@@ -409,6 +409,30 @@ class TestMike21Writer:
         with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
             Mike21Driver().write(ds, str(tmp_path / "out.mesh"))
 
+    def test_write_wide_face_is_refused(self, tmp_path):
+        """A face with more than four vertices (e.g. an E6T) is refused, not mislabelled.
+
+        Mike21 has only triangle and quad element types, so a 6-node face must raise
+        rather than be written with a triangle type code and six node ids.
+        """
+        conn = type(
+            "_Conn",
+            (),
+            {"data": np.array([[0, 1, 2, 3, 4, 5]]), "original_start_index": 1},
+        )()
+        mesh = type(
+            "_Mesh",
+            (),
+            {
+                "face_node_connectivity": conn,
+                "node_x": np.arange(6, dtype=float),
+                "node_y": np.arange(6, dtype=float),
+            },
+        )()
+        ds = type("_Dataset", (), {"mesh": mesh, "data_variable_names": ()})()
+        with pytest.raises(FileFormatNotSupportedError, match="triangle"):
+            Mike21Driver().write(ds, str(tmp_path / "out.mesh"))
+
     def test_declares_write_mesh(self):
         """The driver advertises the write_mesh capability."""
         assert "write_mesh" in Mike21Driver.capabilities
