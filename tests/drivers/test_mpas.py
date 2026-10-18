@@ -13,7 +13,6 @@ import warnings
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from pyramids_mesh.drivers.mpas import MpasDriver
 from pyramids_mesh.drivers.threedi import ThreeDiDriver
@@ -68,13 +67,20 @@ def test_faces_are_counter_clockwise():
         assert signed_area2 > 0
 
 
-def test_nodes_are_longitude_latitude_in_degrees():
-    """Coordinates are the dual vertices' lon/lat converted from radians to degrees."""
+def test_nodes_are_longitude_latitude_in_native_radians():
+    """Coordinates are the dual vertices' lon/lat carried verbatim in the file's radians.
+
+    The driver does not convert to degrees -- that projection concern belongs upstream in
+    pyramids -- so latitude stays within +-pi/2 and longitude within [0, 2*pi), the same
+    convention the ICON reader follows.
+    """
     mesh = _read().mesh
-    assert mesh.node_y.min() >= -90.0 and mesh.node_y.max() <= 90.0
-    assert mesh.node_x.min() >= 0.0 and mesh.node_x.max() <= 360.0
-    # a radians-valued latitude would never exceed +-1.58; degrees reaches well past it
-    assert mesh.node_y.max() > 2.0
+    assert mesh.node_y.min() >= -np.pi / 2 - 1e-6
+    assert mesh.node_y.max() <= np.pi / 2 + 1e-6
+    assert mesh.node_x.min() >= -1e-6
+    assert mesh.node_x.max() <= 2 * np.pi + 1e-6
+    # radians: a latitude never exceeds +-1.58; a degrees conversion would reach past it.
+    assert mesh.node_y.max() < 1.58
 
 
 def test_crs_is_none_on_the_unit_sphere():

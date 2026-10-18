@@ -75,14 +75,16 @@ class MpasDriver(BaseDriver):
     face-node connectivity (5- and 6-node faces in a hex-dominant mesh).
 
     Documented limitations:
-        - **Longitude/latitude are exposed, in degrees, not the Cartesian
-          ``xVertex``/``yVertex``.** MPAS stores both: lon/lat (radians) and the 3D
-          Cartesian coordinates on the sphere. Dropping ``z`` from the Cartesian triple
+        - **Longitude/latitude are exposed, in the file's native radians, not the
+          Cartesian ``xVertex``/``yVertex``.** MPAS stores both: lon/lat (radians) and the
+          3D Cartesian coordinates on the sphere. Dropping ``z`` from the Cartesian triple
           collapses the two hemispheres onto one another and degenerates the cells at the
-          limb, so the geographic coordinates are used instead and converted from radians
-          to the conventional degrees. A cell straddling the antimeridian unwraps to a
-          wide planar polygon -- inherent to flattening a global mesh -- but its winding
-          is still well defined.
+          limb, so the geographic coordinates are used instead. They are carried verbatim
+          in radians: converting to degrees is a projection concern that belongs in the
+          GIS layer upstream (pyramids), not in a file-format driver -- the same rule the
+          ICON reader follows. A cell straddling the antimeridian unwraps to a wide planar
+          polygon -- inherent to flattening a global mesh -- but its winding is still well
+          defined.
         - **No CRS.** The grid lives on a unit sphere (``sphere_radius = 1``) with no EPSG
           authority, so ``crs`` is ``None`` rather than guessed at ``4326`` (a WGS84
           ellipsoid the mesh is not on).
@@ -166,7 +168,7 @@ class _MpasReader:
         """Open the file and assemble the dual mesh.
 
         Returns:
-            ParsedMesh: Nodes from ``lonVertex``/``latVertex`` (degrees) and face-node
+            ParsedMesh: Nodes from ``lonVertex``/``latVertex`` (radians) and face-node
                 connectivity from ``verticesOnCell``.
 
         Raises:
@@ -186,10 +188,11 @@ class _MpasReader:
                 dataset.Close()
         faces = self._faces(vertices_on_cell, n_edges)
         return ParsedMesh(
-            # lon/lat are radians in the file; degrees is the conventional unit, and the
-            # Cartesian xVertex/yVertex are deliberately not used (see the class docs).
-            node_x=np.degrees(lon),
-            node_y=np.degrees(lat),
+            # lon/lat are carried in the file's native radians; converting to degrees is a
+            # projection concern that belongs upstream (pyramids), not in a format driver.
+            # The Cartesian xVertex/yVertex are deliberately not used (see the class docs).
+            node_x=lon,
+            node_y=lat,
             faces=faces,
             fill_value=-1,
             # verticesOnCell is 1-based; resolved to 0-based here, base recorded for a
