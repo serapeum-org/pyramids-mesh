@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2969,10 +2969,10 @@ elevation = mesh.get("node_z")
 <a id="__codelineno-0-264" name="__codelineno-0-264"></a>            <span class="k">return</span> <span class="kc">False</span>
 <a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 - the contract is never to raise</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="c1"># Defensive: os.listdir on a readable directory does not raise, so this</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="c1"># guard mirrors the base class's never-raise contract rather than a</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="c1"># reachable path.</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="c1"># never-raise contract.</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
@@ -3168,10 +3168,10 @@ directory is one.</p>
 <a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="k">return</span> <span class="kc">False</span>
 <a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 - the contract is never to raise</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="c1"># Defensive: os.listdir on a readable directory does not raise, so this</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="c1"># guard mirrors the base class's never-raise contract rather than a</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="c1"># reachable path.</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="c1"># never-raise contract.</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
