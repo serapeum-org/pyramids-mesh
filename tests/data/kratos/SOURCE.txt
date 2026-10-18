@@ -1,0 +1,3 @@
+Kratos Multiphysics .mdpa (ASCII).
+small_cube.mdpa -- KratosMultiphysics/Kratos, BSD-3-Clause. 8 Nodes / 6 Element3D4N.
+  https://github.com/KratosMultiphysics/Kratos (kratos/tests/auxiliar_files_for_python_unittest/mdpa_files/)
