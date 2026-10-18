@@ -232,6 +232,31 @@ class TestReaderDefensiveBranches:
         with pytest.raises(FileFormatNotSupportedError, match="reports 0 cells"):
             _reader()._cell_slice(areas, "A")
 
+    def test_cell_slice_binds_row_by_full_area_order_not_geometry_filtered(self):
+        """``Cell Info`` has one row per area; a geometry-less area before a real one
+        must not shift the real area's row.
+
+        Binding the row by the geometry-filtered subgroup index (dropping the ghost area)
+        would pick the wrong ``[start, count]``; the full subgroup order is authoritative.
+        """
+        areas = _Grp(
+            groups={
+                "Ghost": _Grp(arrays={}),  # no FacePoints -> not a geometry area
+                "Real": _Grp(arrays={_FACE_FP: [[0, 1]]}),
+            },
+            arrays={"Cell Info": [[0, 7], [7, 500]]},  # row 0 = Ghost, row 1 = Real
+        )
+        assert _reader()._cell_slice(areas, "Real") == (7, 500)
+
+    def test_cell_slice_refuses_a_cell_info_row_count_mismatch(self):
+        """A ``Cell Info`` whose row count is not one-per-area is refused, not mis-bound."""
+        areas = _Grp(
+            groups={"A": _Grp(arrays={_FACE_FP: [[0, 1]]}), "B": _Grp(arrays={})},
+            arrays={"Cell Info": [[0, 9]]},  # 1 row for 2 areas
+        )
+        with pytest.raises(FileFormatNotSupportedError, match="Cell Info"):
+            _reader()._cell_slice(areas, "A")
+
     def test_centres_absent_cell_points_returns_none(self):
         """With no ``Cell Points`` array the face centres are left unset."""
         assert _reader()._centres(_Grp(arrays={}), 0, 5) == (None, None)

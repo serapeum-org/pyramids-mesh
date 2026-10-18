@@ -259,23 +259,30 @@ class _HecRasReader:
     def _cell_slice(self, areas, area: str) -> tuple[int, int]:
         """Return the (start, count) of ``area``'s real cells within ``Cell Points``.
 
-        ``Cell Info`` holds one ``[start, count]`` row per area, in the same order as the
-        area subgroups; the count is the number of real (non-ghost) cells.
+        ``Cell Info`` holds one ``[start, count]`` row per 2D flow area, in the order of
+        the area subgroups (which HEC-RAS writes in the order of the ``Attributes`` table;
+        that table's string ``Name`` field is not readable through the vendored GDAL SWIG
+        bindings, so the subgroup order stands in for it). The row is therefore bound by the
+        area's position among **all** subgroups, not among the geometry-carrying ones only:
+        a geometry-less area must not shift a real area's row. The count is the number of
+        real (non-ghost) cells.
 
         Raises:
-            FileFormatNotSupportedError: If ``Cell Info`` is absent or the area has no cells.
+            FileFormatNotSupportedError: If ``Cell Info`` is absent, its row count is not one
+                per area, or the area reports no cells.
         """
-        names = [
-            name
-            for name in areas.GetGroupNames()
-            if _FACE_FP in areas.OpenGroup(name).GetMDArrayNames()
-        ]
+        all_names = list(areas.GetGroupNames())
         if _CELL_INFO not in areas.GetMDArrayNames():
             raise FileFormatNotSupportedError(
                 f"{self.path!r} 2D flow areas carry no {_CELL_INFO!r} array"
             )
         cell_info = np.asarray(areas.OpenMDArray(_CELL_INFO).ReadAsArray())
-        row = names.index(area)
+        if cell_info.shape[0] != len(all_names):
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has {cell_info.shape[0]} {_CELL_INFO!r} rows for "
+                f"{len(all_names)} 2D flow areas; cannot bind {area!r} to its cells"
+            )
+        row = all_names.index(area)
         start, count = int(cell_info[row, 0]), int(cell_info[row, 1])
         if count <= 0:
             raise FileFormatNotSupportedError(
