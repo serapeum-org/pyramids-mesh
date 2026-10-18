@@ -59,6 +59,32 @@ def _convention(group) -> str:
     return ""
 
 
+def _orient_faces(vertex_of_cell: np.ndarray) -> np.ndarray:
+    """Return ``vertex_of_cell`` as a ``(ncells, 3)`` triangle table.
+
+    ICON stores the connectivity as ``(nv=3, ncells)``, which is transposed here so each
+    row is one triangle. A file written the other way round, ``(ncells, 3)``, is accepted
+    as-is; any other shape is refused rather than silently mis-wired into wrong faces.
+
+    Args:
+        vertex_of_cell: The raw ``vertex_of_cell`` array.
+
+    Returns:
+        np.ndarray: A contiguous ``(ncells, 3)`` triangle table.
+
+    Raises:
+        FileFormatNotSupportedError: If the array is not 2D with a dimension of 3.
+    """
+    if vertex_of_cell.ndim == 2 and vertex_of_cell.shape[0] == 3:
+        return np.ascontiguousarray(vertex_of_cell.T)
+    if vertex_of_cell.ndim == 2 and vertex_of_cell.shape[1] == 3:
+        return np.ascontiguousarray(vertex_of_cell)
+    raise FileFormatNotSupportedError(
+        f"ICON vertex_of_cell must be a (3, ncells) or (ncells, 3) triangle table; "
+        f"got shape {vertex_of_cell.shape}."
+    )
+
+
 def _is_icon(group) -> bool:
     """Report whether a root group is an ICON grid and not its MPAS look-alike.
 
@@ -166,12 +192,12 @@ class IconDriver(BaseDriver):
                 self._require(path, _group_names(group))
                 node_x = np.asarray(group.OpenMDArray(_VLON).ReadAsArray(), np.float64)
                 node_y = np.asarray(group.OpenMDArray(_VLAT).ReadAsArray(), np.float64)
-                # vertex_of_cell is (nv=3, ncells); transpose to (ncells, 3) so each row
-                # is one triangle. It is 1-based, re-based to 0 by validation.
+                # vertex_of_cell is (nv=3, ncells); oriented to (ncells, 3) so each row is
+                # one triangle. It is 1-based, re-based to 0 by validation.
                 vertex_of_cell = np.asarray(
                     group.OpenMDArray(_VERTEX_OF_CELL).ReadAsArray(), np.int64
                 )
-                faces = np.ascontiguousarray(vertex_of_cell.T)
+                faces = _orient_faces(vertex_of_cell)
                 face_x, face_y = self._face_centres(group, _group_names(group))
                 variables = self._variables(group, _group_names(group), len(faces))
             finally:

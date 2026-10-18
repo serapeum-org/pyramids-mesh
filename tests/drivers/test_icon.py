@@ -14,9 +14,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset
 from pyramids.netcdf.ugrid import _drivers
-from pyramids_mesh.drivers.icon import IconDriver
+from pyramids_mesh.drivers.icon import IconDriver, _orient_faces
 
 _GRID = Path(__file__).parent.parent / "data" / "icon" / "icon_grid_R02B04_subset.nc"
 
@@ -24,6 +25,24 @@ _GRID = Path(__file__).parent.parent / "data" / "icon" / "icon_grid_R02B04_subse
 def _read():
     """Read the committed ICON grid."""
     return IconDriver().read(str(_GRID))
+
+
+def test_orient_faces_transposes_the_spec_layout():
+    """The ICON ``(nv=3, ncells)`` layout is transposed so each row is one triangle."""
+    voc = np.array([[1, 4], [2, 5], [3, 6]])  # (3, 2): two triangles down the columns
+    assert _orient_faces(voc).tolist() == [[1, 2, 3], [4, 5, 6]]
+
+
+def test_orient_faces_accepts_the_transposed_layout():
+    """A file already stored ``(ncells, 3)`` is accepted as-is, not transposed again."""
+    voc = np.array([[1, 2, 3], [4, 5, 6]])  # (2, 3)
+    assert _orient_faces(voc).tolist() == [[1, 2, 3], [4, 5, 6]]
+
+
+def test_orient_faces_refuses_a_non_triangle_shape():
+    """A connectivity array with no dimension of 3 is refused, not silently mis-wired."""
+    with pytest.raises(FileFormatNotSupportedError):
+        _orient_faces(np.zeros((4, 5), dtype=np.int64))
 
 
 def test_vertices_and_cells_build_the_mesh():
