@@ -11,6 +11,7 @@ binary.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import io
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +19,7 @@ import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids_mesh.drivers._gr3 import read_gr3_grid
-from pyramids_mesh.drivers.schism import SchismDriver
+from pyramids_mesh.drivers.schism import SchismDriver, _read_boundary_group
 
 _DATA = Path(__file__).parent.parent / "data" / "schism"
 _GRID = _DATA / "hgrid.gr3"
@@ -175,3 +176,9 @@ def test_declares_read_mesh_only():
     assert set(SchismDriver.capabilities) == {"read_mesh"}
     assert SchismDriver.suffixes == (".gr3",)
     assert SchismDriver.name == "schism"
+
+
+def test_non_numeric_boundary_header_yields_no_boundaries():
+    """White-box: a non-numeric boundary-count line is treated as no boundaries."""
+    handle = io.StringIO("not a count line\n")
+    assert _read_boundary_group(handle) == []

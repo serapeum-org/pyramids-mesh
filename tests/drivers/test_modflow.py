@@ -17,7 +17,7 @@ import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset, _drivers
-from pyramids_mesh.drivers.modflow import Modflow6DisvDriver
+from pyramids_mesh.drivers.modflow import Modflow6DisvDriver, _Modflow6DisvReader
 
 _DATA = Path(__file__).parent.parent / "data" / "modflow6"
 _DISV = _DATA / "tri_model_cnst.disv"
@@ -146,3 +146,130 @@ def test_a_cell_count_mismatch_is_a_format_error(tmp_path):
     )
     with pytest.raises(FileFormatNotSupportedError, match="NCPL 2 but has 1 CELL2D"):
         Modflow6DisvDriver().read(str(disv))
+
+
+def _disv_text(
+    dimensions="  NLAY 1\n  NCPL 1\n  NVERT 3\n",
+    vertices="  1 0.0 0.0\n  2 1.0 0.0\n  3 0.0 1.0\n",
+    cells="  1 0.33 0.33 3 1 2 3\n",
+):
+    """Assemble a tiny valid .disv body; override one block to malform it."""
+    return (
+        f"BEGIN DIMENSIONS\n{dimensions}END DIMENSIONS\n\n"
+        f"BEGIN VERTICES\n{vertices}END VERTICES\n\n"
+        f"BEGIN CELL2D\n{cells}END CELL2D\n"
+    )
+
+
+def test_sniff_declines_a_path_that_cannot_be_opened(tmp_path):
+    """_sniff returns False on an OS read error; can_open's isfile guard hides it."""
+    assert Modflow6DisvDriver()._sniff(str(tmp_path)) is False
+
+
+def test_read_blocks_wraps_an_unreadable_file_as_a_format_error(tmp_path):
+    """_read_blocks turns an OS read error into a format error (read's isfile guard precedes it)."""
+    missing = tmp_path / "gone.disv"
+    with pytest.raises(FileFormatNotSupportedError, match="could not be read"):
+        _Modflow6DisvReader(str(missing)).build()
+
+
+def test_a_non_numeric_dimensions_line_is_skipped(tmp_path):
+    """A DIMENSIONS entry whose value is not an integer is ignored, not fatal."""
+    disv = tmp_path / "ok.disv"
+    disv.write_text(_disv_text(dimensions="  NLAY xyz\n  NCPL 1\n  NVERT 3\n"))
+    parsed = _Modflow6DisvReader(str(disv)).build()
+    assert parsed.faces.shape == (1, 3)
+
+
+def test_an_empty_vertices_block_is_a_format_error(tmp_path):
+    """A VERTICES block with no entries is a clean format error."""
+    disv = tmp_path / "no_vertices.disv"
+    disv.write_text(_disv_text(vertices=""))
+    with pytest.raises(FileFormatNotSupportedError, match="no VERTICES block entries"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_a_short_vertices_line_is_a_format_error(tmp_path):
+    """A VERTICES line that is not '<iv> <x> <y>' is a clean format error."""
+    disv = tmp_path / "short_vertex.disv"
+    disv.write_text(_disv_text(vertices="  1 0.0\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="is not '<iv> <x> <y>'"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_an_out_of_range_vertex_id_is_a_format_error(tmp_path):
+    """A vertex id outside the declared NVERT is a clean format error."""
+    disv = tmp_path / "oor_vertex.disv"
+    disv.write_text(
+        _disv_text(dimensions="  NCPL 1\n  NVERT 1\n", vertices="  5 0.0 0.0\n")
+    )
+    with pytest.raises(
+        FileFormatNotSupportedError, match="out of range or non-numeric"
+    ):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_a_missing_vertex_id_is_a_format_error(tmp_path):
+    """Declaring more vertices than appear leaves a gap, which is a format error."""
+    disv = tmp_path / "missing_vertex.disv"
+    disv.write_text(
+        _disv_text(
+            dimensions="  NCPL 1\n  NVERT 3\n",
+            vertices="  1 0.0 0.0\n  2 1.0 0.0\n",
+        )
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="vertex ids are missing"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_an_empty_cell2d_block_is_a_format_error(tmp_path):
+    """A CELL2D block with no entries is a clean format error."""
+    disv = tmp_path / "no_cells.disv"
+    disv.write_text(_disv_text(cells=""))
+    with pytest.raises(FileFormatNotSupportedError, match="no CELL2D block entries"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_a_short_cell2d_line_is_a_format_error(tmp_path):
+    """A CELL2D line with fewer than five fields is a clean format error."""
+    disv = tmp_path / "short_cell.disv"
+    disv.write_text(_disv_text(cells="  1 0.33 0.33 3\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="<icell2d> <xc> <yc>"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_a_non_numeric_cell2d_line_is_a_format_error(tmp_path):
+    """A CELL2D line with non-numeric fields is a clean format error."""
+    disv = tmp_path / "nan_cell.disv"
+    disv.write_text(_disv_text(cells="  1 x y 3 1 2 3\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="is non-numeric"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_a_cell2d_line_with_too_few_vertices_is_a_format_error(tmp_path):
+    """A CELL2D ncvert below three (not a polygon) is a clean format error."""
+    disv = tmp_path / "degenerate_cell.disv"
+    disv.write_text(_disv_text(cells="  1 0.33 0.33 2 1 2\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="at least three"):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_stray_and_short_lines_are_ignored(tmp_path):
+    """A line outside any block and a one-token DIMENSIONS line are both skipped."""
+    disv = tmp_path / "noise.disv"
+    disv.write_text(
+        "stray line outside any block\n"
+        "BEGIN DIMENSIONS\n"
+        "  SOMEFLAG\n"
+        "  NCPL 1\n"
+        "  NVERT 3\n"
+        "END DIMENSIONS\n\n"
+        "BEGIN VERTICES\n"
+        "  1 0.0 0.0\n  2 1.0 0.0\n  3 0.0 1.0\n"
+        "END VERTICES\n\n"
+        "BEGIN CELL2D\n"
+        "  1 0.33 0.33 3 1 2 3\n"
+        "END CELL2D\n"
+    )
+    parsed = _Modflow6DisvReader(str(disv)).build()
+    assert parsed.faces.shape == (1, 3)

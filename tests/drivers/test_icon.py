@@ -150,3 +150,112 @@ def test_require_refuses_a_file_missing_a_defining_array():
 
     with pytest.raises(FileFormatNotSupportedError, match="not an ICON grid"):
         IconDriver._require("partial.nc", {"vlon", "vlat"})  # vertex_of_cell missing
+
+
+class _FakeAttribute:
+    """A stand-in GDAL attribute reporting a name and a readable value."""
+
+    def __init__(self, name, value=None, raises=False) -> None:
+        self._name = name
+        self._value = value
+        self._raises = raises
+
+    def GetName(self) -> str:
+        """Return the attribute's name."""
+        return self._name
+
+    def Read(self):
+        """Return the attribute's value, or raise ``RuntimeError`` when so built."""
+        if self._raises:
+            raise RuntimeError("attribute read failed")
+        return self._value
+
+
+class _FakeArray:
+    """A stand-in GDAL MD-array returning a fixed value from ``ReadAsArray``."""
+
+    def __init__(self, values) -> None:
+        self._values = values
+
+    def ReadAsArray(self):
+        """Return the array's values."""
+        return self._values
+
+
+class _FakeGroup:
+    """A stand-in GDAL root group exposing array names, attributes and arrays."""
+
+    def __init__(self, names=(), attributes=(), arrays=None) -> None:
+        self._names = list(names)
+        self._attributes = list(attributes)
+        self._arrays = arrays or {}
+
+    def GetMDArrayNames(self) -> list:
+        """Return the root-group array names."""
+        return list(self._names)
+
+    def GetAttributes(self) -> list:
+        """Return the global attribute handles."""
+        return list(self._attributes)
+
+    def OpenMDArray(self, name):
+        """Return the named stand-in array."""
+        return self._arrays[name]
+
+
+def test_convention_reads_the_conventions_attribute():
+    """_convention returns the ``Conventions`` global attribute when it reads cleanly."""
+    from pyramids_mesh.drivers.icon import _convention
+
+    group = _FakeGroup(
+        attributes=[
+            _FakeAttribute("history", "v1"),
+            _FakeAttribute("Conventions", "CF-1.6"),
+        ]
+    )
+    assert _convention(group) == "CF-1.6"
+
+
+def test_convention_is_empty_when_the_attribute_read_raises():
+    """A ``Conventions`` attribute whose Read raises yields an empty string, not an error."""
+    from pyramids_mesh.drivers.icon import _convention
+
+    group = _FakeGroup(attributes=[_FakeAttribute("Conventions", raises=True)])
+    assert _convention(group) == ""
+
+
+def test_is_icon_declines_the_mpas_vertex_array():
+    """A group carrying MPAS's ``verticesOnCell`` array is not claimed as ICON."""
+    from pyramids_mesh.drivers.icon import _is_icon
+
+    group = _FakeGroup(names=["vertex_of_cell", "clon", "vlon", "verticesOnCell"])
+    assert _is_icon(group) is False
+
+
+def test_is_icon_declines_the_mpas_convention():
+    """A group declaring the MPAS convention is declined even without the MPAS array."""
+    from pyramids_mesh.drivers.icon import _is_icon
+
+    group = _FakeGroup(
+        names=["vertex_of_cell", "clon", "vlon"],
+        attributes=[_FakeAttribute("Conventions", "MPAS")],
+    )
+    assert _is_icon(group) is False
+
+
+def test_face_centres_absent_when_clon_or_clat_is_missing():
+    """Cell centres are skipped when either ``clon`` or ``clat`` is absent."""
+    group = _FakeGroup(arrays={})
+    assert IconDriver._face_centres(group, {"vlon", "clon"}) == (None, None)
+
+
+def test_variables_empty_when_cell_area_is_missing():
+    """No ``cell_area`` array means no face variable."""
+    group = _FakeGroup(arrays={})
+    assert IconDriver._variables(group, {"vlon"}, 5) == {}
+
+
+def test_variables_dropped_when_cell_area_has_the_wrong_shape():
+    """A ``cell_area`` whose length is not the face count is left out, not mislabelled."""
+    group = _FakeGroup(arrays={"cell_area": _FakeArray(np.zeros(3))})
+    assert IconDriver._variables(group, {"cell_area"}, 5) == {}

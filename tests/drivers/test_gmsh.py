@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset, _drivers
 
-from pyramids_mesh.drivers.gmsh import GmshDriver
+from pyramids_mesh.drivers.gmsh import GmshDriver, _as_float, _as_int
 
 _DATA = Path(__file__).parent.parent / "data" / "gmsh"
 _V22 = str(_DATA / "insulated-2.2.msh")
@@ -192,3 +192,126 @@ def test_gmsh_is_reachable_through_read_file(path, gmsh_dispatch):
     assert isinstance(dataset, UgridDataset)
     assert dataset.mesh.n_node == _EXPECTED_NODES
     assert dataset.mesh.n_face == _EXPECTED_FACES
+
+
+# -- field-conversion helpers --------------------------------------------------------
+
+
+def test_as_int_refuses_a_non_integer():
+    """``_as_int`` names the file and the field when a token is not an integer."""
+    with pytest.raises(FileFormatNotSupportedError, match="malformed node count"):
+        _as_int("x", "node count", "p.msh")
+
+
+def test_as_float_refuses_a_non_number():
+    """``_as_float`` names the file and the field when a token is not a number."""
+    with pytest.raises(FileFormatNotSupportedError, match="malformed node x"):
+        _as_float("x", "node x", "p.msh")
+
+
+# -- sniff edge cases that must answer False, never raise ----------------------------
+
+
+def test_sniff_declines_a_header_with_no_version_line(tmp_path):
+    """A file that is just ``$MeshFormat`` with no version line declines, not raises."""
+    path = _write(tmp_path, "$MeshFormat\n", name="only_header.msh")
+
+    assert GmshDriver().can_open(path) is False
+
+
+def test_sniff_declines_a_non_numeric_version(tmp_path):
+    """A ``$MeshFormat`` whose version is not a number declines rather than raising."""
+    path = _write(tmp_path, "$MeshFormat\nabc 0 8\n$EndMeshFormat\n", name="badver.msh")
+
+    assert GmshDriver().can_open(path) is False
+
+
+# -- malformed-record refusals the committed samples do not carry --------------------
+#
+# The two insulated-*.msh fixtures are clean, so the truncation and short-record
+# branches below need tiny inline Gmsh text. The format is plain ASCII parsed by our own
+# record walk, so authoring these snippets is honest white-box coverage, not a fabricated
+# binary.
+
+
+def test_truncated_file_is_refused(tmp_path):
+    """A file ending where a section was expected is refused, naming what was read."""
+    path = _write(tmp_path, "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n$Nodes\n")
+
+    with pytest.raises(FileFormatNotSupportedError, match="ends while reading"):
+        GmshDriver().read(path)
+
+
+def test_first_record_not_header_is_refused(tmp_path):
+    """A file whose first record is not ``$MeshFormat`` is refused as not a Gmsh file."""
+    path = _write(tmp_path, "$Nodes\n1\n1 0 0 0\n$EndNodes\n")
+
+    with pytest.raises(FileFormatNotSupportedError, match="expected a .MeshFormat"):
+        GmshDriver().read(path)
+
+
+def test_v22_short_node_record_is_refused(tmp_path):
+    """A v2.2 node record with fewer than four fields is refused."""
+    text = "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n" "$Nodes\n1\n1 0.0 0.0\n$EndNodes\n"
+
+    with pytest.raises(FileFormatNotSupportedError, match="short node record"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_v41_short_coordinate_line_is_refused(tmp_path):
+    """A v4.1 node coordinate line with fewer than three values is refused."""
+    text = (
+        "$MeshFormat\n4.1 0 8\n$EndMeshFormat\n"
+        "$Nodes\n1 1 1 1\n0 1 0 1\n1\n0.0 0.0\n$EndNodes\n"
+    )
+
+    with pytest.raises(FileFormatNotSupportedError, match="short node coordinate"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_v22_short_element_record_is_refused(tmp_path):
+    """A v2.2 triangle record carrying too few node tags is refused."""
+    text = (
+        "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n"
+        "$Nodes\n3\n1 0 0 0\n2 1 0 0\n3 0 1 0\n$EndNodes\n"
+        "$Elements\n1\n1 2 2 0 1 1 2\n$EndElements\n"
+    )
+
+    with pytest.raises(FileFormatNotSupportedError, match="short element record"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_v41_short_element_record_is_refused(tmp_path):
+    """A v4.1 triangle record carrying too few node tags is refused."""
+    text = (
+        "$MeshFormat\n4.1 0 8\n$EndMeshFormat\n"
+        "$Nodes\n1 3 1 3\n0 1 0 3\n1\n2\n3\n0 0 0\n1 0 0\n0 1 0\n$EndNodes\n"
+        "$Elements\n1 1 1\n2 1 2 1\n1 1 2\n$EndElements\n"
+    )
+
+    with pytest.raises(FileFormatNotSupportedError, match="short element record"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_unaccounted_element_type_is_refused(tmp_path):
+    """An element of a type with no known node count refuses the file, not guesses."""
+    text = (
+        "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n"
+        "$Nodes\n3\n1 0 0 0\n2 1 0 0\n3 0 1 0\n$EndNodes\n"
+        "$Elements\n1\n1 99 2 0 1 1 2 3\n$EndElements\n"
+    )
+
+    with pytest.raises(FileFormatNotSupportedError, match="element type 99"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_element_referencing_an_undefined_node_tag_is_refused(tmp_path):
+    """A face element referencing a node tag no node defines raises a ValueError."""
+    text = (
+        "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n"
+        "$Nodes\n3\n1 0 0 0\n2 1 0 0\n3 0 1 0\n$EndNodes\n"
+        "$Elements\n1\n1 2 2 0 1 1 2 9\n$EndElements\n"
+    )
+
+    with pytest.raises(ValueError, match="node tag 9"):
+        GmshDriver().read(_write(tmp_path, text))

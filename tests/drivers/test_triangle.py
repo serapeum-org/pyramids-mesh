@@ -118,3 +118,95 @@ def test_read_of_a_non_pair_path_is_a_format_error(tmp_path):
     solo.write_text("3 2 0 0\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n")
     with pytest.raises(FileFormatNotSupportedError, match="Triangle/TetGen"):
         TriangleDriver().read(str(solo))
+
+
+def _pair(tmp_path, node_text, ele_text):
+    """Write a .node/.ele pair in tmp_path and return the .node path."""
+    (tmp_path / "m.node").write_text(node_text)
+    (tmp_path / "m.ele").write_text(ele_text)
+    return str(tmp_path / "m.node")
+
+
+def test_can_open_swallows_a_sniff_that_raises(tmp_path):
+    """can_open declines and warns when _sniff raises, never letting it escape."""
+    node = _pair(
+        tmp_path, "3 2 0 0\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n", "1 3 0\n1 1 2 3\n"
+    )
+
+    class _BrokenSniff(TriangleDriver):
+        """A driver whose header sniff always raises, to exercise the guard."""
+
+        def _sniff(self, path):
+            """Raise so can_open's never-raise guard is the thing under test."""
+            raise RuntimeError("header parser is wrong")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        verdict = _BrokenSniff().can_open(node)
+
+    assert verdict is False
+    assert any("treated as declining it" in str(w.message) for w in caught)
+
+
+def test_can_open_declines_a_single_field_header(tmp_path):
+    """can_open declines a pair whose header has fewer than two fields."""
+    node = _pair(tmp_path, "3\n1 0.0 0.0\n", "1 3 0\n1 1 2 3\n")
+    assert TriangleDriver().can_open(node) is False
+
+
+def test_can_open_declines_a_missing_path(tmp_path):
+    """can_open declines a path that is not a file, pairing nothing."""
+    assert TriangleDriver().can_open(str(tmp_path / "gone.node")) is False
+
+
+def test_read_rejects_a_non_integer_node_header(tmp_path):
+    """A .node header whose first token is not an integer is a format error."""
+    node = _pair(tmp_path, "foo 2 0 0\n1 0.0 0.0\n", "1 3 0\n1 1 2 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="header"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_a_node_file_with_no_header(tmp_path):
+    """An empty .node file reports that it has no header line."""
+    node = _pair(tmp_path, "", "1 3 0\n1 1 2 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="no header line"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_an_unsupported_dimension(tmp_path):
+    """A .node header declaring dimension 5 is refused: only 2 or 3 is supported."""
+    node = _pair(tmp_path, "3 5 0 0\n1 0.0 0.0 0.0\n", "1 3 0\n1 1 2 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="only 2 or 3 is supported"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_too_few_vertex_lines(tmp_path):
+    """A .node file declaring more vertices than it holds is a format error."""
+    node = _pair(tmp_path, "3 2 0 0\n1 0.0 0.0\n", "1 3 0\n1 1 2 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="declares 3 vertices"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_a_non_integer_vertex_id(tmp_path):
+    """A .node file whose first vertex id is not an integer is a format error."""
+    node = _pair(
+        tmp_path, "3 2 0 0\nX 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n", "1 3 0\n1 1 2 3\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="non-integer vertex id"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_an_ele_file_with_no_header(tmp_path):
+    """An empty .ele file reports that it has no element header."""
+    node = _pair(tmp_path, "3 2 0 0\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n", "")
+    with pytest.raises(FileFormatNotSupportedError, match="no '<#elts>"):
+        TriangleDriver().read(node)
+
+
+def test_read_rejects_too_few_element_lines(tmp_path):
+    """An .ele file declaring more elements than it holds is a format error."""
+    node = _pair(
+        tmp_path, "3 2 0 0\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n", "2 3 0\n1 1 2 3\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="declares 2 elements"):
+        TriangleDriver().read(node)

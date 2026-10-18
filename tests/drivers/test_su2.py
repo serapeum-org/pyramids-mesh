@@ -201,3 +201,110 @@ def test_declares_read_mesh_only():
     assert set(Su2Driver.capabilities) == {"read_mesh"}
     assert Su2Driver.name == "su2"
     assert Su2Driver.suffixes == (".su2",)
+
+
+def _write(tmp_path, name, text):
+    """Write an SU2 snippet to tmp_path and return its path as a string."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
+def test_stray_top_level_row_is_skipped(tmp_path):
+    """A bare data row and an unknown valued card outside a section are ignored."""
+    text = (
+        "NDIME= 2\n"
+        "99 99\n"
+        "AOA=3.0\n"
+        "NELEM= 1\n"
+        "5 0 1 2\n"
+        "NPOIN= 3\n"
+        "0.0 0.0\n"
+        "1.0 0.0\n"
+        "0.0 1.0\n"
+        "NMARK= 0\n"
+    )
+    assert Su2Driver().read(_write(tmp_path, "stray.su2", text)).mesh.n_face == 1
+
+
+def test_npoin_before_ndime_is_refused(tmp_path):
+    """NPOIN before a valid NDIME is a format error: the z column is unplaceable."""
+    text = "NPOIN= 1\n0.0 0.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="before a valid NDIME"):
+        Su2Driver().read(_write(tmp_path, "order.su2", text))
+
+
+def test_short_npoin_row_is_refused(tmp_path):
+    """A coordinate row short of NDIME values is a format error, not an IndexError."""
+    text = "NDIME= 2\nNPOIN= 1\n0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short NPOIN row"):
+        Su2Driver().read(_write(tmp_path, "shortpoin.su2", text))
+
+
+def test_three_dimensional_surface_mesh_carries_node_z(tmp_path):
+    """An NDIME= 3 surface mesh records the third coordinate as node_z."""
+    text = (
+        "NDIME= 3\n"
+        "NELEM= 1\n"
+        "5 0 1 2\n"
+        "NPOIN= 3\n"
+        "0.0 0.0 0.0\n"
+        "1.0 0.0 0.5\n"
+        "0.0 1.0 1.0\n"
+        "NMARK= 0\n"
+    )
+    dataset = Su2Driver().read(_write(tmp_path, "mesh3d.su2", text))
+
+    node_z = dataset.get("node_z")
+    assert node_z.location == "node"
+    assert node_z.shape == (3,)
+    assert dataset.global_attributes["NDIME"] == 3
+
+
+def test_file_without_ndime_is_refused(tmp_path):
+    """A file carrying no NDIME card is not an SU2 mesh."""
+    text = "% a comment and nothing else\n"
+    with pytest.raises(FileFormatNotSupportedError, match="declares no NDIME"):
+        Su2Driver().read(_write(tmp_path, "nondime.su2", text))
+
+
+def test_file_without_npoin_is_refused(tmp_path):
+    """A file with a dimension but no nodes is refused."""
+    text = "NDIME= 2\nNMARK= 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="declares no NPOIN nodes"):
+        Su2Driver().read(_write(tmp_path, "nonpoin.su2", text))
+
+
+def test_file_without_surface_elements_is_refused(tmp_path):
+    """A file with nodes but no triangle/quad faces is refused."""
+    text = "NDIME= 2\nNPOIN= 1\n0.0 0.0\nNMARK= 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="no surface elements"):
+        Su2Driver().read(_write(tmp_path, "noface.su2", text))
+
+
+def test_file_truncated_mid_section_is_refused(tmp_path):
+    """A section declaring more rows than the file holds is a clean format error."""
+    text = "NDIME= 2\nNELEM= 2\n5 0 1 2\n"
+    with pytest.raises(FileFormatNotSupportedError, match="ends inside the NELEM"):
+        Su2Driver().read(_write(tmp_path, "trunc.su2", text))
+
+
+def test_card_with_no_value_is_refused(tmp_path):
+    """A section card carrying no value names itself in the format error."""
+    text = "NELEM\n"
+    with pytest.raises(FileFormatNotSupportedError, match="card with no value"):
+        Su2Driver().read(_write(tmp_path, "novalue.su2", text))
+
+
+def test_non_integer_card_value_is_refused(tmp_path):
+    """A non-integer card value is a format error naming the card."""
+    text = "NDIME= x\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed NDIME field"):
+        Su2Driver().read(_write(tmp_path, "badint.su2", text))
+
+
+def test_non_numeric_coordinate_is_refused(tmp_path):
+    """A non-numeric coordinate field is a format error naming the section."""
+    text = "NDIME= 2\nNPOIN= 1\nx 0.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed NPOIN field"):
+        Su2Driver().read(_write(tmp_path, "badcoord.su2", text))

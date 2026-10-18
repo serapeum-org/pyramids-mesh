@@ -16,7 +16,7 @@ import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import UgridDataset, mesh_drivers
-from pyramids_mesh.drivers.fvcom import FvcomDriver
+from pyramids_mesh.drivers.fvcom import FvcomDriver, _header_count
 
 _DATA = Path(__file__).parent.parent / "data" / "fvcom"
 _GRD = _DATA / "chn_grd.dat"
@@ -133,3 +133,76 @@ def test_truncated_grid_is_a_format_error(tmp_path):
     )  # one cell, no nodes
     with pytest.raises(FileFormatNotSupportedError, match="truncated"):
         FvcomDriver().read(str(grd))
+
+
+def test_header_count_rejects_a_line_without_an_equals():
+    """A header line lacking '=' is a format error (the no-separator guard)."""
+    with pytest.raises(FileFormatNotSupportedError, match="= <int>"):
+        _header_count("Node Number 871", "Node Number")
+
+
+def test_header_count_rejects_a_non_integer_count():
+    """A header whose value after '=' is not an integer is a format error."""
+    with pytest.raises(FileFormatNotSupportedError, match="= <int>"):
+        _header_count("OBC Node Number = many", "OBC Node Number")
+
+
+def test_can_open_warns_and_declines_an_unreadable_grid_entry(tmp_path):
+    """A directory whose _grd.dat entry is itself a directory makes the sniff fail."""
+    (tmp_path / "bogus_grd.dat").mkdir()
+    with pytest.warns(UserWarning, match="failed to sniff"):
+        assert FvcomDriver().can_open(str(tmp_path)) is False
+
+
+def test_can_open_declines_a_one_line_grid(tmp_path):
+    """A _grd.dat with fewer than two significant lines fails the header sniff."""
+    grd = tmp_path / "tiny_grd.dat"
+    grd.write_text("Node Number = 3\n")
+    assert FvcomDriver().can_open(str(grd)) is False
+
+
+def test_read_of_a_headerless_grid_is_a_format_error(tmp_path):
+    """A grid file with fewer than two significant lines is a format error on read."""
+    grd = tmp_path / "bare_grd.dat"
+    grd.write_text("Node Number = 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="Node/Cell Number"):
+        FvcomDriver().read(str(grd))
+
+
+def _solo_grid_text():
+    """A minimal single-triangle _grd.dat body: three nodes and one cell."""
+    return (
+        "Node Number = 3\n"
+        "Cell Number = 1\n"
+        "1 1 2 3 0\n"
+        "1 0.0 0.0 0.0\n"
+        "2 1.0 0.0 0.0\n"
+        "3 0.0 1.0 0.0\n"
+    )
+
+
+def test_grid_without_siblings_has_no_depth_or_boundary(tmp_path):
+    """A _grd.dat read with no _dep.dat or _obc.dat beside it carries neither."""
+    grd = tmp_path / "solo_grd.dat"
+    grd.write_text(_solo_grid_text())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dataset = FvcomDriver().read(str(grd))
+    assert dataset.get("node_z") is None
+    assert "open_boundary_nodes" not in dataset.global_attributes
+
+
+def test_depth_file_shorter_than_nodes_is_a_format_error(tmp_path):
+    """A _dep.dat with fewer depth rows than the grid's nodes is a format error."""
+    (tmp_path / "chan_grd.dat").write_text(_solo_grid_text())
+    (tmp_path / "chan_dep.dat").write_text(
+        "Node Number = 3\n0.0 0.0 10.0\n1.0 0.0 20.0\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="fewer than"):
+        FvcomDriver().read(str(tmp_path / "chan_grd.dat"))
+
+
+def test_can_open_declines_a_directory_without_a_grid(tmp_path):
+    """A directory holding no _grd.dat resolves to no grid file and is declined."""
+    (tmp_path / "readme.txt").write_text("not a grid")
+    assert FvcomDriver().can_open(str(tmp_path)) is False
