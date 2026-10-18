@@ -266,11 +266,15 @@ class _ScripReader:
         n_face, n_corner = lon.shape
         corners = np.stack([lon.ravel(), lat.ravel()], axis=-1)
         rounded = np.round(corners, _DEDUP_DECIMALS)
-        unique, inverse = np.unique(rounded, axis=0, return_inverse=True)
+        _unique, first_index, inverse = np.unique(
+            rounded, axis=0, return_index=True, return_inverse=True
+        )
         inverse = np.ravel(np.asarray(inverse)).reshape(n_face, n_corner)
         faces = self._pad_repeated_corners(inverse)
-        node_x = unique[:, 0].astype(np.float64)
-        node_y = unique[:, 1].astype(np.float64)
+        # The rounded array is used only for matching; store each node's first-occurrence
+        # original (unrounded) corner so node coordinates keep full precision.
+        node_x = corners[first_index, 0].astype(np.float64)
+        node_y = corners[first_index, 1].astype(np.float64)
         return node_x, node_y, faces
 
     @staticmethod

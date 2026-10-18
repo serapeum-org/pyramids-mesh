@@ -19,8 +19,6 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.scrip import _ScripReader, _array_units, ScripDriver
-from pyramids_mesh.drivers.esmf import EsmfDriver
-from pyramids_mesh.drivers.geos import GeosDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _GRID = _DATA / "scrip" / "outCSne8.nc"
@@ -210,3 +208,14 @@ def test_array_units_is_empty_when_read_raises():
         {"grid_corner_lat": _FakeArray([_FakeAttribute("units", raises=True)])}
     )
     assert _array_units(group, "grid_corner_lat") == ""
+
+
+def test_node_coordinates_keep_full_precision_not_the_rounded_key():
+    """Dedup rounds only the matching key; stored node coords keep full precision."""
+    lon = np.array([[0.123456789, 1.0, 0.0]])
+    lat = np.array([[0.987654321, 0.0, 1.0]])
+    node_x, node_y, _faces = _ScripReader(str(_GRID))._dedup(lon, lat)
+    # np.unique sorts the node order, so assert the exact value survives somewhere,
+    # not at a fixed index, and that it was not rounded to the 6-decimal key.
+    assert 0.123456789 in node_x.tolist()
+    assert 0.987654321 in node_y.tolist()
