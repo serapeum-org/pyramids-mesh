@@ -37,6 +37,18 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "flo2d",
     "hecras",
     "adcirc",
+    "deltares1d",
+    "schism",
+    "gmsh",
+    "vtk",
+    "modflow6_disv",
+    "mpas",
+    "icon",
+    "fvcom",
+    "triangle",
+    "exodus",
+    "su2",
+    "srh2d",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

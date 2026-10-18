@@ -1,0 +1,3 @@
+Triangle/TetGen .node + .ele -- MIT, meshio test data (the TetGen 3-D variant; identical structure
+to Shewchuk's Triangle).
+  https://github.com/nschloe/meshio (tests/meshes/tetgen/) -- via the Git-LFS media endpoint.

@@ -35,6 +35,18 @@ its suffixes, capabilities and documented limitations:
 | `flo2d` | FLO-2D (directory of files) | [FLO-2D](flo2d.md) |
 | `hecras` | HEC-RAS 2D (HDF5 plan file) | [HEC-RAS 2D](hecras.md) |
 | `adcirc` | ADCIRC (`fort.14` + `fort.63.nc`) | [ADCIRC](adcirc.md) |
+| `deltares1d` | Deltares 1D network (NetCDF, `Network1d`) | [Deltares 1D (D-Flow FM)](deltares1d.md) |
+| `schism` | SCHISM hgrid.gr3 (ASCII) | [SCHISM (.gr3)](schism.md) |
+| `gmsh` | Gmsh .msh (v2.2 + v4.1) | [Gmsh (.msh)](gmsh.md) |
+| `vtk` | VTK / VTU unstructured grid | [VTK / VTU](vtk.md) |
+| `modflow6_disv` | MODFLOW 6 DISV (groundwater vertex grid) | [MODFLOW 6 DISV](modflow6.md) |
+| `mpas` | MPAS Voronoi mesh (NetCDF) | [MPAS (NetCDF)](mpas.md) |
+| `icon` | ICON icosahedral grid (NetCDF) | [ICON (NetCDF)](icon.md) |
+| `fvcom` | FVCOM native `*_grd.dat` (ASCII) | [FVCOM (native grid)](fvcom.md) |
+| `triangle` | Triangle/TetGen `.node`+`.ele` | [Triangle / TetGen](triangle.md) |
+| `exodus` | Exodus II (NetCDF-based FEM) | [Exodus II (.exo)](exodus.md) |
+| `su2` | SU2 `.su2` (ASCII FEM) | [SU2 (.su2)](su2.md) |
+| `srh2d` | SRH-2D (`.srhgeom`+`.srhhydro`) | [SRH-2D](srh2d.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their

@@ -134,6 +134,18 @@ nav:
     - FLO-2D (flood): reference/flo2d.md
     - HEC-RAS 2D: reference/hecras.md
     - ADCIRC: reference/adcirc.md
+    - Deltares 1D (D-Flow FM): reference/deltares1d.md
+    - SCHISM (.gr3): reference/schism.md
+    - Gmsh (.msh): reference/gmsh.md
+    - VTK / VTU: reference/vtk.md
+    - MODFLOW 6 DISV: reference/modflow6.md
+    - MPAS (NetCDF): reference/mpas.md
+    - ICON (NetCDF): reference/icon.md
+    - FVCOM (native grid): reference/fvcom.md
+    - Triangle / TetGen: reference/triangle.md
+    - Exodus II (.exo): reference/exodus.md
+    - SU2 (.su2): reference/su2.md
+    - SRH-2D: reference/srh2d.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

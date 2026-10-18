@@ -1,0 +1,3 @@
+Exodus II (.exo) -- LGPL-2.1, libMesh test meshes. NetCDF (CDF-2) underneath.
+  nontrivial_node_num_map.exo = QUAD4; geom_2.exo = TETRA.
+  https://github.com/libMesh/libmesh (tests/meshes/)

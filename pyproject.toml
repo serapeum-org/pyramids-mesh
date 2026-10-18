@@ -137,6 +137,18 @@ xdmf = "pyramids_mesh.drivers.xdmf:XdmfDriver"
 flo2d = "pyramids_mesh.drivers.flo2d:Flo2dDriver"
 hecras = "pyramids_mesh.drivers.hecras:HecRasDriver"
 adcirc = "pyramids_mesh.drivers.adcirc:AdcircDriver"
+deltares1d = "pyramids_mesh.drivers.deltares:DeltaresNetworkDriver"
+schism = "pyramids_mesh.drivers.schism:SchismDriver"
+gmsh = "pyramids_mesh.drivers.gmsh:GmshDriver"
+vtk = "pyramids_mesh.drivers.vtk:VtkDriver"
+modflow6_disv = "pyramids_mesh.drivers.modflow:Modflow6DisvDriver"
+mpas = "pyramids_mesh.drivers.mpas:MpasDriver"
+icon = "pyramids_mesh.drivers.icon:IconDriver"
+fvcom = "pyramids_mesh.drivers.fvcom:FvcomDriver"
+triangle = "pyramids_mesh.drivers.triangle:TriangleDriver"
+exodus = "pyramids_mesh.drivers.exodus:ExodusDriver"
+su2 = "pyramids_mesh.drivers.su2:Su2Driver"
+srh2d = "pyramids_mesh.drivers.srh2d:Srh2dDriver"
 
 
 [project.urls]
