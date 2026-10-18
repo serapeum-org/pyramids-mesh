@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -1852,6 +1852,11 @@ eagerly and leaves each result variable behind a reopen-per-read loader.</p>
   and stacks the per-step slabs, closing over paths, never an open handle (design
   section 7); shapes come from the XML without forcing a read.</li>
 <li><code>GeometryType="XYZ"</code> contributes a <code>node_z</code> variable; <code>XY</code> leaves it unset.</li>
+<li><strong>Geometry and topology are reshaped by the XML <code>Dimensions</code></strong> (so a writer that
+  stores them as flat 1-D heavy data is read correctly), but a result slab is read
+  at its native HDF5 shape. The committed results are 1-D per step, so this is not a
+  gap for them; a flat-stored multi-column result would not be reshaped -- a
+  documented limitation until a real sample of that shape is available.</li>
 <li>There is no CRS in the format, so <code>crs</code> is <code>None</code>.</li>
 </ul>
 </details>
@@ -1947,7 +1952,12 @@ a = mesh.get("a")              # cell (face) located, over time
 <span class="normal"><a href="#__codelineno-0-108">108</a></span>
 <span class="normal"><a href="#__codelineno-0-109">109</a></span>
 <span class="normal"><a href="#__codelineno-0-110">110</a></span>
-<span class="normal"><a href="#__codelineno-0-111">111</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="k">class</span><span class="w"> </span><span class="nc">XdmfDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="k">class</span><span class="w"> </span><span class="nc">XdmfDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="w">    </span><span class="sd">"""Reader for the XDMF (XML + HDF5) mesh-and-results format.</span>
 <a id="__codelineno-0-42" name="__codelineno-0-42"></a>
 <a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    The ``.xdmf`` index names a shared ``Grid`` holding the mesh ``Geometry`` (node</span>
@@ -1968,57 +1978,62 @@ a = mesh.get("a")              # cell (face) located, over time
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">          and stacks the per-step slabs, closing over paths, never an open handle (design</span>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">          section 7); shapes come from the XML without forcing a read.</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">        - ``GeometryType="XYZ"`` contributes a ``node_z`` variable; ``XY`` leaves it unset.</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">        - There is no CRS in the format, so ``crs`` is ``None``.</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">        Read an XDMF time series (shown, not run as a doctest -- it needs a real ``.xdmf``</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        plus its ``.h5`` payload)::</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">            mesh = UgridDataset.read_file("out.xdmf")</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">            phi = mesh.get("phi")          # node-located, over time</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">            a = mesh.get("a")              # cell (face) located, over time</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    """</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">        - **Geometry and topology are reshaped by the XML ``Dimensions``** (so a writer that</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">          stores them as flat 1-D heavy data is read correctly), but a result slab is read</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">          at its native HDF5 shape. The committed results are 1-D per step, so this is not a</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">          gap for them; a flat-stored multi-column result would not be reshaped -- a</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">          documented limitation until a real sample of that shape is available.</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">        - There is no CRS in the format, so ``crs`` is ``None``.</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        Read an XDMF time series (shown, not run as a doctest -- it needs a real ``.xdmf``</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        plus its ``.h5`` payload)::</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"xdmf"</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"XDMF"</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".xdmf"</span><span class="p">,</span> <span class="s2">".xmf"</span><span class="p">)</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="w">        </span><span class="sd">"""Report whether the file is an XDMF index: an XML document rooted at ``Xdmf``.</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">        Reads only the head of the file and looks for the ``&lt;Xdmf`` opening, so a non-XML or</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        foreign file is declined cheaply without parsing the whole document.</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">            bool: ``True`` when an ``&lt;Xdmf`` root tag appears near the top of the file.</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        """</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>            <span class="n">head</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>        <span class="k">return</span> <span class="sa">b</span><span class="s2">"&lt;Xdmf"</span> <span class="ow">in</span> <span class="n">head</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="w">        </span><span class="sd">"""Read an XDMF index (and its HDF5 payload) into a :class:`ParsedMesh`.</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">            path: The ``.xdmf``/``.xmf`` index file.</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">            lazy: When ``True``, leave each result variable behind a loader.</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` (for ``XYZ`` geometry) and the per-step</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">                result variables.</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            FileFormatNotSupportedError: If the index holds no mesh grid, or the topology is</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">                not a 2D surface type.</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        """</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>        <span class="k">return</span> <span class="n">_XdmfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">            mesh = UgridDataset.read_file("out.xdmf")</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">            phi = mesh.get("phi")          # node-located, over time</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">            a = mesh.get("a")              # cell (face) located, over time</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    """</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"xdmf"</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"XDMF"</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".xdmf"</span><span class="p">,</span> <span class="s2">".xmf"</span><span class="p">)</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="w">        </span><span class="sd">"""Report whether the file is an XDMF index: an XML document rooted at ``Xdmf``.</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        Reads only the head of the file and looks for the ``&lt;Xdmf`` opening, so a non-XML or</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        foreign file is declined cheaply without parsing the whole document.</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            bool: ``True`` when an ``&lt;Xdmf`` root tag appears near the top of the file.</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        """</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>            <span class="n">head</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>        <span class="k">return</span> <span class="sa">b</span><span class="s2">"&lt;Xdmf"</span> <span class="ow">in</span> <span class="n">head</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="w">        </span><span class="sd">"""Read an XDMF index (and its HDF5 payload) into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">            path: The ``.xdmf``/``.xmf`` index file.</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">            lazy: When ``True``, leave each result variable behind a loader.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` (for ``XYZ`` geometry) and the per-step</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">                result variables.</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            FileFormatNotSupportedError: If the index holds no mesh grid, or the topology is</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">                not a 2D surface type.</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        """</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="k">return</span> <span class="n">_XdmfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
