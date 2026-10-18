@@ -404,3 +404,15 @@ def test_driver_identity_and_capabilities():
     assert NastranDriver.name == "nastran"
     assert NastranDriver.suffixes == (".bdf", ".nas", ".fem")
     assert set(NastranDriver.capabilities) == {"read_mesh"}
+
+
+def test_grid_with_a_non_zero_coordinate_frame_is_refused(tmp_path):
+    """A GRID card in a non-zero CP frame is refused rather than read as global coords."""
+    deck = (
+        "GRID,1,1,0.0,0.0,0.0\n"
+        "GRID,2,0,1.0,0.0,0.0\n"
+        "GRID,3,0,0.0,1.0,0.0\n"
+        "CTRIA3,10,1,1,2,3\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="coordinate frame CP="):
+        _read(_write(tmp_path, deck))

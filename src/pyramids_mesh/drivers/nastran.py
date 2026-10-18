@@ -271,13 +271,19 @@ class NastranDriver(BaseDriver):
             prefix = handle.read(_SNIFF_LIMIT)
         has_grid = False
         has_face = False
+        first_significant = True
         for raw in prefix.decode("utf-8-sig", errors="replace").splitlines():
             stripped = raw.strip()
             if not stripped or stripped.startswith(_COMMENT):
                 continue
             upper = stripped.upper()
-            if any(upper.startswith(marker) for marker in _FEFLOW_MARKERS):
-                return False
+            # A FEFLOW .fem opens with PROBLEM:/CLASS; key the decline on the first
+            # significant line only, so a Nastran line merely beginning with those words
+            # deeper in the deck does not false-decline.
+            if first_significant:
+                first_significant = False
+                if any(upper.startswith(marker) for marker in _FEFLOW_MARKERS):
+                    return False
             keyword = _card_name(raw)
             if keyword == _GRID:
                 has_grid = True
@@ -346,12 +352,20 @@ class _Deck:
 
         Raises:
             FileFormatNotSupportedError: If the card lacks an id and both planar
-                coordinates.
+                coordinates, or declares a non-zero ``CP`` coordinate frame.
         """
         if len(fields) < 4:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has a short GRID card: expected at least an id and "
                 f"x, y, found {len(fields)} field(s)"
+            )
+        # X1/X2/X3 are given in the CP coordinate frame; this reader has no frame
+        # transform, so a non-zero CP is refused rather than silently read as global.
+        cp = fields[1].strip()
+        if cp and cp != "0":
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} GRID card declares a non-zero coordinate frame CP={cp!r}; "
+                f"this reader does not transform node coordinates between frames"
             )
         self.node_ids.append(_as_int(fields[0], _GRID, self.path))
         self.node_x.append(_parse_real(fields[2], self.path))
