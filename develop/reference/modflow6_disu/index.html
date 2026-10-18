@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2855,10 +2855,7 @@ footprint = mesh.mesh      # NODES polygons, one horizontal footprint
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/modflow.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-398">398</a></span>
-<span class="normal"><a href="#__codelineno-0-399">399</a></span>
-<span class="normal"><a href="#__codelineno-0-400">400</a></span>
-<span class="normal"><a href="#__codelineno-0-401">401</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-401">401</a></span>
 <span class="normal"><a href="#__codelineno-0-402">402</a></span>
 <span class="normal"><a href="#__codelineno-0-403">403</a></span>
 <span class="normal"><a href="#__codelineno-0-404">404</a></span>
@@ -2948,100 +2945,103 @@ footprint = mesh.mesh      # NODES polygons, one horizontal footprint
 <span class="normal"><a href="#__codelineno-0-488">488</a></span>
 <span class="normal"><a href="#__codelineno-0-489">489</a></span>
 <span class="normal"><a href="#__codelineno-0-490">490</a></span>
-<span class="normal"><a href="#__codelineno-0-491">491</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="k">class</span><span class="w"> </span><span class="nc">Modflow6DisuDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="w">    </span><span class="sd">"""Reader for the MODFLOW 6 DISU (discretization by unstructured) ASCII grid.</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">    The ``.disu`` file is one file of a MODFLOW 6 model directory. ``read_file`` dispatches</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    to this driver on the ``.disu`` suffix, and ``can_open`` confirms the file carries the</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">    DISU ``NODES`` / ``NJA`` dimensions rather than only matching the name.</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    A DISU grid is defined by its connection graph (``NJA`` / ``CONNECTIONDATA``) and need</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">    not carry any geometry. When it *does* declare ``NVERT`` &gt; 0 with ``VERTICES`` and</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">    ``CELL2D`` blocks, its horizontal footprint is identical in shape to a DISV grid, so</span>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    this driver reuses the DISV block-parsing helpers and builds the ``NODES`` polygonal</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">    cells as a surface mesh. A connectivity-only DISU -- no ``NVERT``, no ``VERTICES`` /</span>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">    ``CELL2D`` -- carries no coordinates and is refused with a clear error rather than</span>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">    guessed.</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        - **Vertices required.** A connectivity-only DISU (``NVERT`` absent or zero, no</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">          ``VERTICES`` / ``CELL2D``) has no geometry to place; it is refused rather than</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">          approximated from the connection graph.</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        - **One horizontal footprint.** The mesh is the ``NODES`` cells of the ``CELL2D``</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">          block. The ``GRIDDATA`` arrays (``TOP`` / ``BOT`` / ``AREA`` / ``IDOMAIN``) and</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">          the ``CONNECTIONDATA`` connection graph are not modelled -- this package reads</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">          the mesh file format, not the full groundwater model.</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">        - **ASCII only.** The binary ``.disu.grb`` grid is not read; point the reader at</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">          the ASCII ``.disu`` input.</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">        - **Vertex ids are 1-based.** They are resolved to 0-based and the base recorded</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">          for a writer. Short (polygonal) face rows are padded; the quad test fixture pads</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">          nothing.</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="sd">        - **Cells are clockwise.** DISU lists ``icvert`` clockwise, like DISV; pyramids</span>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="sd">          reverses each face to counter-clockwise on read.</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="sd">        - **``OPEN/CLOSE`` is honoured.** A ``VERTICES`` or ``CELL2D`` block may defer its</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a><span class="sd">          rows to an external file with an ``OPEN/CLOSE &lt;fname&gt;`` directive; the external</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a><span class="sd">          file is read relative to the ``.disu`` file. The committed sample is inline.</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a><span class="sd">        - There is no CRS or node elevation in a ``.disu`` file, so ``crs`` and ``node_z``</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a><span class="sd">          are ``None``; the cell centres are carried as the face centres.</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">        Read a MODFLOW 6 DISU grid by its ``.disu`` file (shown, not run as a doctest -- it</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">        needs a real DISU file)::</span>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">            mesh = UgridDataset.read_file("model/keating.disu", driver="modflow6_disu")</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">            footprint = mesh.mesh      # NODES polygons, one horizontal footprint</span>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">    """</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"modflow6_disu"</span>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"MODFLOW 6 DISU"</span>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".disu"</span><span class="p">,)</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="w">        </span><span class="sd">"""Report whether the file carries the DISU dimensions, not only the suffix.</span>
+<span class="normal"><a href="#__codelineno-0-491">491</a></span>
+<span class="normal"><a href="#__codelineno-0-492">492</a></span>
+<span class="normal"><a href="#__codelineno-0-493">493</a></span>
+<span class="normal"><a href="#__codelineno-0-494">494</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="k">class</span><span class="w"> </span><span class="nc">Modflow6DisuDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="w">    </span><span class="sd">"""Reader for the MODFLOW 6 DISU (discretization by unstructured) ASCII grid.</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">    The ``.disu`` file is one file of a MODFLOW 6 model directory. ``read_file`` dispatches</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    to this driver on the ``.disu`` suffix, and ``can_open`` confirms the file carries the</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">    DISU ``NODES`` / ``NJA`` dimensions rather than only matching the name.</span>
+<a id="__codelineno-0-407" name="__codelineno-0-407"></a>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    A DISU grid is defined by its connection graph (``NJA`` / ``CONNECTIONDATA``) and need</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">    not carry any geometry. When it *does* declare ``NVERT`` &gt; 0 with ``VERTICES`` and</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">    ``CELL2D`` blocks, its horizontal footprint is identical in shape to a DISV grid, so</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">    this driver reuses the DISV block-parsing helpers and builds the ``NODES`` polygonal</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">    cells as a surface mesh. A connectivity-only DISU -- no ``NVERT``, no ``VERTICES`` /</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">    ``CELL2D`` -- carries no coordinates and is refused with a clear error rather than</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">    guessed.</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        - **Vertices required.** A connectivity-only DISU (``NVERT`` absent or zero, no</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">          ``VERTICES`` / ``CELL2D``) has no geometry to place; it is refused rather than</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">          approximated from the connection graph.</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        - **One horizontal footprint.** The mesh is the ``NODES`` cells of the ``CELL2D``</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">          block. The ``GRIDDATA`` arrays (``TOP`` / ``BOT`` / ``AREA`` / ``IDOMAIN``) and</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">          the ``CONNECTIONDATA`` connection graph are not modelled -- this package reads</span>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">          the mesh file format, not the full groundwater model.</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">        - **ASCII only.** The binary ``.disu.grb`` grid is not read; point the reader at</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">          the ASCII ``.disu`` input.</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="sd">        - **Vertex ids are 1-based.** They are resolved to 0-based and the base recorded</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="sd">          for a writer. Short (polygonal) face rows are padded; the quad test fixture pads</span>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="sd">          nothing.</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a><span class="sd">        - **Cells are clockwise.** DISU lists ``icvert`` clockwise, like DISV; pyramids</span>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a><span class="sd">          reverses each face to counter-clockwise on read.</span>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a><span class="sd">        - **``OPEN/CLOSE`` is honoured.** A ``VERTICES`` or ``CELL2D`` block may defer its</span>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a><span class="sd">          rows to an external file with an ``OPEN/CLOSE &lt;fname&gt;`` directive; the external</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="sd">          file is read relative to the ``.disu`` file. The committed sample is inline.</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="sd">        - There is no CRS or node elevation in a ``.disu`` file, so ``crs`` and ``node_z``</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">          are ``None``; the cell centres are carried as the face centres.</span>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">        Read a MODFLOW 6 DISU grid by its ``.disu`` file (shown, not run as a doctest -- it</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="sd">        needs a real DISU file)::</span>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">            mesh = UgridDataset.read_file("model/keating.disu", driver="modflow6_disu")</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="sd">            footprint = mesh.mesh      # NODES polygons, one horizontal footprint</span>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">    """</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"modflow6_disu"</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"MODFLOW 6 DISU"</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".disu"</span><span class="p">,)</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        Reads the whole file -- a DISU grid is small -- and accepts it on the DISU</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">        signature: a ``DIMENSIONS`` block carrying both ``NODES`` and ``NJA``. ``NJA`` is</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">        what tells a DISU grid apart from a DISV one (which never declares it), so a stray</span>
-<a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">        or empty ``.disu`` is declined. A connectivity-only DISU still sniffs ``True`` --</span>
-<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        it is a real DISU grid -- and is refused later, in ``_parse``, with a clear</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        message about the missing geometry.</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="w">        </span><span class="sd">"""Report whether the file carries the DISU dimensions, not only the suffix.</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">        Reads the whole file -- a DISU grid is small -- and accepts it on the DISU</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        signature: a ``DIMENSIONS`` block carrying both ``NODES`` and ``NJA``. ``NJA`` is</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        what tells a DISU grid apart from a DISV one (which never declares it), so a stray</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        or empty ``.disu`` is declined. A connectivity-only DISU still sniffs ``True`` --</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        it is a real DISU grid -- and is refused later, in ``_parse``, with a clear</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        message about the missing geometry.</span>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">            bool: ``True`` when the DISU ``DIMENSIONS`` block with ``NODES`` and ``NJA`` is</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">                present.</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        """</span>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a>            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>                <span class="n">text</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>            <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_BEGIN</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">_DIMENSIONS</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">text</span> <span class="ow">and</span> <span class="n">_NODES</span> <span class="ow">in</span> <span class="n">text</span> <span class="ow">and</span> <span class="n">_NJA</span> <span class="ow">in</span> <span class="n">text</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a><span class="w">        </span><span class="sd">"""Read a ``.disu`` file into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">            bool: ``True`` when the DISU ``DIMENSIONS`` block with ``NODES`` and ``NJA`` is</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">                present.</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">        """</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a>                <span class="n">text</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a>        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_BEGIN</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">_DIMENSIONS</span><span class="si">}</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">text</span> <span class="ow">and</span> <span class="n">_NODES</span> <span class="ow">in</span> <span class="n">text</span> <span class="ow">and</span> <span class="n">_NJA</span> <span class="ow">in</span> <span class="n">text</span>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">            path: The ``.disu`` file.</span>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">            lazy: Unused -- a DISU grid is small and read whole.</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">            ParsedMesh: The horizontal cell footprint, 1-based and clockwise as written.</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="w">        </span><span class="sd">"""Read a ``.disu`` file into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">            path: The ``.disu`` file.</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">            lazy: Unused -- a DISU grid is small and read whole.</span>
 <a id="__codelineno-0-483" name="__codelineno-0-483"></a>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">            FileFormatNotSupportedError: If the path is not a file, the grid is</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="sd">                connectivity-only (no vertices to place), or the DISU blocks are missing,</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">                malformed, or disagree with the declared dimensions.</span>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        """</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> is not a MODFLOW 6 DISU file"</span><span class="p">)</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>        <span class="k">return</span> <span class="n">_Modflow6DisuReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">            ParsedMesh: The horizontal cell footprint, 1-based and clockwise as written.</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">            FileFormatNotSupportedError: If the path is not a file, the grid is</span>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">                connectivity-only (no vertices to place), or the DISU blocks are missing,</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">                malformed, or disagree with the declared dimensions.</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">        """</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> is not a MODFLOW 6 DISU file"</span><span class="p">)</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a>        <span class="k">return</span> <span class="n">_Modflow6DisuReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

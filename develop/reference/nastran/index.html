@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2908,7 +2908,13 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <span class="normal"><a href="#__codelineno-0-304">304</a></span>
 <span class="normal"><a href="#__codelineno-0-305">305</a></span>
 <span class="normal"><a href="#__codelineno-0-306">306</a></span>
-<span class="normal"><a href="#__codelineno-0-307">307</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="k">class</span><span class="w"> </span><span class="nc">NastranDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-307">307</a></span>
+<span class="normal"><a href="#__codelineno-0-308">308</a></span>
+<span class="normal"><a href="#__codelineno-0-309">309</a></span>
+<span class="normal"><a href="#__codelineno-0-310">310</a></span>
+<span class="normal"><a href="#__codelineno-0-311">311</a></span>
+<span class="normal"><a href="#__codelineno-0-312">312</a></span>
+<span class="normal"><a href="#__codelineno-0-313">313</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="k">class</span><span class="w"> </span><span class="nc">NastranDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
 <a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="w">    </span><span class="sd">"""Reader for the Nastran bulk-data (``.bdf``/``.nas``/``.fem``) mesh format.</span>
 <a id="__codelineno-0-215" name="__codelineno-0-215"></a>
 <a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    Builds the surface mesh from ``GRID`` nodes and ``CTRIA3``/``CQUAD4`` faces. Node ids</span>
@@ -2969,40 +2975,46 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">_SNIFF_LIMIT</span><span class="p">)</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">False</span>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">has_face</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_COMMENT</span><span class="p">):</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>            <span class="n">upper</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">upper</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">marker</span><span class="p">)</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">_FEFLOW_MARKERS</span><span class="p">):</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="n">keyword</span> <span class="o">=</span> <span class="n">_card_name</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>            <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="n">_GRID</span><span class="p">:</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>                <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>            <span class="k">elif</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">_FACE_CARDS</span><span class="p">:</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>                <span class="n">has_face</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>            <span class="k">if</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span><span class="p">:</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>                <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="k">return</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="w">        </span><span class="sd">"""Read a Nastran deck into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">            path: The deck to read.</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">            lazy: Ignored -- a bulk-data deck is plain text and read eagerly; accepted to</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">                match the driver protocol.</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">            ParsedMesh: Nodes, the surface faces, and ``node_z`` when elevations are set.</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">            FileFormatNotSupportedError: If the deck has no ``GRID`` card, no surface</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">                element, or a malformed field.</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            ValueError: If an element references an undefined node id, or two ``GRID``</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">                cards share an id.</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">        """</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="k">return</span> <span class="n">_Deck</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_COMMENT</span><span class="p">):</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="n">upper</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>            <span class="c1"># A FEFLOW .fem opens with PROBLEM:/CLASS; key the decline on the first</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="c1"># significant line only, so a Nastran line merely beginning with those words</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>            <span class="c1"># deeper in the deck does not false-decline.</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>            <span class="k">if</span> <span class="n">first_significant</span><span class="p">:</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>                <span class="n">first_significant</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">upper</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">marker</span><span class="p">)</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">_FEFLOW_MARKERS</span><span class="p">):</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                    <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>            <span class="n">keyword</span> <span class="o">=</span> <span class="n">_card_name</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>            <span class="k">if</span> <span class="n">keyword</span> <span class="o">==</span> <span class="n">_GRID</span><span class="p">:</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                <span class="n">has_grid</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="k">elif</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">_FACE_CARDS</span><span class="p">:</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                <span class="n">has_face</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>            <span class="k">if</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span><span class="p">:</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="k">return</span> <span class="n">has_grid</span> <span class="ow">and</span> <span class="n">has_face</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="w">        </span><span class="sd">"""Read a Nastran deck into a :class:`~pyramids_mesh._base.ParsedMesh`.</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">            path: The deck to read.</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">            lazy: Ignored -- a bulk-data deck is plain text and read eagerly; accepted to</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">                match the driver protocol.</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">            ParsedMesh: Nodes, the surface faces, and ``node_z`` when elevations are set.</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">            FileFormatNotSupportedError: If the deck has no ``GRID`` card, no surface</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">                element, or a malformed field.</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">            ValueError: If an element references an undefined node id, or two ``GRID``</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">                cards share an id.</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">        """</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="k">return</span> <span class="n">_Deck</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

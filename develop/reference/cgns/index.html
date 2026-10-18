@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2797,23 +2797,7 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/cgns.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-74"> 74</a></span>
-<span class="normal"><a href="#__codelineno-0-75"> 75</a></span>
-<span class="normal"><a href="#__codelineno-0-76"> 76</a></span>
-<span class="normal"><a href="#__codelineno-0-77"> 77</a></span>
-<span class="normal"><a href="#__codelineno-0-78"> 78</a></span>
-<span class="normal"><a href="#__codelineno-0-79"> 79</a></span>
-<span class="normal"><a href="#__codelineno-0-80"> 80</a></span>
-<span class="normal"><a href="#__codelineno-0-81"> 81</a></span>
-<span class="normal"><a href="#__codelineno-0-82"> 82</a></span>
-<span class="normal"><a href="#__codelineno-0-83"> 83</a></span>
-<span class="normal"><a href="#__codelineno-0-84"> 84</a></span>
-<span class="normal"><a href="#__codelineno-0-85"> 85</a></span>
-<span class="normal"><a href="#__codelineno-0-86"> 86</a></span>
-<span class="normal"><a href="#__codelineno-0-87"> 87</a></span>
-<span class="normal"><a href="#__codelineno-0-88"> 88</a></span>
-<span class="normal"><a href="#__codelineno-0-89"> 89</a></span>
-<span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
 <span class="normal"><a href="#__codelineno-0-91"> 91</a></span>
 <span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
 <span class="normal"><a href="#__codelineno-0-93"> 93</a></span>
@@ -2898,108 +2882,124 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <span class="normal"><a href="#__codelineno-0-172">172</a></span>
 <span class="normal"><a href="#__codelineno-0-173">173</a></span>
 <span class="normal"><a href="#__codelineno-0-174">174</a></span>
-<span class="normal"><a href="#__codelineno-0-175">175</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="k">class</span><span class="w"> </span><span class="nc">CgnsDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="w">    </span><span class="sd">"""Reader for the CGNS/HDF5 (CFD General Notation System) mesh format.</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    The mesh comes from the first zone's node coordinates ``CoordinateX``/``CoordinateY``</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">    (and ``CoordinateZ`` for a 3D file, carried as ``node_z``) and its ``Elements_t``</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    sections. Each section's flat, 1-based ``ElementConnectivity`` is reshaped to one row</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    per element; the chosen sections' rows are concatenated into one face-node connectivity</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">    table, padded to the widest so a mesh mixing triangles and quads is rectangular. The ids</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    drop from 1-based to 0-based and the ``1`` base is recorded for a writer.</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">    Surface sections (``TRI_*``/``QUAD_*``) are preferred: when a zone carries any, only</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">    those become faces, so a 3D volume mesh with boundary patches returns its surface skin.</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">    A zone carrying only volumetric sections maps those as faces verbatim (design section</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">    21.1) rather than returning an empty mesh.</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        - **Only the first base and first zone are read.** A multi-base or multi-zone file</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">          is read for its first ``CGNSBase_t`` / ``Zone_t`` only; selecting another is not</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">          wired through the read template yet.</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        - **Surface sections are preferred; volumetric sections are a fallback.** A</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">          volumetric element (e.g. ``HEXA_8``) is read as a face verbatim, its node list</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">          taken as a polygon rather than expanded into bounding faces -- a genuine 3D mesh</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">          is not modelled yet (design section 21.1), and winding is judged in the ``xy``</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">          plane like any other face.</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">        - **``MIXED`` sections and 0D/1D codes are skipped.** A ``MIXED`` section interleaves</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">          a per-element type code with the node lists and has no constant width; it is</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">          dropped rather than misread. ``NODE``/``BAR`` sections are not surface faces and</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">          are skipped too.</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        - **Connectivity is 1-based with mixed widths padded by ``0``** -- the normaliser</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">          rewrites the pad to ``-1`` fill and records the ``1`` base for a writer.</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">        - **Results and flow solutions are not read.** Only the mesh is built; a</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">          ``FlowSolution_t`` an analysis file may carry is out of scope for this reader.</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        - There is no CRS in the arrays read here, so ``crs`` is ``None``.</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        Read a CGNS mesh (shown, not run as a doctest -- it needs a real ``.cgns`` file),</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        reached through ``read_file``::</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            mesh = UgridDataset.read_file("grid.cgns")</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">    """</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"cgns"</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"CGNS/HDF5"</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".cgns"</span><span class="p">,)</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<span class="normal"><a href="#__codelineno-0-175">175</a></span>
+<span class="normal"><a href="#__codelineno-0-176">176</a></span>
+<span class="normal"><a href="#__codelineno-0-177">177</a></span>
+<span class="normal"><a href="#__codelineno-0-178">178</a></span>
+<span class="normal"><a href="#__codelineno-0-179">179</a></span>
+<span class="normal"><a href="#__codelineno-0-180">180</a></span>
+<span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="k">class</span><span class="w"> </span><span class="nc">CgnsDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="w">    </span><span class="sd">"""Reader for the CGNS/HDF5 (CFD General Notation System) mesh format.</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">    The mesh comes from the first zone's node coordinates ``CoordinateX``/``CoordinateY``</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">    (and ``CoordinateZ`` for a 3D file, carried as ``node_z``) and its ``Elements_t``</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">    sections. Each section's flat, 1-based ``ElementConnectivity`` is reshaped to one row</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">    per element; the chosen sections' rows are concatenated into one face-node connectivity</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">    table, padded to the widest so a mesh mixing triangles and quads is rectangular. The ids</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">    drop from 1-based to 0-based and the ``1`` base is recorded for a writer.</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">    Surface sections (``TRI_*``/``QUAD_*``) are preferred: when a zone carries any, only</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    those become faces, so a 3D volume mesh with boundary patches returns its surface skin.</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    A zone carrying only volumetric sections maps those as faces verbatim (design section</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    21.1) rather than returning an empty mesh.</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        - **Only the first base and first zone are read.** A multi-base or multi-zone file</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">          is read for its first ``CGNSBase_t`` / ``Zone_t`` only; selecting another is not</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">          wired through the read template yet.</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        - **Surface sections are preferred; volumetric sections are a fallback.** A</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">          volumetric element (e.g. ``HEXA_8``) is read as a face verbatim, its node list</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">          taken as a polygon rather than expanded into bounding faces -- a genuine 3D mesh</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">          is not modelled yet (design section 21.1), and winding is judged in the ``xy``</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">          plane like any other face.</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        - **``MIXED`` sections and 0D/1D codes are skipped.** A ``MIXED`` section interleaves</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">          a per-element type code with the node lists and has no constant width; it is</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">          dropped rather than misread. ``NODE``/``BAR`` sections are not surface faces and</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">          are skipped too.</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        - **Connectivity is 1-based with mixed widths padded by ``0``** -- the normaliser</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">          rewrites the pad to ``-1`` fill and records the ``1`` base for a writer.</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        - **Results and flow solutions are not read.** Only the mesh is built; a</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">          ``FlowSolution_t`` an analysis file may carry is out of scope for this reader.</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        - There is no CRS in the arrays read here, so ``crs`` is ``None``.</span>
 <a id="__codelineno-0-123" name="__codelineno-0-123"></a>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="w">        </span><span class="sd">"""Report whether the file is CGNS: HDF5 magic plus a ``CGNSBase_t`` group.</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">        The magic is checked first and cheaply; only then is the file opened -- forcing the</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">        HDF5 driver, because ``.cgns`` is not auto-sniffed by GDAL -- to confirm a root group</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="sd">        labelled ``CGNSBase_t``. A MED file (whose root is ``ENS_MAA``) or another HDF5</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">        container carries no such group and is declined.</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">            bool: ``True`` when the magic matches and a ``CGNSBase_t`` base is present.</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">        """</span>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a>            <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_HDF5_MAGIC</span><span class="p">))</span> <span class="o">!=</span> <span class="n">_HDF5_MAGIC</span><span class="p">:</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a>                    <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a>                    <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">,</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a>                    <span class="n">allowed_drivers</span><span class="o">=</span><span class="p">[</span><span class="s2">"HDF5"</span><span class="p">],</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a>                <span class="p">)</span>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a>                <span class="n">root</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a>                <span class="k">return</span> <span class="nb">any</span><span class="p">(</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a>                    <span class="n">_group_label</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">OpenGroup</span><span class="p">(</span><span class="n">name</span><span class="p">))</span> <span class="o">==</span> <span class="n">_BASE_LABEL</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a>                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">GetGroupNames</span><span class="p">()</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>                <span class="p">)</span>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>            <span class="k">finally</span><span class="p">:</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="w">        </span><span class="sd">"""Read the first zone of a CGNS file into a :class:`ParsedMesh`.</span>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">            path: The ``.cgns`` file.</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">            lazy: Unused -- the mesh is read eagerly and no results are read here; accepted</span>
-<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">                to match the driver protocol.</span>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` for a 3D file, and the element-type</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">                metadata.</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170"></a>
-<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-172" name="__codelineno-0-172"></a><span class="sd">            FileFormatNotSupportedError: If the file carries no base, no zone, or no usable</span>
-<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">                element section.</span>
-<a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="sd">        """</span>
-<a id="__codelineno-0-175" name="__codelineno-0-175"></a>        <span class="k">return</span> <span class="n">_CgnsReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">        Read a CGNS mesh (shown, not run as a doctest -- it needs a real ``.cgns`` file),</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="sd">        reached through ``read_file``::</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">            mesh = UgridDataset.read_file("grid.cgns")</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">    """</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"cgns"</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"CGNS/HDF5"</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".cgns"</span><span class="p">,)</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="w">        </span><span class="sd">"""Report whether the file is CGNS: HDF5 magic plus a ``CGNSBase_t`` group.</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        The magic is checked first and cheaply; only then is the file opened -- forcing the</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        HDF5 driver, because ``.cgns`` is not auto-sniffed by GDAL -- to confirm a root group</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">        labelled ``CGNSBase_t``. A MED file (whose root is ``ENS_MAA``) or another HDF5</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">        container carries no such group and is declined.</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">            bool: ``True`` when the magic matches and a ``CGNSBase_t`` base is present.</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">        """</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>            <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_HDF5_MAGIC</span><span class="p">))</span> <span class="o">!=</span> <span class="n">_HDF5_MAGIC</span><span class="p">:</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a>                    <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a>                    <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">,</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a>                    <span class="n">allowed_drivers</span><span class="o">=</span><span class="p">[</span><span class="s2">"HDF5"</span><span class="p">],</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a>                <span class="p">)</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a>                <span class="n">root</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a>                <span class="k">return</span> <span class="nb">any</span><span class="p">(</span>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a>                    <span class="n">_group_label</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">OpenGroup</span><span class="p">(</span><span class="n">name</span><span class="p">))</span> <span class="o">==</span> <span class="n">_BASE_LABEL</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a>                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">GetGroupNames</span><span class="p">()</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a>                <span class="p">)</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a>            <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="w">        </span><span class="sd">"""Read the first zone of a CGNS file into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">            path: The ``.cgns`` file.</span>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">            lazy: Unused -- the mesh is read eagerly and no results are read here; accepted</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="sd">                to match the driver protocol.</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` for a 3D file, and the element-type</span>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">                metadata.</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a><span class="sd">            FileFormatNotSupportedError: If the file carries no base, no zone, or no usable</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a><span class="sd">                element section.</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="sd">        """</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>        <span class="k">return</span> <span class="n">_CgnsReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
