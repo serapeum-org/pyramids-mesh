@@ -242,7 +242,7 @@ class SelafinDriver(BaseDriver):
         node_pairs = [
             (name, dataset.get(name))
             for name in dataset.data_variable_names
-            if dataset.get(name).location == "node"
+            if dataset.get(name).location == "node" and name != "node_z"
         ]
         names = [self._selafin_name(name, var.units) for name, var in node_pairs]
         if node_pairs:
@@ -254,17 +254,7 @@ class SelafinDriver(BaseDriver):
             )
         else:
             times = []
-        values = [
-            [
-                (
-                    np.asarray(var.data, dtype=np.float64)[step]
-                    if np.asarray(var.data).ndim == 2
-                    else np.asarray(var.data, dtype=np.float64)
-                ).tolist()
-                for _name, var in node_pairs
-            ]
-            for step in range(len(times))
-        ]
+        values = self._node_series(node_pairs, len(times))
         write_selafin(
             path,
             node_x=node_x,
@@ -275,6 +265,39 @@ class SelafinDriver(BaseDriver):
             values=values,
             double=self._resolve_precision(options.get("precision")),
         )
+
+    @staticmethod
+    def _node_series(node_pairs, n_times: int) -> list:
+        """Build the per-step value blocks for the node variables.
+
+        Each 2-D (time-varying) variable must share the dataset's time axis; a static
+        (1-D) field is repeated on every step. A variable whose own time axis differs is
+        refused with a clear error rather than being silently truncated or index-erroring.
+
+        Args:
+            node_pairs: ``(name, variable)`` pairs of the node-located variables to write.
+            n_times: The dataset's time-step count (the shared Selafin time axis).
+
+        Returns:
+            list: One block per time step, each a list of per-variable node value lists.
+
+        Raises:
+            FileFormatNotSupportedError: If a time-varying variable's first-axis length is
+                not ``n_times``.
+        """
+        prepared = []
+        for name, var in node_pairs:
+            array = np.asarray(var.data, dtype=np.float64)
+            if array.ndim == 2 and array.shape[0] != n_times:
+                raise FileFormatNotSupportedError(
+                    f"cannot write node variable {name!r} to Selafin: its time axis has "
+                    f"{array.shape[0]} steps but the dataset's is {n_times}"
+                )
+            prepared.append(array)
+        return [
+            [(array[step] if array.ndim == 2 else array).tolist() for array in prepared]
+            for step in range(n_times)
+        ]
 
     @staticmethod
     def _resolve_precision(precision) -> bool:

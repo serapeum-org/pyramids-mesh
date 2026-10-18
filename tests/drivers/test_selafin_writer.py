@@ -8,6 +8,7 @@ connectivity base, the variable names/units and the time steps.
 import pyramids  # noqa: F401  # isort:skip
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -22,6 +23,32 @@ _SLF = Path(__file__).parent.parent / "data" / "minimal.slf"
 def _read(path):
     """Read a Selafin file into a dataset."""
     return SelafinDriver().read(str(path))
+
+
+def test_node_z_is_geometry_not_a_written_data_variable(tmp_path):
+    """A carried-in ``node_z`` is mesh geometry; the writer must not emit it as a result."""
+    src = _read(_SLF)
+    with_z = src.with_variable("node_z", np.zeros(src.mesh.n_node), location="node")
+    out = tmp_path / "with_z.slf"
+    SelafinDriver().write(with_z, str(out))
+    back = _read(str(out))
+    assert "node_z" not in back.data_variable_names
+    assert "WATER DEPTH" in back.data_variable_names
+
+
+def test_node_series_refuses_a_variable_whose_time_axis_differs():
+    """A node variable with fewer steps than the dataset is refused, not index-errored."""
+    short = SimpleNamespace(data=np.zeros((3, 4)))
+    with pytest.raises(FileFormatNotSupportedError, match="time axis"):
+        SelafinDriver._node_series([("EXTRA", short)], 2)
+
+
+def test_node_series_builds_one_block_per_step_when_aligned():
+    """An aligned node variable yields one value block per time step."""
+    var = SimpleNamespace(data=np.arange(8, dtype=float).reshape(2, 4))
+    blocks = SelafinDriver._node_series([("D", var)], 2)
+    assert len(blocks) == 2
+    assert blocks[0][0] == [0.0, 1.0, 2.0, 3.0]
 
 
 def test_capabilities_declare_write():
