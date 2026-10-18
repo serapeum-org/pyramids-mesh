@@ -209,6 +209,28 @@ def test_an_out_of_range_vertex_id_is_a_format_error(tmp_path):
         Modflow6DisvDriver().read(str(disv))
 
 
+def test_a_zero_vertex_id_is_a_format_error(tmp_path):
+    """A vertex id of 0 would index from the end and silently overwrite; it is refused."""
+    disv = tmp_path / "zero_vertex.disv"
+    disv.write_text(
+        _disv_text(dimensions="  NCPL 1\n  NVERT 1\n", vertices="  0 0.0 0.0\n")
+    )
+    with pytest.raises(
+        FileFormatNotSupportedError, match="out of range or non-numeric"
+    ):
+        Modflow6DisvDriver().read(str(disv))
+
+
+def test_an_out_of_range_cell2d_id_is_a_format_error(tmp_path):
+    """A CELL2D id outside the declared NCPL is a clean format error, not an IndexError."""
+    disv = tmp_path / "oor_cell.disv"
+    disv.write_text(_disv_text(cells="  5 0.33 0.33 3 1 2 3\n"))
+    with pytest.raises(
+        FileFormatNotSupportedError, match="CELL2D id 5 is out of range"
+    ):
+        Modflow6DisvDriver().read(str(disv))
+
+
 def test_a_missing_vertex_id_is_a_format_error(tmp_path):
     """Declaring more vertices than appear leaves a gap, which is a format error."""
     disv = tmp_path / "missing_vertex.disv"

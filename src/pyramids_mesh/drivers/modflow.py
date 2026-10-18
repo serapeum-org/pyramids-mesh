@@ -278,6 +278,10 @@ class _Modflow6DisvReader:
                 )
             try:
                 index = int(parts[0]) - 1
+                if index < 0:
+                    # A zero/negative id would index from the end and silently
+                    # overwrite another vertex; refuse it like an over-range id.
+                    raise IndexError(f"vertex id {parts[0]} is below 1")
                 node_x[index] = float(parts[1])
                 node_y[index] = float(parts[2])
             except (ValueError, IndexError) as error:
@@ -309,8 +313,8 @@ class _Modflow6DisvReader:
                 connectivity, and the ``face_x`` / ``face_y`` centre arrays.
 
         Raises:
-            FileFormatNotSupportedError: If the block is empty, a line is malformed, or the
-                count disagrees with ``NCPL``.
+            FileFormatNotSupportedError: If the block is empty, a line is malformed, an id
+                is out of range, or the count disagrees with ``NCPL``.
         """
         if not lines:
             raise FileFormatNotSupportedError(
@@ -328,6 +332,10 @@ class _Modflow6DisvReader:
         face_y = np.empty(count, dtype=np.float64)
         for icell, xc, yc, icvert in parsed:
             row = icell - 1
+            if not 0 <= row < count:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} CELL2D id {icell} is out of range 1..{count}"
+                )
             faces[row, : len(icvert)] = icvert
             face_x[row] = xc
             face_y[row] = yc
