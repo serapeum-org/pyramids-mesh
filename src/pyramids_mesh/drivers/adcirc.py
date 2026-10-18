@@ -276,15 +276,18 @@ def _read_fill(array) -> float:
     Reads ``_FillValue`` then ``missing_value`` if declared; otherwise falls back to
     ADCIRC's conventional dry/missing-node sentinel ``-99999.0`` (ADCIRC marks dry nodes
     with this value and does not always declare a CF fill attribute), so a dry node is
-    recorded as no-data rather than carried through as a real elevation.
+    recorded as no-data rather than carried through as a real elevation. The ``-99999.0``
+    fallback is ADCIRC-specific and is applied to **every** result series that declares no
+    CF fill attribute, not only elevation -- ADCIRC uses the sentinel across its outputs.
     """
+    attributes = {a.GetName(): a for a in array.GetAttributes()}
     for name in ("_FillValue", "missing_value"):
-        for attribute in array.GetAttributes():
-            if attribute.GetName() == name:
-                try:
-                    return float(np.asarray(attribute.Read()).ravel()[0])
-                except (RuntimeError, ValueError, TypeError, IndexError):
-                    pass
+        attribute = attributes.get(name)
+        if attribute is not None:
+            try:
+                return float(np.asarray(attribute.Read()).ravel()[0])
+            except (RuntimeError, ValueError, TypeError, IndexError):
+                pass
     return _ADCIRC_FILL
 
 
