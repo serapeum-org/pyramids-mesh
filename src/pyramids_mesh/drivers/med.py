@@ -157,6 +157,21 @@ class MedDriver(BaseDriver):
         return _MedReader(path).build()
 
 
+def _med_corner_count(code: str) -> int:
+    """Return a MED surface element's corner-node count (3 for TR*, else 4).
+
+    Higher-order elements (TR6/TR7, QU8/QU9) carry mid-side nodes after their corners;
+    only the corners form the face polygon.
+
+    Args:
+        code: The MED geometry code, e.g. ``"TR6"`` or ``"QU8"``.
+
+    Returns:
+        int: 3 for a triangle family, 4 for a quad family.
+    """
+    return 3 if code.startswith("TR") else 4
+
+
 def _array_count(array) -> int:
     """Return an array's ``NBR`` attribute -- its node or element count.
 
@@ -317,7 +332,9 @@ class _MedReader:
         flat = np.asarray(nod.ReadAsArray(), np.int64)
         block = flat.reshape(n_element, flat.size // n_element, order="F")
         if code in _SURFACE_CODES:
-            surface.append((block, code))
+            # Higher-order codes (TR6/TR7, QU8/QU9) list corners first then mid-side nodes;
+            # keep only the corners so the face ring is not self-crossing.
+            surface.append((block[:, : _med_corner_count(code)], code))
         else:
             volume.append((block, code))
 

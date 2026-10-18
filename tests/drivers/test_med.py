@@ -20,7 +20,12 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids_mesh.drivers.med import MedDriver, _MedReader, _pad_groups
+from pyramids_mesh.drivers.med import (
+    MedDriver,
+    _MedReader,
+    _med_corner_count,
+    _pad_groups,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "med"
 _MED = _DATA / "cylinder.med"
@@ -232,3 +237,13 @@ def test_pad_groups_pads_triangles_to_the_widest_block():
     faces, codes = _pad_groups([(tris, "TR3"), (quads, "QU4")])
     assert faces.tolist() == [[1, 2, 3, 0], [2, 3, 4, 5]]
     assert codes == ["TR3", "QU4"]
+
+
+def test_higher_order_surface_codes_keep_only_corner_nodes():
+    """A higher-order MED surface element contributes only its corner nodes to a face."""
+    assert _med_corner_count("TR3") == 3
+    assert _med_corner_count("TR6") == 3
+    assert _med_corner_count("TR7") == 3
+    assert _med_corner_count("QU4") == 4
+    assert _med_corner_count("QU8") == 4
+    assert _med_corner_count("QU9") == 4

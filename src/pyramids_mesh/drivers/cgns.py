@@ -65,6 +65,22 @@ _VOLUME_CODES = {
 }
 _MIXED_CODE = 20
 
+
+def _cgns_corner_count(name: str) -> int:
+    """Return a CGNS surface element's corner-node count (3 for TRI_*, else 4).
+
+    Higher-order elements (TRI_6, QUAD_8, QUAD_9) carry mid-side/mid-face nodes after
+    their corners; only the corners form the face polygon.
+
+    Args:
+        name: The element-type name, e.g. ``"TRI_6"`` or ``"QUAD_8"``.
+
+    Returns:
+        int: 3 for a triangle family, 4 for a quad family.
+    """
+    return 3 if name.startswith("TRI") else 4
+
+
 # Exodus and CGNS share the convention that connectivity is 1-based, so 0 is never a real
 # node id and serves as the pad for the short rows of a mixed-width table; the shared
 # normaliser rewrites it to the ``-1`` pyramids expects.
@@ -340,7 +356,9 @@ class _CgnsReader:
         connectivity = _node_value(section.OpenGroup(_CONNECTIVITY)).astype(np.int64)
         block = connectivity.reshape(n_element, connectivity.size // n_element)
         if type_code in _SURFACE_CODES:
-            surface.append((block, name))
+            # Higher-order codes (TRI_6, QUAD_8/9) list corners first then mid-side/
+            # mid-face nodes; keep only the corners so the face ring is not self-crossing.
+            surface.append((block[:, : _cgns_corner_count(name)], name))
         else:
             volume.append((block, name))
 

@@ -21,7 +21,12 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids_mesh.drivers.cgns import CgnsDriver, _CgnsReader, _pad_sections
+from pyramids_mesh.drivers.cgns import (
+    CgnsDriver,
+    _CgnsReader,
+    _cgns_corner_count,
+    _pad_sections,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "cgns"
 _CGNS = _DATA / "cgnslib_vers-4400.cgns"
@@ -244,3 +249,12 @@ def test_pad_sections_pads_triangles_to_the_widest_block():
     faces, types = _pad_sections([(tris, "TRI_3"), (quads, "QUAD_4")])
     assert faces.tolist() == [[1, 2, 3, 0], [2, 3, 4, 5]]
     assert types == ["TRI_3", "QUAD_4"]
+
+
+def test_higher_order_surface_codes_keep_only_corner_nodes():
+    """A higher-order CGNS surface element contributes only its corner nodes to a face."""
+    assert _cgns_corner_count("TRI_3") == 3
+    assert _cgns_corner_count("TRI_6") == 3
+    assert _cgns_corner_count("QUAD_4") == 4
+    assert _cgns_corner_count("QUAD_8") == 4
+    assert _cgns_corner_count("QUAD_9") == 4
