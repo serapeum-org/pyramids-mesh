@@ -192,7 +192,13 @@ def test_variables_without_a_collection_is_empty():
 
 
 class TestReshapeByDimensions:
-    """``_reshape_by_dimensions`` honours the XDMF ``Dimensions``, not the stored rank."""
+    """``_reshape_by_dimensions`` honours the XDMF ``Dimensions``, not the stored rank.
+
+    The flat-1-D-stored branch is covered only by these synthetic unit tests: the committed
+    ``out.h5`` stores geometry and topology already 2-D (matching their ``Dimensions``), so
+    the full-``read`` integration path exercises the 2-D branch, not the flat one. No real
+    flat-stored XDMF sample is available to commit (real-sample-only rule).
+    """
 
     def test_reshapes_a_flat_array_to_the_declared_dimensions(self):
         """A flat HDF5 array is reshaped to the authoritative 2D ``Dimensions``."""

@@ -58,6 +58,11 @@ class XdmfDriver(BaseDriver):
           and stacks the per-step slabs, closing over paths, never an open handle (design
           section 7); shapes come from the XML without forcing a read.
         - ``GeometryType="XYZ"`` contributes a ``node_z`` variable; ``XY`` leaves it unset.
+        - **Geometry and topology are reshaped by the XML ``Dimensions``** (so a writer that
+          stores them as flat 1-D heavy data is read correctly), but a result slab is read
+          at its native HDF5 shape. The committed results are 1-D per step, so this is not a
+          gap for them; a flat-stored multi-column result would not be reshaped -- a
+          documented limitation until a real sample of that shape is available.
         - There is no CRS in the format, so ``crs`` is ``None``.
 
     Example:
