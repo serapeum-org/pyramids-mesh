@@ -307,3 +307,133 @@ def test_missing_xy_is_refused(tmp_path):
     )
     with pytest.raises(FileFormatNotSupportedError, match="no X/Y"):
         TecplotDriver().read(str(path))
+
+
+# -- header-scanning defensive branches ---------------------------------------------
+
+
+def test_trailing_tokens_after_the_data_are_ignored(tmp_path):
+    """An unterminated trailing quote tokenises and stops data collection cleanly."""
+    path = _write(
+        tmp_path,
+        "trailing.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        '0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n"\n',
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_face == 1
+    assert mesh.n_node == 3
+
+
+def test_a_non_numeric_count_is_a_format_error(tmp_path):
+    """A ZONE whose N is not a number is refused, naming the missing count."""
+    path = _write(
+        tmp_path,
+        "bad_count.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=x E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="usable N"):
+        TecplotDriver().read(str(path))
+
+
+def test_a_zone_without_an_element_type_is_refused(tmp_path):
+    """A ZONE carrying no ZONETYPE/ET is an ordered zone and is refused."""
+    path = _write(
+        tmp_path,
+        "ordered.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="no ZONETYPE/ET"):
+        TecplotDriver().read(str(path))
+
+
+def test_packing_defaults_to_point_when_unspecified(tmp_path):
+    """With neither DATAPACKING nor F given, the layout defaults to POINT."""
+    path = _write(
+        tmp_path,
+        "default.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    dataset = _read(path)
+    assert dataset.global_attributes["data_packing"] == "POINT"
+    assert dataset.mesh.n_face == 1
+
+
+def test_stray_tokens_and_unknown_keys_in_the_preamble_are_skipped(tmp_path):
+    """Non-word tokens and unknown preamble keys before ZONE are stepped over."""
+    path = _write(
+        tmp_path,
+        "preamble.tec",
+        "()\nFILETYPE = FULL\nVARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_face == 1
+    assert mesh.n_node == 3
+
+
+def test_variable_names_with_commas_and_a_trailing_key(tmp_path):
+    """Commas separate names, and a name followed by ``=`` ends the name list."""
+    path = _write(
+        tmp_path,
+        "names.tec",
+        'TITLE = "t"\nVARIABLES = "X", "Y", "Z" SOLUTIONTIME = 1.0\n'
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        "0.0 0.0 5.0\n1.0 0.0 6.0\n0.0 1.0 7.0\n1 2 3\n",
+    )
+    dataset = _read(path)
+    assert dataset.mesh.n_node == 3
+    assert dataset.get("node_z").data.tolist() == [5.0, 6.0, 7.0]
+
+
+def test_a_non_comma_punctuation_ends_the_variable_names(tmp_path):
+    """A non-comma punctuation token terminates the variable-name list."""
+    path = _write(
+        tmp_path,
+        "punct_names.tec",
+        "VARIABLES = X Y ]\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_face == 1
+    assert np.asarray(mesh.node_x).tolist() == [0.0, 1.0, 0.0]
+
+
+def test_varlocation_range_and_empty_spec_part(tmp_path):
+    """A ``VARLOCATION`` hyphen range and a trailing empty part both parse."""
+    path = _write(
+        tmp_path,
+        "varloc_range.tec",
+        "VARIABLES = X Y A B\n"
+        "ZONE N=4 E=1 ZONETYPE=FEQUADRILATERAL DATAPACKING=BLOCK "
+        "VARLOCATION=([3-4,]=CELLCENTERED)\n"
+        "0.0 1.0 1.0 0.0\n0.0 0.0 1.0 1.0\n9.0\n8.0\n1 2 3 4\n",
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_node == 4
+    assert mesh.n_face == 1
+    assert list(_read(path).data_variable_names) == []
+
+
+def test_varlocation_without_a_cellcentered_location(tmp_path):
+    """A ``VARLOCATION`` group with a bare index and no location marks nothing."""
+    path = _write(
+        tmp_path,
+        "varloc_bare.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT "
+        "VARLOCATION=(NODAL [1])\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_face == 1
+    assert mesh.n_node == 3

@@ -155,3 +155,119 @@ def test_cells_only_pt_line_is_refused(tmp_path):
 
     with pytest.raises(FileFormatNotSupportedError):
         AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_sniff_declines_a_comment_only_file(tmp_path):
+    """A file of only comment lines yields no header record, so it is declined."""
+    mesh_file = tmp_path / "comments.inp"
+    mesh_file.write_text("# just a comment\n# another\n", encoding="utf-8")
+    assert AvsUcdDriver().can_open(str(mesh_file)) is False
+
+
+def test_empty_file_is_refused(tmp_path):
+    """An empty file has no five-integer header and is refused."""
+    mesh_file = tmp_path / "empty.inp"
+    mesh_file.write_text("", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_malformed_header_is_refused(tmp_path):
+    """A first record that is not five integers is refused as a bad header."""
+    mesh_file = tmp_path / "badheader.inp"
+    mesh_file.write_text("1 2 3\n1 0.0 0.0 0.0\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_short_node_record_is_refused(tmp_path):
+    """A node row missing its z coordinate is refused."""
+    mesh_file = tmp_path / "shortnode.inp"
+    mesh_file.write_text("1 1 0 0 0\n1 0.0 0.0\n1 1 tri 1 2 3\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_short_cell_record_is_refused(tmp_path):
+    """A cell row short of a type and one node is refused."""
+    mesh_file = tmp_path / "shortcell.inp"
+    mesh_file.write_text("1 1 0 0 0\n1 0.0 0.0 0.0\n1 1 tri\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_unknown_cell_type_is_refused(tmp_path):
+    """A cell naming a type that is neither face-forming nor dropped is refused."""
+    mesh_file = tmp_path / "unknowncell.inp"
+    mesh_file.write_text(
+        "3 1 0 0 0\n"
+        "1 0.0 0.0 0.0\n"
+        "2 1.0 0.0 0.0\n"
+        "3 0.0 1.0 0.0\n"
+        "1 1 banana 1 2 3\n",
+        encoding="utf-8",
+    )
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_truncated_file_is_refused(tmp_path):
+    """A header promising more nodes than the file carries is refused."""
+    mesh_file = tmp_path / "truncated.inp"
+    mesh_file.write_text("3 1 0 0 0\n1 0.0 0.0 0.0\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_cell_referencing_an_undefined_node_is_refused(tmp_path):
+    """A cell naming a node label no node row defines raises ``ValueError``."""
+    mesh_file = tmp_path / "dangling.inp"
+    mesh_file.write_text(
+        "3 1 0 0 0\n"
+        "1 0.0 0.0 0.0\n"
+        "2 1.0 0.0 0.0\n"
+        "3 0.0 1.0 0.0\n"
+        "1 1 tri 1 2 99\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_non_integer_cell_node_is_refused(tmp_path):
+    """A non-integer node value in a cell row is refused."""
+    mesh_file = tmp_path / "badcellnode.inp"
+    mesh_file.write_text(
+        "3 1 0 0 0\n"
+        "1 0.0 0.0 0.0\n"
+        "2 1.0 0.0 0.0\n"
+        "3 0.0 1.0 0.0\n"
+        "1 1 tri 1 2 x\n",
+        encoding="utf-8",
+    )
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)
+
+
+def test_non_numeric_node_coordinate_is_refused(tmp_path):
+    """A non-numeric coordinate in a node row is refused."""
+    mesh_file = tmp_path / "badcoord.inp"
+    mesh_file.write_text("1 1 0 0 0\n1 x 0.0 0.0\n1 1 tri 1 2 3\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AvsUcdDriver()._parse(str(mesh_file), lazy=False)

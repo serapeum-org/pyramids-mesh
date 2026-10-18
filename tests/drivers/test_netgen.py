@@ -247,3 +247,52 @@ def test_iter_records_skips_blank_and_comment_lines(tmp_path):
     """The record walk drops blank and ``#`` comment lines and splits the rest."""
     path = _write(tmp_path, "# a comment\n\nmesh3d\n 1 2 3 \n")
     assert list(_iter_records(path)) == [("mesh3d", []), ("1", ["2", "3"])]
+
+
+# -- more defensive branches ---------------------------------------------------------
+
+
+def test_sniff_stops_at_the_size_limit(tmp_path):
+    """A head past the sniff limit with no signature is declined, not scanned whole."""
+    filler = "filler data line\n" * 5000
+    path = _write(tmp_path, filler, name="big.vol")
+    assert NetgenDriver().can_open(path) is False
+
+
+def test_preamble_setting_at_end_of_file_is_dropped(tmp_path):
+    """A dimension keyword with no value and no following line is dropped, not a crash."""
+    body = "mesh3d\ndimension\n"
+    with pytest.raises(FileFormatNotSupportedError, match="no points"):
+        NetgenDriver().read(_write(tmp_path, body))
+
+
+def test_non_integer_preamble_setting_is_dropped(tmp_path):
+    """A non-integer dimension is metadata, so it is dropped rather than failing."""
+    body = (
+        "mesh3d\n"
+        "dimension abc\n"
+        "surfaceelements\n"
+        "1\n"
+        " 1 1 1 0 3 1 2 3\n"
+        "points\n"
+        "3\n"
+        "0.0 0.0 0.0\n"
+        "1.0 0.0 0.0\n"
+        "0.0 1.0 0.0\n"
+    )
+    dataset = _read(_write(tmp_path, body))
+    assert "dimension" not in dataset.global_attributes
+
+
+def test_surfaceelements_row_missing_leading_columns_is_refused(tmp_path):
+    """A surfaceelements row short of even the four leading columns is refused."""
+    body = "mesh3d\nsurfaceelements\n1\n1 1 1 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="at least"):
+        NetgenDriver().read(_write(tmp_path, body))
+
+
+def test_non_numeric_point_coordinate_is_refused(tmp_path):
+    """A non-numeric points coordinate is a format error naming the section."""
+    body = "mesh3d\npoints\n1\nx 0.0 0.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="expected a number"):
+        NetgenDriver().read(_write(tmp_path, body))

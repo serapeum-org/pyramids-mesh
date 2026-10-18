@@ -14,8 +14,16 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from pyramids_mesh.drivers.esmf import EsmfDriver
+from pyramids.base._errors import FileFormatNotSupportedError
+
+from pyramids_mesh.drivers.esmf import (
+    _EsmfReader,
+    _array_attribute,
+    _to_degrees,
+    EsmfDriver,
+)
 from pyramids_mesh.drivers.scrip import ScripDriver
 from pyramids_mesh.drivers.geos import GeosDriver
 
@@ -121,9 +129,86 @@ def test_declares_read_mesh_only():
 
 def test_faces_helper_resolves_count_and_base():
     """The face builder keeps numElementConn nodes, re-bases, and pads the rest."""
-    from pyramids_mesh.drivers.esmf import _EsmfReader
-
     element_conn = np.array([[1, 2, 3, 4], [5, 6, 7, 9]])
     counts = np.array([3, 4])  # a triangle then a quad
     faces = _EsmfReader._faces(element_conn, counts, start_index=1)
     assert faces.tolist() == [[0, 1, 2, -1], [4, 5, 6, 8]]
+
+
+def test_to_degrees_converts_radians_and_leaves_degrees():
+    """A ``units`` of radians is converted; degrees (or absent) are left untouched."""
+    radians = np.array([0.0, np.pi / 2, np.pi])
+    assert np.allclose(_to_degrees(radians, "radians"), [0.0, 90.0, 180.0])
+    assert np.allclose(_to_degrees(radians, "degrees"), radians)
+
+
+def test_require_refuses_a_missing_defining_array():
+    """``_require`` raises when a defining array is absent from the file."""
+    with pytest.raises(FileFormatNotSupportedError, match="not an ESMF mesh"):
+        _EsmfReader("absent.nc")._require(set())
+
+
+class _FakeAttribute:
+    """A stand-in GDAL attribute reporting its name and a readable value."""
+
+    def __init__(self, name: str, value=None, raises: bool = False) -> None:
+        self._name = name
+        self._value = value
+        self._raises = raises
+
+    def GetName(self) -> str:
+        """Return the attribute's name."""
+        return self._name
+
+    def Read(self):
+        """Return the stored value, or raise ``RuntimeError`` when unreadable."""
+        if self._raises:
+            raise RuntimeError("attribute value unreadable")
+        return self._value
+
+
+class _FakeArray:
+    """A stand-in GDAL MD-array exposing a fixed attribute list."""
+
+    def __init__(self, attributes: list) -> None:
+        self._attributes = attributes
+
+    def GetAttributes(self) -> list:
+        """Return the array's attribute handles."""
+        return self._attributes
+
+
+class _FakeGroup:
+    """A stand-in GDAL root group mapping array names to fake arrays."""
+
+    def __init__(self, arrays: dict) -> None:
+        self._arrays = arrays
+
+    def OpenMDArray(self, name: str) -> _FakeArray:
+        """Return the named fake array."""
+        return self._arrays[name]
+
+
+def test_array_attribute_reads_a_present_value():
+    """``_array_attribute`` returns the matching attribute's read value."""
+    group = _FakeGroup(
+        {"elementConn": _FakeArray([_FakeAttribute("start_index", np.int64(0))])}
+    )
+    value = _array_attribute(group, "elementConn", "start_index")
+    assert int(np.asarray(value).ravel()[0]) == 0
+
+
+def test_array_attribute_is_none_when_read_raises():
+    """A matching attribute whose ``Read`` raises is reported as absent."""
+    group = _FakeGroup(
+        {"elementConn": _FakeArray([_FakeAttribute("start_index", raises=True)])}
+    )
+    assert _array_attribute(group, "elementConn", "start_index") is None
+
+
+def test_start_index_honours_a_present_attribute():
+    """``_start_index`` uses a present ``start_index`` attribute over the default."""
+    group = _FakeGroup(
+        {"elementConn": _FakeArray([_FakeAttribute("start_index", np.int64(0))])}
+    )
+    assert _EsmfReader._start_index(group) == 0

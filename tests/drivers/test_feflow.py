@@ -195,3 +195,63 @@ def test_read_of_a_non_fem_path_is_a_format_error(tmp_path):
 def test_sniff_declines_a_path_that_cannot_be_opened(tmp_path):
     """_sniff returns False on an OS read error; it never raises."""
     assert FeflowDriver()._sniff(str(tmp_path)) is False
+
+
+def test_read_sections_reports_an_unreadable_path(tmp_path):
+    """_read_sections turns an OS read error into a clean format error."""
+    with pytest.raises(FileFormatNotSupportedError, match="could not be read"):
+        _FeflowReader(str(tmp_path)).build()
+
+
+def test_a_sub_triangular_valence_is_a_format_error(tmp_path):
+    """A DIMENS valence below three cannot describe an element and is refused."""
+    fem_path = tmp_path / "valence.fem"
+    fem_path.write_text(_fem_text(dimens="DIMENS\n  3   1   2\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="at least three nodes"):
+        _FeflowReader(str(fem_path)).build()
+
+
+def test_a_missing_node_section_is_a_format_error(tmp_path):
+    """A deck without a NODE section has no connectivity and is a format error."""
+    fem_path = tmp_path / "no_node.fem"
+    fem_path.write_text(
+        f"{_HEADER}DIMENS\n  3   1   3\nSCALE\n 1,0,1,0,1,0\n"
+        "COOR\n 0,1,0,0,0,1\nEND\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="no NODE section"):
+        _FeflowReader(str(fem_path)).build()
+
+
+def test_a_non_numeric_node_row_is_a_format_error(tmp_path):
+    """A NODE row that is not integer node ids is a clean format error."""
+    fem_path = tmp_path / "bad_node.fem"
+    fem_path.write_text(_fem_text(node="NODE\n  1 2 x\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="non-numeric"):
+        _FeflowReader(str(fem_path)).build()
+
+
+def test_a_node_row_without_ids_is_a_format_error(tmp_path):
+    """A NODE row carrying only separators resolves to no ids and is refused."""
+    fem_path = tmp_path / "empty_node.fem"
+    fem_path.write_text(_fem_text(node="NODE\n ,,,\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="no node ids"):
+        _FeflowReader(str(fem_path)).build()
+
+
+def test_a_non_numeric_coor_stream_is_a_format_error(tmp_path):
+    """A COOR stream with non-numeric tokens is a clean format error."""
+    fem_path = tmp_path / "bad_coor_stream.fem"
+    fem_path.write_text(_fem_text(coor="COOR\n 0 1 x 0 0 1\nEND\n"))
+    with pytest.raises(FileFormatNotSupportedError, match="non-numeric"):
+        _FeflowReader(str(fem_path)).build()
+
+
+def test_a_coor_implying_one_coordinate_per_node_is_a_format_error(tmp_path):
+    """A COOR length that implies neither 2D nor 3D coordinates is refused."""
+    fem_path = tmp_path / "one_dim.fem"
+    fem_path.write_text(
+        f"{_HEADER}DIMENS\n  1   1   3\nSCALE\n 1,0,1,0,1,0\n"
+        "NODE\n 1 1 1\nCOOR\n 5.0\nEND\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="only 2D and 3D"):
+        _FeflowReader(str(fem_path)).build()

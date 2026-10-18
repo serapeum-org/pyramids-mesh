@@ -227,3 +227,31 @@ def test_gapped_gridpoint_ids_are_resolved_by_position(tmp_path):
 
     # Ids 7, 3, 5, 9 map to their positions 0, 1, 2, 3 -- not to their values.
     assert sorted(int(v) for v in parsed.faces[0]) == [0, 1, 2, 3]
+
+
+def test_short_gridpoint_record_is_refused(tmp_path):
+    """A G record short of an id and three coordinates is a format error."""
+    text = "G 1 0 0\nZ T4 1 1 1 1 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short G record"):
+        Flac3dDriver().read(_write(tmp_path, "shortgp.f3grid", text))
+
+
+def test_zone_record_without_an_id_is_refused(tmp_path):
+    """A Z record carrying only a type code, short of an id, is refused."""
+    text = "G 1 0 0 0\nZ T4\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short Z record"):
+        Flac3dDriver().read(_write(tmp_path, "noid.f3grid", text))
+
+
+def test_zone_referencing_an_undefined_gridpoint_is_refused(tmp_path):
+    """A zone naming a gridpoint id no G record defines raises, naming the id."""
+    text = "G 1 0 0 0\nG 2 1 0 0\nG 3 0 1 0\nG 4 0 0 1\nZ T4 1 1 2 3 99\n"
+    with pytest.raises(ValueError, match="no G record defines"):
+        Flac3dDriver().read(_write(tmp_path, "badref.f3grid", text))
+
+
+def test_non_integer_gridpoint_id_is_refused(tmp_path):
+    """A non-integer gridpoint id is a format error naming the keyword."""
+    text = "G x 0 0 0\nZ T4 1 1 1 1 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed G field"):
+        Flac3dDriver().read(_write(tmp_path, "badid.f3grid", text))

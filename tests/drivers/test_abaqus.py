@@ -131,3 +131,102 @@ def test_deck_without_nodes_is_refused(tmp_path):
 
     with pytest.raises(FileFormatNotSupportedError):
         AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_sniff_declines_a_comment_only_deck(tmp_path):
+    """A deck of only comment and blank lines has no keyword, so it is declined."""
+    deck = tmp_path / "comments.inp"
+    deck.write_text("** a comment\n\n** another\n", encoding="utf-8")
+    assert AbaqusDriver().can_open(str(deck)) is False
+
+
+def test_deck_with_only_unsupported_elements_is_refused(tmp_path):
+    """An unmodelled element type (``B31``) builds no face, so the deck is refused."""
+    deck = tmp_path / "beams.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "2, 1.0, 0.0\n"
+        "3, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=B31\n"
+        "1, 1, 2\n",
+        encoding="utf-8",
+    )
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_comment_and_blank_lines_in_the_body_are_ignored(tmp_path):
+    """A ``**`` comment and a blank line inside the deck body are skipped, not parsed."""
+    deck = tmp_path / "commented.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "\n"
+        "** a mid-deck comment\n"
+        "2, 1.0, 0.0\n"
+        "3, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=CPS3\n"
+        "1, 1, 2, 3\n",
+        encoding="utf-8",
+    )
+    parsed = AbaqusDriver()._parse(str(deck), lazy=False)
+    assert parsed.faces[0].tolist() == [0, 1, 2]
+
+
+def test_short_node_record_is_refused(tmp_path):
+    """A ``*NODE`` record missing its y coordinate is refused."""
+    deck = tmp_path / "shortnode.inp"
+    deck.write_text(
+        "*NODE\n1, 0.0\n*ELEMENT, TYPE=CPS3\n1, 1, 2, 3\n", encoding="utf-8"
+    )
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_element_referencing_an_undefined_node_is_refused(tmp_path):
+    """An element naming a node label no ``*NODE`` defines raises ``ValueError``."""
+    deck = tmp_path / "dangling.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "2, 1.0, 0.0\n"
+        "3, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=CPS3\n"
+        "1, 1, 2, 99\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_non_integer_element_value_is_refused(tmp_path):
+    """A non-integer node label in an ``*ELEMENT`` record is refused."""
+    deck = tmp_path / "badelement.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "2, 1.0, 0.0\n"
+        "3, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=CPS3\n"
+        "1, 1, 2, x\n",
+        encoding="utf-8",
+    )
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_non_numeric_node_coordinate_is_refused(tmp_path):
+    """A non-numeric coordinate in a ``*NODE`` record is refused."""
+    deck = tmp_path / "badcoord.inp"
+    deck.write_text("*NODE\n1, x, 0.0\n", encoding="utf-8")
+    from pyramids.base._errors import FileFormatNotSupportedError
+
+    with pytest.raises(FileFormatNotSupportedError):
+        AbaqusDriver()._parse(str(deck), lazy=False)

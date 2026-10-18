@@ -14,8 +14,11 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from pyramids_mesh.drivers.scrip import ScripDriver
+from pyramids.base._errors import FileFormatNotSupportedError
+
+from pyramids_mesh.drivers.scrip import _ScripReader, _array_units, ScripDriver
 from pyramids_mesh.drivers.esmf import EsmfDriver
 from pyramids_mesh.drivers.geos import GeosDriver
 
@@ -130,3 +133,80 @@ def test_radian_corners_are_converted_to_degrees():
     assert np.allclose(_to_degrees(radians, "radians"), [0.0, 90.0, 180.0])
     # a degrees (or absent) unit is left untouched
     assert np.allclose(_to_degrees(radians, "degrees"), radians)
+
+
+def test_require_refuses_a_missing_corner_array():
+    """``_require`` raises when a defining corner array is absent from the file."""
+    with pytest.raises(FileFormatNotSupportedError, match="not a SCRIP grid"):
+        _ScripReader("absent.nc")._require(set())
+
+
+def test_pad_repeated_corners_marks_duplicate_as_fill():
+    """A corner repeating an earlier one in its cell becomes ``-1`` padding."""
+    connectivity = np.array([[0, 1, 2, 2]])  # a triangle padded by a repeat
+    padded = _ScripReader._pad_repeated_corners(connectivity)
+    assert padded.tolist() == [[0, 1, 2, -1]]
+
+
+def test_face_centres_absent_without_both_arrays():
+    """Only one of the centre arrays yields no centres rather than a half pair."""
+    face_x, face_y = _ScripReader._face_centres(None, {"grid_corner_lat"})
+    assert face_x is None
+    assert face_y is None
+
+
+class _FakeAttribute:
+    """A stand-in GDAL attribute reporting its name and a readable value."""
+
+    def __init__(self, name: str, value=None, raises: bool = False) -> None:
+        self._name = name
+        self._value = value
+        self._raises = raises
+
+    def GetName(self) -> str:
+        """Return the attribute's name."""
+        return self._name
+
+    def Read(self):
+        """Return the stored value, or raise ``RuntimeError`` when unreadable."""
+        if self._raises:
+            raise RuntimeError("attribute value unreadable")
+        return self._value
+
+
+class _FakeArray:
+    """A stand-in GDAL MD-array exposing a fixed attribute list."""
+
+    def __init__(self, attributes: list) -> None:
+        self._attributes = attributes
+
+    def GetAttributes(self) -> list:
+        """Return the array's attribute handles."""
+        return self._attributes
+
+
+class _FakeGroup:
+    """A stand-in GDAL root group mapping array names to fake arrays."""
+
+    def __init__(self, arrays: dict) -> None:
+        self._arrays = arrays
+
+    def OpenMDArray(self, name: str) -> _FakeArray:
+        """Return the named fake array."""
+        return self._arrays[name]
+
+
+def test_array_units_reads_a_present_units_string():
+    """``_array_units`` returns the matching ``units`` attribute as a string."""
+    group = _FakeGroup(
+        {"grid_corner_lat": _FakeArray([_FakeAttribute("units", "radians")])}
+    )
+    assert _array_units(group, "grid_corner_lat") == "radians"
+
+
+def test_array_units_is_empty_when_read_raises():
+    """A ``units`` attribute whose ``Read`` raises is reported as an empty string."""
+    group = _FakeGroup(
+        {"grid_corner_lat": _FakeArray([_FakeAttribute("units", raises=True)])}
+    )
+    assert _array_units(group, "grid_corner_lat") == ""
