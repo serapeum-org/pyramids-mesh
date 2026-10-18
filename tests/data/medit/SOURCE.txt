@@ -1,0 +1,3 @@
+INRIA Medit ASCII .mesh.
+cube86.mesh -- meshio test data, MIT. 39 Vertices / 72 Triangles (+ Tetrahedra).
+  https://github.com/nschloe/meshio (tests/meshes/medit/) -- via Git-LFS media endpoint

@@ -18,4 +18,9 @@ paths = [
   '''pr-diff-review-.*\.md$''',
   # The dependency lockfile is package hashes, not credentials.
   '''pixi\.lock$''',
+  # Committed test fixtures are real sample meshes, not source secrets; model
+  # formats carry high-entropy payloads (binary NetCDF/HDF5) and key=value
+  # metadata (e.g. a FEFLOW `GeoCS_crswkt=` coordinate-system WKT string) that
+  # the generic-api-key rule flags as false positives.
+  '''(^|/)tests/data/''',
 ]

@@ -146,6 +146,24 @@ nav:
     - Exodus II (.exo): reference/exodus.md
     - SU2 (.su2): reference/su2.md
     - SRH-2D: reference/srh2d.md
+    - MODFLOW 6 DISU: reference/modflow6_disu.md
+    - FEFLOW (.fem): reference/feflow.md
+    - SCRIP grid: reference/scrip.md
+    - ESMF mesh: reference/esmf.md
+    - GEOS cubed-sphere: reference/geos.md
+    - CGNS (.cgns): reference/cgns.md
+    - MED (.med): reference/med.md
+    - Nastran bulk data: reference/nastran.md
+    - Abaqus (.inp): reference/abaqus.md
+    - AVS-UCD: reference/avsucd.md
+    - Medit (.mesh): reference/medit.md
+    - Netgen (.vol): reference/netgen.md
+    - Tecplot FE: reference/tecplot.md
+    - FLAC3D (.f3grid): reference/flac3d.md
+    - Kratos MDPA: reference/kratos.md
+    - OpenFOAM polyMesh: reference/openfoam.md
+    - Wavefront OBJ: reference/obj.md
+    - STL: reference/stl.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md

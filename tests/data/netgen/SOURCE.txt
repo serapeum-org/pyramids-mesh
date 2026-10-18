@@ -1,0 +1,3 @@
+Netgen ASCII .vol.
+periodic_3d.vol -- meshio test data, MIT. 65 points / 108 surfaceelements (NETGEN v6.2).
+  https://github.com/nschloe/meshio (tests/meshes/netgen/) -- via Git-LFS media endpoint

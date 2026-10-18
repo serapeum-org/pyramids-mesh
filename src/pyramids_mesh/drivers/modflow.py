@@ -1,10 +1,17 @@
-"""MODFLOW 6 DISV reader (task C5).
+"""MODFLOW 6 DISV (task C5) and DISU groundwater mesh readers.
 
 MODFLOW 6's DISV package describes a *discretization by vertices*: a layered groundwater
 grid whose horizontal footprint is an unstructured set of polygonal cells. This driver
 reads the recommended ASCII ``.disv`` input file -- one file of a MODFLOW 6 model
 directory -- and builds the single horizontal cell layer as a ``pyramids.netcdf.ugrid``
 surface mesh.
+
+The sibling :class:`Modflow6DisuDriver` reads the ASCII ``.disu`` *discretization by
+unstructured* grid. A DISU grid is only guaranteed to carry a connection graph
+(``NJA``/``CONNECTIONDATA``), but when it also declares vertices (``NVERT`` > 0 with
+``VERTICES`` / ``CELL2D`` blocks) its horizontal footprint is recovered the same way DISV
+is -- so the DISU reader reuses the DISV block-parsing helpers below and refuses a
+connectivity-only grid, which carries no geometry to build a mesh from.
 
 The ASCII grammar is three keyword blocks (the intervening ``GRIDDATA`` block, which
 carries ``TOP``/``BOTM``/``IDOMAIN``, is skipped)::
@@ -61,6 +68,16 @@ _COMMENT = "#"
 # but only ``NVERT`` and ``NCPL`` size the mesh.
 _NVERT = "NVERT"
 _NCPL = "NCPL"
+
+# DISU's dimension keywords: ``NODES`` is the cell (face) count and ``NJA`` the length of
+# the connection vector -- ``NJA`` is the DISU signature ``_sniff`` keys on, since a DISV
+# file never carries it.
+_NODES = "NODES"
+_NJA = "NJA"
+
+# A DISU block may defer its data to an external file with an ``OPEN/CLOSE <fname>``
+# directive in place of inline rows; the keyword is matched case-insensitively.
+_OPEN_CLOSE = "OPEN/CLOSE"
 
 # 1-based vertex ids never take 0, so 0 is a safe pad for a short (polygonal) face row;
 # pyramids rewrites it to -1 during normalisation.
@@ -296,7 +313,7 @@ class _Modflow6DisvReader:
         return node_x, node_y
 
     def _parse_cells(
-        self, lines: list[str], declared: int | None
+        self, lines: list[str], declared: int | None, dimension_label: str = _NCPL
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Read the ``CELL2D`` block into fill-padded faces and face centres.
 
@@ -306,7 +323,9 @@ class _Modflow6DisvReader:
 
         Args:
             lines: The data lines of the ``CELL2D`` block.
-            declared: ``NCPL`` from the dimensions, used to size and cross-check.
+            declared: the cell-count dimension, used to size and cross-check.
+            dimension_label: the dimension keyword naming that count in an error message
+                (``NCPL`` for DISV, ``NODES`` for DISU).
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray]: The ``(n_face, max_nodes)`` face
@@ -324,7 +343,8 @@ class _Modflow6DisvReader:
         count = declared if declared is not None else len(parsed)
         if len(parsed) != count:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} declares NCPL {count} but has {len(parsed)} CELL2D rows"
+                f"{self.path!r} declares {dimension_label} {count} but has "
+                f"{len(parsed)} CELL2D rows"
             )
         max_nodes = max(len(icvert) for _, _, _, icvert in parsed)
         faces = np.full((count, max_nodes), _FILL, dtype=np.int64)
@@ -376,3 +396,202 @@ class _Modflow6DisvReader:
                 f"{len(icvert)} vertex id(s); a face needs at least three"
             )
         return icell, xc, yc, icvert
+
+
+class Modflow6DisuDriver(BaseDriver):
+    """Reader for the MODFLOW 6 DISU (discretization by unstructured) ASCII grid.
+
+    The ``.disu`` file is one file of a MODFLOW 6 model directory. ``read_file`` dispatches
+    to this driver on the ``.disu`` suffix, and ``can_open`` confirms the file carries the
+    DISU ``NODES`` / ``NJA`` dimensions rather than only matching the name.
+
+    A DISU grid is defined by its connection graph (``NJA`` / ``CONNECTIONDATA``) and need
+    not carry any geometry. When it *does* declare ``NVERT`` > 0 with ``VERTICES`` and
+    ``CELL2D`` blocks, its horizontal footprint is identical in shape to a DISV grid, so
+    this driver reuses the DISV block-parsing helpers and builds the ``NODES`` polygonal
+    cells as a surface mesh. A connectivity-only DISU -- no ``NVERT``, no ``VERTICES`` /
+    ``CELL2D`` -- carries no coordinates and is refused with a clear error rather than
+    guessed.
+
+    Documented limitations:
+        - **Vertices required.** A connectivity-only DISU (``NVERT`` absent or zero, no
+          ``VERTICES`` / ``CELL2D``) has no geometry to place; it is refused rather than
+          approximated from the connection graph.
+        - **One horizontal footprint.** The mesh is the ``NODES`` cells of the ``CELL2D``
+          block. The ``GRIDDATA`` arrays (``TOP`` / ``BOT`` / ``AREA`` / ``IDOMAIN``) and
+          the ``CONNECTIONDATA`` connection graph are not modelled -- this package reads
+          the mesh file format, not the full groundwater model.
+        - **ASCII only.** The binary ``.disu.grb`` grid is not read; point the reader at
+          the ASCII ``.disu`` input.
+        - **Vertex ids are 1-based.** They are resolved to 0-based and the base recorded
+          for a writer. Short (polygonal) face rows are padded; the quad test fixture pads
+          nothing.
+        - **Cells are clockwise.** DISU lists ``icvert`` clockwise, like DISV; pyramids
+          reverses each face to counter-clockwise on read.
+        - **``OPEN/CLOSE`` is honoured.** A ``VERTICES`` or ``CELL2D`` block may defer its
+          rows to an external file with an ``OPEN/CLOSE <fname>`` directive; the external
+          file is read relative to the ``.disu`` file. The committed sample is inline.
+        - There is no CRS or node elevation in a ``.disu`` file, so ``crs`` and ``node_z``
+          are ``None``; the cell centres are carried as the face centres.
+
+    Example:
+        Read a MODFLOW 6 DISU grid by its ``.disu`` file (shown, not run as a doctest -- it
+        needs a real DISU file)::
+
+            from pyramids.netcdf.ugrid import UgridDataset
+
+            mesh = UgridDataset.read_file("model/keating.disu", driver="modflow6_disu")
+            footprint = mesh.mesh      # NODES polygons, one horizontal footprint
+    """
+
+    name = "modflow6_disu"
+    long_name = "MODFLOW 6 DISU"
+    suffixes = (".disu",)
+    api_version = MESH_DRIVER_API_VERSION
+    capabilities = frozenset({"read_mesh"})
+
+    def _sniff(self, path: str) -> bool:
+        """Report whether the file carries the DISU dimensions, not only the suffix.
+
+        Reads the whole file -- a DISU grid is small -- and accepts it on the DISU
+        signature: a ``DIMENSIONS`` block carrying both ``NODES`` and ``NJA``. ``NJA`` is
+        what tells a DISU grid apart from a DISV one (which never declares it), so a stray
+        or empty ``.disu`` is declined. A connectivity-only DISU still sniffs ``True`` --
+        it is a real DISU grid -- and is refused later, in ``_parse``, with a clear
+        message about the missing geometry.
+
+        Args:
+            path: The file to inspect.
+
+        Returns:
+            bool: ``True`` when the DISU ``DIMENSIONS`` block with ``NODES`` and ``NJA`` is
+                present.
+        """
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+                text = handle.read().upper()
+        except OSError:
+            return False
+        return f"{_BEGIN} {_DIMENSIONS}" in text and _NODES in text and _NJA in text
+
+    def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
+        """Read a ``.disu`` file into a :class:`ParsedMesh`.
+
+        Args:
+            path: The ``.disu`` file.
+            lazy: Unused -- a DISU grid is small and read whole.
+
+        Returns:
+            ParsedMesh: The horizontal cell footprint, 1-based and clockwise as written.
+
+        Raises:
+            FileFormatNotSupportedError: If the path is not a file, the grid is
+                connectivity-only (no vertices to place), or the DISU blocks are missing,
+                malformed, or disagree with the declared dimensions.
+        """
+        if not os.path.isfile(path):
+            raise FileFormatNotSupportedError(f"{path!r} is not a MODFLOW 6 DISU file")
+        return _Modflow6DisuReader(path).build()
+
+
+class _Modflow6DisuReader(_Modflow6DisvReader):
+    """One ``.disu`` file: reuse the DISV block parser, size faces by ``NODES``.
+
+    The grammar of a DISU ``VERTICES`` / ``CELL2D`` block is identical to DISV's, so the
+    inherited ``_read_blocks`` / ``_parse_dimensions`` / ``_parse_vertices`` /
+    ``_parse_cells`` helpers do the work. Only two things differ: the face count comes from
+    ``NODES`` rather than ``NCPL``, and a DISU grid may legitimately carry no geometry at
+    all -- which this reader refuses rather than returns empty.
+    """
+
+    def build(self) -> ParsedMesh:
+        """Read the blocks and build the horizontal cell footprint.
+
+        Returns:
+            ParsedMesh: Nodes from ``VERTICES`` and 1-based, fill-padded faces from
+                ``CELL2D`` sized by ``NODES``, with the cell centres as face centres.
+
+        Raises:
+            FileFormatNotSupportedError: If the grid is connectivity-only (``NVERT``
+                absent or zero and no ``VERTICES`` / ``CELL2D`` blocks), or a required
+                block is missing or malformed.
+        """
+        blocks = self._read_blocks()
+        dimensions = self._parse_dimensions(blocks.get(_DIMENSIONS, []))
+        nvert = dimensions.get(_NVERT)
+        if not nvert or _VERTICES not in blocks or _CELL2D not in blocks:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is a connectivity-only MODFLOW 6 DISU grid: NVERT is "
+                f"absent or zero and it has no VERTICES/CELL2D blocks, so it carries no "
+                f"geometry to build a mesh from. Point the reader at a DISU grid that "
+                f"declares vertices (NVERT > 0)."
+            )
+        vertices = self._resolve_open_close(blocks.get(_VERTICES, []))
+        cells = self._resolve_open_close(blocks.get(_CELL2D, []))
+        node_x, node_y = self._parse_vertices(vertices, nvert)
+        faces, face_x, face_y = self._parse_cells(cells, dimensions.get(_NODES), _NODES)
+        return ParsedMesh(
+            node_x=node_x,
+            node_y=node_y,
+            faces=faces,
+            fill_value=_FILL,
+            start_index=1,  # icvert is 1-based; pyramids re-bases and records the base
+            original_start_index=1,
+            node_z=None,
+            face_x=face_x,
+            face_y=face_y,
+            crs=None,
+            variables={},  # the .disu file carries geometry only
+            global_attributes={"source": "MODFLOW 6 DISU"},
+            topology_dimension=2,
+            mesh_name="mesh2d",
+        )
+
+    def _resolve_open_close(self, lines: list[str]) -> list[str]:
+        """Resolve an ``OPEN/CLOSE`` block to the external file's data lines.
+
+        A DISU ``VERTICES`` / ``CELL2D`` block may give its rows inline or defer them to an
+        external file with a single ``OPEN/CLOSE <fname> [FACTOR f] [(FREE|BINARY)]``
+        directive. When one is present the referenced file (resolved relative to the
+        ``.disu`` file) is read and its significant lines returned in place of the block's;
+        otherwise the inline lines are returned unchanged.
+
+        Args:
+            lines: The block's data lines, as grouped by :meth:`_read_blocks`.
+
+        Returns:
+            list[str]: The external file's comment-stripped, non-blank lines when the block
+                is an ``OPEN/CLOSE`` reference, else ``lines`` unchanged.
+
+        Raises:
+            FileFormatNotSupportedError: If the directive names no file, or the external
+                file cannot be read.
+        """
+        for line in lines:
+            tokens = line.split()
+            if not tokens or tokens[0].upper() != _OPEN_CLOSE:
+                continue
+            if len(tokens) < 2:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has an OPEN/CLOSE with no file name: {line!r}"
+                )
+            name = tokens[1].strip("'\"")
+            external = (
+                name
+                if os.path.isabs(name)
+                else os.path.join(os.path.dirname(self.path), name)
+            )
+            try:
+                with open(external, "r", encoding="utf-8", errors="replace") as handle:
+                    raw_lines = handle.readlines()
+            except OSError as error:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} OPEN/CLOSE file {external!r} could not be read: "
+                    f"{error}"
+                ) from error
+            return [
+                stripped
+                for raw in raw_lines
+                if (stripped := raw.split(_COMMENT, 1)[0].strip())
+            ]
+        return lines
