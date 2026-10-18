@@ -1,0 +1,5 @@
+DHI FEFLOW classic ASCII .fem mesh.
+disv_nodes.fem -- MODFLOW-ORG/modflow6-examples, data/ex-gwe-ates/disv_nodes.fem.
+CLASS v.7.501, DIMENS 2496 nodes / 4842 triangles (2D). US Government work / public domain,
+CC0-1.0 per the MODFLOW 6 project policy.
+  https://github.com/MODFLOW-ORG/modflow6-examples (data/ex-gwe-ates/)
