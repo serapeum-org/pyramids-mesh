@@ -1,0 +1,7 @@
+ESMF unstructured-mesh NetCDF (the canonical ESMF mesh example).
+ne4np4-esmf.nc -- 866 nodes / 936 elements, gridType=unstructured, version 0.9; CDF-1 classic
+NetCDF (readable by the vendored GDAL; the CDF-5 ne30pg3.grid.nc is NOT, do not use it).
+Source: the ESMF data server (NCAR/CGD). ESMF is distributed under the University of Illinois/
+NCSA open-source licence; the data server hosts public test data -- confirm redistribution
+terms before relying on this fixture.
+  https://esmfweb.cgd.ucar.edu/download/data/ne4np4-esmf.nc
