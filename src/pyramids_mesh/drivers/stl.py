@@ -142,6 +142,11 @@ class StlDriver(BaseDriver):
             raw = handle.read()
         count = _binary_triangle_count(raw)
         if count is not None:
+            if count == 0:
+                raise FileFormatNotSupportedError(
+                    f"{path!r} is an empty binary STL (zero triangles); it carries no "
+                    f"surface to build a mesh from"
+                )
             triangles = _read_binary_triangles(raw, count)
         elif _looks_ascii(raw):
             triangles = _read_ascii_triangles(raw, path)

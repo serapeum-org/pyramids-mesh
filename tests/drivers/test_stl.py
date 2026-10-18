@@ -222,3 +222,11 @@ def test_declares_read_capabilities():
     assert StlDriver.name == "stl"
     assert StlDriver.suffixes == (".stl",)
     assert set(StlDriver.capabilities) == {"read_mesh"}
+
+
+def test_empty_binary_stl_is_refused(tmp_path):
+    """An 84-byte binary STL (zero triangles) is refused cleanly, not an IndexError."""
+    path = tmp_path / "empty.stl"
+    path.write_bytes(b"\x00" * 80 + (0).to_bytes(4, "little"))
+    with pytest.raises(FileFormatNotSupportedError, match="empty binary STL"):
+        StlDriver().read(str(path))
