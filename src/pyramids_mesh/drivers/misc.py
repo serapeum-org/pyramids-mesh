@@ -44,6 +44,16 @@ _ELEMENT_HEADER_FIELDS = 3
 # package can turn into a real CRS -- so it is left as None rather than guessed at.
 _WKT_PREFIXES = ("PROJCS", "GEOGCS", "PROJCRS", "GEOGCRS", "COMPD_CS", "BOUNDCRS")
 
+# EUM item/unit codes and the per-node boundary code the reader does not keep; written as
+# documented defaults on a round trip, since the mesh model carries none of them. The
+# element type code is chosen from the face width (triangle vs quad) and is likewise not
+# read back. The ``LONG/LAT`` placeholder stands in for a mesh with no resolvable CRS.
+_DEFAULT_ITEM = 100079
+_DEFAULT_UNIT = 1000
+_DEFAULT_BOUNDARY = 1
+_MIKE21_ELEMENT_TYPE = {3: 21, 4: 25}
+_PLACEHOLDER_PROJECTION = "LONG/LAT"
+
 # The smallest valid Mike21 mesh: the unit square split into two counter-clockwise
 # triangles. The projection is a DHI-internal name, so the read leaves `crs` None.
 _MINIMAL_MIKE21_FIXTURE = """100079 1000 4 LONG/LAT
@@ -148,7 +158,7 @@ class Mike21Driver(BaseDriver):
     long_name = "DHI Mike21 mesh"
     suffixes = (".mesh",)
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh"})
+    capabilities = frozenset({"read_mesh", "write_mesh", "write_data"})
 
     def _sniff(self, path: str) -> bool:
         """Report whether the first line parses as a Mike21 header.
@@ -197,6 +207,98 @@ class Mike21Driver(BaseDriver):
                 two nodes share an id.
         """
         return _Mike21Scan(path).build()
+
+    def write(self, dataset, path: str, **options) -> None:
+        """Write a mesh frame back to a Mike21 ``.mesh`` file.
+
+        Emits the header line, one ``id x y z boundary`` record per node and one
+        ``id n1 n2 n3[ n4]`` record per element, restoring the 1-based numbering the
+        reader recorded. Node elevation comes from a node-located ``node_z`` variable when
+        present, else ``0``; a triangle in a quad-width table is padded with a trailing
+        ``0`` node id, the format's own convention.
+
+        The EUM item and unit codes, the per-node boundary code and the element type code
+        are not carried on the mesh model, so they are written as documented defaults; the
+        reader does not read them back. A real CRS (EPSG or WKT) is written as the
+        projection field, else the DHI-internal ``LONG/LAT`` placeholder.
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            path: The output ``.mesh`` path.
+            **options: Unused; accepted for a uniform writer signature.
+
+        Raises:
+            FileFormatNotSupportedError: If the dataset carries no faces, or any face has
+                a vertex count other than 3 or 4 (Mike21 has only triangle and quad
+                element types).
+        """
+        mesh = dataset.mesh
+        connectivity = mesh.face_node_connectivity
+        if connectivity is None or connectivity.data is None:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no face connectivity to write "
+                f"as a Mike21 mesh"
+            )
+        faces = np.asarray(connectivity.data)
+        base = connectivity.original_start_index
+        if base is None:
+            base = 1
+        real_counts = (
+            np.sum(faces != -1, axis=1)
+            if faces.ndim == 2
+            else np.array([np.sum(faces != -1)])
+        )
+        unsupported = sorted(
+            {int(c) for c in np.unique(real_counts) if c not in (3, 4)}
+        )
+        if unsupported:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: Mike21 has only triangle (3) and quad (4) "
+                f"elements, but the mesh has face(s) with {unsupported} vertices"
+            )
+        node_x = np.asarray(mesh.node_x, dtype=np.float64)
+        node_y = np.asarray(mesh.node_y, dtype=np.float64)
+        node_z = _writer_node_z(dataset, len(node_x))
+        max_nodes = faces.shape[1] if faces.ndim == 2 else 3
+        type_code = _MIKE21_ELEMENT_TYPE.get(max_nodes, _MIKE21_ELEMENT_TYPE[3])
+        projection = _crs_to_projection(dataset)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(
+                f"{_DEFAULT_ITEM} {_DEFAULT_UNIT} {len(node_x)} {projection}\n"
+            )
+            for index in range(len(node_x)):
+                z = 0.0 if node_z is None else float(node_z[index])
+                handle.write(
+                    f"{index + base} {float(node_x[index])!r} "
+                    f"{float(node_y[index])!r} {z!r} {_DEFAULT_BOUNDARY}\n"
+                )
+            handle.write(f"{len(faces)} {max_nodes} {type_code}\n")
+            for row_index, row in enumerate(faces):
+                vertices = [int(v) + base for v in row if int(v) != -1]
+                padded = vertices + [_ELEMENT_PADDING] * (max_nodes - len(vertices))
+                ids = " ".join(str(v) for v in padded)
+                handle.write(f"{row_index + base} {ids}\n")
+
+
+def _writer_node_z(dataset, expected: int):
+    """Return the ``node_z`` column for a writer, or ``None`` when absent or mis-sized."""
+    if "node_z" not in dataset.data_variable_names:
+        return None
+    values = np.asarray(dataset.get("node_z").data, dtype=np.float64)
+    return values if values.shape == (expected,) else None
+
+
+def _crs_to_projection(dataset) -> str:
+    """Return the header projection field: the dataset CRS as WKT, else a placeholder.
+
+    A WKT is collapsed onto one line so it stays within the single-line header the reader
+    expects; a dataset with no resolvable CRS writes the DHI-internal ``LONG/LAT`` name,
+    which the reader maps back to ``None``.
+    """
+    wkt = getattr(dataset, "crs_wkt", None)
+    if wkt:
+        return " ".join(str(wkt).split())
+    return _PLACEHOLDER_PROJECTION
 
 
 def build_minimal_fixture_mike21(path: str) -> None:

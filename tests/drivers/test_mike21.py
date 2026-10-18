@@ -358,3 +358,81 @@ def test_mike21_blank_lines_between_records_are_skipped(tmp_path):
 
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
+
+
+class TestMike21Writer:
+    """Round-trip tests for the Mike21 .mesh writer (W4)."""
+
+    _COMMITTED = Path(__file__).parent.parent / "data" / "minimal.mesh"
+
+    def test_round_trip_preserves_mesh_and_node_z(self, tmp_path):
+        """Nodes, faces, the 1-based base and node_z survive read -> write -> read."""
+        before = Mike21Driver().read(str(self._COMMITTED))
+        out = tmp_path / "out.mesh"
+        before.to_file(str(out), driver="mike21")
+        after = Mike21Driver().read(str(out))
+        assert (after.mesh.n_node, after.mesh.n_face) == (
+            before.mesh.n_node,
+            before.mesh.n_face,
+        )
+        np.testing.assert_array_equal(
+            after.mesh.face_node_connectivity.data,
+            before.mesh.face_node_connectivity.data,
+        )
+        assert after.mesh.face_node_connectivity.original_start_index == 1
+        np.testing.assert_allclose(after.mesh.node_x, before.mesh.node_x)
+        np.testing.assert_allclose(after.get("node_z").data, before.get("node_z").data)
+
+    def test_triangle_in_a_quad_table_pads_with_zero(self, tmp_path):
+        """A mixed quad+triangle mesh round-trips, the triangle padded to the quad width."""
+        text = (
+            "100079 1000 5 LONG/LAT\n"
+            "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n"
+            "4 0.0 1.0 0.0 1\n5 2.0 0.0 0.0 1\n"
+            "2 4 21\n"
+            "1 1 2 3 4\n"
+            "2 2 5 3 0\n"
+        )
+        before = Mike21Driver().read(_write(tmp_path, text))
+        out = tmp_path / "out.mesh"
+        before.to_file(str(out), driver="mike21")
+        after = Mike21Driver().read(str(out))
+        np.testing.assert_array_equal(
+            after.mesh.face_node_connectivity.data,
+            before.mesh.face_node_connectivity.data,
+        )
+
+    def test_write_without_faces_is_refused(self, tmp_path):
+        """A faces-less dataset cannot be written as a Mike21 mesh."""
+        mesh = type("_Mesh", (), {"face_node_connectivity": None})()
+        ds = type("_Dataset", (), {"mesh": mesh})()
+        with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
+            Mike21Driver().write(ds, str(tmp_path / "out.mesh"))
+
+    def test_write_wide_face_is_refused(self, tmp_path):
+        """A face with more than four vertices (e.g. an E6T) is refused, not mislabelled.
+
+        Mike21 has only triangle and quad element types, so a 6-node face must raise
+        rather than be written with a triangle type code and six node ids.
+        """
+        conn = type(
+            "_Conn",
+            (),
+            {"data": np.array([[0, 1, 2, 3, 4, 5]]), "original_start_index": 1},
+        )()
+        mesh = type(
+            "_Mesh",
+            (),
+            {
+                "face_node_connectivity": conn,
+                "node_x": np.arange(6, dtype=float),
+                "node_y": np.arange(6, dtype=float),
+            },
+        )()
+        ds = type("_Dataset", (), {"mesh": mesh, "data_variable_names": ()})()
+        with pytest.raises(FileFormatNotSupportedError, match="triangle"):
+            Mike21Driver().write(ds, str(tmp_path / "out.mesh"))
+
+    def test_declares_write_mesh(self):
+        """The driver advertises the write_mesh capability."""
+        assert "write_mesh" in Mike21Driver.capabilities

@@ -133,6 +133,10 @@ xmdf = "pyramids_mesh.drivers.xmdf:XmdfDriver"
 tuflowfv = "pyramids_mesh.drivers.tuflowfv:TuflowFvDriver"
 dfsu = "pyramids_mesh.drivers.dhi:DfsuDriver"
 esri_tin = "pyramids_mesh.drivers.esri:EsriTinDriver"
+xdmf = "pyramids_mesh.drivers.xdmf:XdmfDriver"
+flo2d = "pyramids_mesh.drivers.flo2d:Flo2dDriver"
+hecras = "pyramids_mesh.drivers.hecras:HecRasDriver"
+adcirc = "pyramids_mesh.drivers.adcirc:AdcircDriver"
 
 
 [project.urls]

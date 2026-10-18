@@ -644,3 +644,67 @@ def test_dat_old_format_unknown_card_is_ignored(mesh, tmp_path):
     attached = _attach(mesh, tmp_path, text, name="depth.dat")
 
     assert attached.get("depth").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]
+
+
+_DATA = Path(__file__).parent.parent / "data"
+
+
+class TestDatWriter:
+    """The DAT writer round-trips a results file through attach -> write -> attach."""
+
+    @staticmethod
+    def _attached():
+        """The committed 2DM mesh with the committed DAT results attached."""
+        mesh = UgridDataset.read_file(str(_DATA / "minimal.2dm"))
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return mesh.attach_data(str(_DATA / "minimal.dat"))
+
+    def test_capabilities_declare_write(self):
+        """The driver advertises write_mesh and write_data beside the reader caps."""
+        assert {"write_mesh", "write_data"} <= set(DatDriver.capabilities)
+
+    def test_round_trip_preserves_values_name_and_times(self, tmp_path):
+        """depth's values, location, shape and time coordinate survive write -> re-read."""
+        attached = self._attached()
+        single = attached.drop_variables(["material", "node_z"])  # DAT is one location
+        out = tmp_path / "round.dat"
+        single.to_file(str(out), driver="dat")
+
+        reloaded = UgridDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
+            str(out)
+        )
+        before, after = attached.get("depth"), reloaded.get("depth")
+        assert after.location == before.location == "node"
+        assert after.data.shape == before.data.shape == (2, 4)
+        assert np.allclose(after.data, before.data)
+        assert np.allclose(
+            after.attributes["time_values"], before.attributes["time_values"]
+        )
+
+    def test_mixed_node_and_face_locations_is_refused(self, tmp_path):
+        """A dataset mixing node (depth/node_z) and face (material) variables is refused."""
+        attached = self._attached()  # material is face, depth/node_z are node
+        with pytest.raises(FileFormatNotSupportedError, match="one location"):
+            DatDriver().write(attached, str(tmp_path / "mixed.dat"))
+
+    def test_no_data_variables_is_refused(self, tmp_path):
+        """A bare mesh with no data variables cannot be written as a DAT."""
+        mesh = UgridDataset.read_file(str(_DATA / "minimal.2dm"))
+        bare = mesh.drop_variables(list(mesh.data_variable_names))
+        with pytest.raises(FileFormatNotSupportedError, match="no data variables"):
+            DatDriver().write(bare, str(tmp_path / "empty.dat"))
+
+    def test_ndigits_option_sets_value_precision(self, tmp_path):
+        """The ndigits option rounds the written values to N significant digits."""
+        single = self._attached().drop_variables(["material", "node_z"])
+        out = tmp_path / "rounded.dat"
+        single.to_file(str(out), driver="dat", ndigits=3)
+        reloaded = UgridDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
+            str(out)
+        )
+        assert np.allclose(
+            reloaded.get("depth").data, single.get("depth").data, atol=1e-2
+        )

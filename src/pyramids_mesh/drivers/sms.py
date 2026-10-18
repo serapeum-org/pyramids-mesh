@@ -619,7 +619,11 @@ class DatDriver(BaseDriver):
     api_version = MESH_DRIVER_API_VERSION
     # `needs_mesh` is what makes `read_data` the entry point rather than `read`: the
     # format carries no topology, so the mesh has to come from the caller.
-    capabilities = frozenset({"needs_mesh", "read_data"})
+    # `write_mesh` is declared because `UgridDataset.to_file` dispatches every driver
+    # write through it; `write()` here writes the per-element value groups, not a mesh
+    # (DAT carries no topology), and `write_data` marks that the data variables are
+    # persisted so `to_file` does not warn that they were dropped.
+    capabilities = frozenset({"needs_mesh", "read_data", "write_mesh", "write_data"})
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file looks like either DAT dialect.
@@ -721,6 +725,113 @@ class DatDriver(BaseDriver):
             # TS <time> blocks, with no BEGSCL/ENDDS/NC/NAME cards.
             variables = _DatOldScan(path, n_node=n_node).build()
         return self._build_data_variables(variables, dataset.mesh_name)
+
+    def write(self, dataset, path: str, **options) -> None:
+        """Write the dataset's data variables as an SMS ASCII DAT results file.
+
+        DAT is results-only -- the file carries no topology. ``to_file`` dispatches every
+        driver write through ``write_mesh``/``write()``, so the driver declares
+        ``write_mesh`` to be reachable at all; this method writes the per-element value
+        groups, not a mesh. Each non-``_active`` data variable becomes a ``BEGSCL`` group,
+        and a ``<name>_active`` sibling, when present, is written as the per-step active
+        block (``istat`` = 1), mirroring what the reader's ``_pull_active`` expects.
+
+        A DAT ties its values to a single location: node-located variables declare ``ND``,
+        face-located ones ``NC``. A dataset mixing the two is refused, because the reader
+        keeps one location per file.
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` whose data variables
+                are written.
+            path: The output ``.dat`` path.
+            **options: ``ndigits`` (or ``precision``) sets the value format -- an int number
+                of significant digits, or the default ``"repr"`` for an exact float64
+                round-trip.
+
+        Raises:
+            FileFormatNotSupportedError: If the dataset carries no data variables, or its
+                variables mix node and face locations (a DAT file is single-location).
+        """
+        names = list(dataset.data_variable_names)
+        actives = {
+            name[: -len("_active")]: dataset.get(name)
+            for name in names
+            if name.endswith("_active")
+        }
+        groups = [
+            (name, dataset.get(name)) for name in names if not name.endswith("_active")
+        ]
+        if not groups:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no data variables to write as a "
+                f"DAT results file"
+            )
+        locations = {var.location for _name, var in groups}
+        if len(locations) > 1:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: a DAT file ties its values to one location, but "
+                f"the dataset mixes {sorted(locations)}; write node and face variables to "
+                f"separate files"
+            )
+        location = locations.pop()
+        n_node = int(dataset.mesh.n_node)
+        n_face = int(dataset.mesh.n_face)
+        fmt = _dat_value_formatter(
+            options.get("ndigits", options.get("precision", "repr"))
+        )
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(f"{_DATASET}\n{_OBJTYPE} mesh2d\n")
+            for name, variable in groups:
+                self._write_group(
+                    handle,
+                    name,
+                    variable,
+                    actives.get(name),
+                    location,
+                    n_node,
+                    n_face,
+                    fmt,
+                )
+
+    @staticmethod
+    def _write_group(
+        handle, name, variable, active, location, n_node, n_face, fmt
+    ) -> None:
+        """Write one scalar ``BEGSCL`` group: header cards then a ``TS`` block per step."""
+        handle.write(f"{_BEGIN_SCALAR}\n")
+        if location == "node":
+            handle.write(f"{_NODE_COUNT} {n_node}\n")
+        else:
+            handle.write(f"{_CELL_COUNT} {n_face}\n")
+        handle.write(f"{_NAME} {name}\n{_TIME_UNITS} SECONDS\n")
+        data = np.asarray(variable.data, dtype=np.float64)
+        if data.ndim == 1:
+            data = data[np.newaxis, :]
+        times = variable.attributes.get("time_values")
+        if times is None:
+            times = list(range(len(data)))
+        active_data = None
+        if active is not None:
+            active_data = np.asarray(active.data)
+            if active_data.ndim == 1:
+                active_data = active_data[np.newaxis, :]
+        for step, moment in enumerate(times):
+            istat = 1 if active_data is not None else 0
+            handle.write(f"{_TIMESTEP} {istat} {fmt(float(moment))}\n")
+            if istat:
+                for flag in active_data[step]:
+                    handle.write(f"{int(round(float(flag)))}\n")
+            for value in data[step]:
+                handle.write(f"{fmt(float(value))}\n")
+        handle.write(f"{_END_DATASET}\n")
+
+
+def _dat_value_formatter(precision):
+    """Return a value formatter: exact ``repr`` by default, else N significant digits."""
+    if precision in (None, "repr"):
+        return lambda value: repr(float(value))
+    digits = int(precision)
+    return lambda value: f"{float(value):.{digits}g}"
 
 
 def build_minimal_fixture_dat(path: str) -> None:

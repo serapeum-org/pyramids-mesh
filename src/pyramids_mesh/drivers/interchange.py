@@ -155,7 +155,7 @@ class PlyDriver(BaseDriver):
     long_name = "Stanford PLY"
     suffixes = (".ply",)
     api_version = MESH_DRIVER_API_VERSION
-    capabilities = frozenset({"read_mesh", "read_data"})
+    capabilities = frozenset({"read_mesh", "read_data", "write_mesh", "write_data"})
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file opens with the ``ply`` magic line."""
@@ -178,6 +178,47 @@ class PlyDriver(BaseDriver):
                 property type, a face of fewer than three vertices, or a truncated body.
         """
         return _PlyReader(path).build()
+
+    def write(self, dataset, path: str, **options) -> None:
+        """Write a mesh back to a PLY file.
+
+        Emits a ``vertex`` element of ``double x/y/z`` and a ``face`` element of a
+        ``property list uchar int vertex_indices``, in ASCII (the default) or either
+        binary byte order. Node elevation is taken from a node-located ``node_z``
+        variable when present, else ``0``; face indices stay 0-based, as PLY requires.
+
+        Arbitrary per-vertex properties the reader surfaced as node variables (colours,
+        normals) are **not** written back -- only ``x``/``y``/``z`` -- so a round trip is
+        geometrically faithful but drops those extras (design sections 6 and 20.3).
+
+        Args:
+            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            path: The output ``.ply`` path.
+            **options: ``format`` selects ``"ascii"`` (default),
+                ``"binary_little_endian"`` or ``"binary_big_endian"``.
+
+        Raises:
+            FileFormatNotSupportedError: If the dataset carries no faces, or ``format`` is
+                not one of the three PLY encodings.
+        """
+        mesh = dataset.mesh
+        connectivity = mesh.face_node_connectivity
+        if connectivity is None or connectivity.data is None:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: the dataset has no face connectivity to write "
+                f"as a PLY mesh"
+            )
+        fmt = options.get("format", "ascii")
+        if fmt not in _PLY_FORMATS:
+            raise FileFormatNotSupportedError(
+                f"cannot write {path!r}: unknown PLY format {fmt!r}; use 'ascii', "
+                f"'binary_little_endian' or 'binary_big_endian'"
+            )
+        node_x = np.asarray(mesh.node_x, dtype=np.float64)
+        node_y = np.asarray(mesh.node_y, dtype=np.float64)
+        node_z = _writer_node_z(dataset, len(node_x))
+        faces = np.asarray(connectivity.data)
+        _write_ply(path, fmt, node_x, node_y, node_z, faces)
 
 
 def build_minimal_fixture_ply(path: str) -> None:
@@ -710,6 +751,51 @@ def _pad_faces(rows: list[list[int]], path: str) -> np.ndarray:
 def _struct_char(code: str) -> str:
     """Return the :mod:`struct` format character for a numpy integer type code."""
     return {"i1": "b", "u1": "B", "i2": "h", "u2": "H", "i4": "i", "u4": "I"}[code]
+
+
+def _writer_node_z(dataset, expected: int):
+    """Return the ``node_z`` column for a writer, or ``None`` when absent or mis-sized."""
+    if "node_z" not in dataset.data_variable_names:
+        return None
+    values = np.asarray(dataset.get("node_z").data, dtype=np.float64)
+    return values if values.shape == (expected,) else None
+
+
+def _write_ply(path, fmt, node_x, node_y, node_z, faces) -> None:
+    """Write a PLY mesh in ``fmt`` (ascii, or binary little/big endian).
+
+    Vertices are written as ``double x/y/z``; each face as a ``uchar`` count then its
+    ``int32`` 0-based vertex indices (``-1`` fill dropped).
+    """
+    header = (
+        f"ply\nformat {fmt} 1.0\n"
+        f"element vertex {len(node_x)}\n"
+        f"property double x\nproperty double y\nproperty double z\n"
+        f"element face {len(faces)}\n"
+        f"property list uchar int vertex_indices\n"
+        f"end_header\n"
+    )
+    rows = [[int(v) for v in row if int(v) != -1] for row in faces]
+    if fmt == "ascii":
+        with open(path, "w", encoding="ascii") as handle:
+            handle.write(header)
+            for index in range(len(node_x)):
+                z = 0.0 if node_z is None else float(node_z[index])
+                handle.write(
+                    f"{float(node_x[index])!r} {float(node_y[index])!r} {z!r}\n"
+                )
+            for row in rows:
+                handle.write(f"{len(row)} " + " ".join(str(v) for v in row) + "\n")
+        return
+    endian = _PLY_FORMATS[fmt]
+    z_col = np.zeros(len(node_x)) if node_z is None else np.asarray(node_z, np.float64)
+    vertices = np.column_stack([node_x, node_y, z_col]).astype(f"{endian}f8")
+    with open(path, "wb") as handle:
+        handle.write(header.encode("ascii"))
+        handle.write(vertices.tobytes())
+        for row in rows:
+            handle.write(struct.pack(f"{endian}B", len(row)))
+            handle.write(np.asarray(row, dtype=f"{endian}i4").tobytes())
 
 
 def _as_float(value: str, what: str, path: str) -> float:

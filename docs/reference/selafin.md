@@ -9,7 +9,7 @@ variable's per-timestep slab is left behind a loader that seeks straight to it.
 |---|---|
 | Driver name | `selafin` |
 | Suffixes | `.slf`, `.srf`, `.ser`, `.sel` |
-| Capabilities | `read_mesh`, `read_data`, `lazy_data` |
+| Capabilities | `read_mesh`, `read_data`, `lazy_data`, `write_mesh`, `write_data` |
 | Extra required | none |
 | Returns | `UgridDataset` |
 
@@ -18,7 +18,22 @@ from pyramids.netcdf.ugrid import UgridDataset
 
 dataset = UgridDataset.read_file("model.slf")
 depth = dataset.get("WATER DEPTH").data   # read now; deferred until this line
+
+dataset.to_file("copy.slf", driver="selafin")                 # lossless double precision
+dataset.to_file("small.slf", driver="selafin", precision="single")  # smaller, lossy
 ```
+
+## Writing
+
+The writer emits the same Fortran-record layout the reader parses, so a read → write →
+read round trip preserves the nodes, the connectivity (and its recorded 1-based `IKLE`
+base), the variable names and units, and the time steps.
+
+- **Only node-located variables are written** — the format has no face-located storage.
+- **Every face must share a vertex count**: Selafin stores a single element width (`NDP`),
+  so a mixed tri/quad mesh is refused rather than written with a scrambled `IKLE`.
+- **`precision`** is `"double"` (the default — `float64`, a lossless round trip) or
+  `"single"` (`float32`, smaller but lossy). A dataset with no face connectivity is refused.
 
 ## How it is read
 
