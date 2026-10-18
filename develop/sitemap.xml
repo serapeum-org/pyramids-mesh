@@ -65,7 +65,19 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/abaqus/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/adcirc/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/avsucd/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/cgns/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -81,6 +93,10 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/esmf/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/esri-tin/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -89,11 +105,23 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/feflow/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/flac3d/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/flo2d/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/fvcom/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/geos/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -109,6 +137,18 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/kratos/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/med/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/medit/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/mike21/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -117,7 +157,27 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/modflow6_disu/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/mpas/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/nastran/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/netgen/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/obj/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/openfoam/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
@@ -129,6 +189,10 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/scrip/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/selafin/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -137,11 +201,19 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/stl/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/su2/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/sww/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids-mesh/develop/reference/tecplot/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
