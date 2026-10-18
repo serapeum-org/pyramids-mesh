@@ -288,6 +288,25 @@ class _HecRasReader:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} flow area {area!r} reports {count} cells"
             )
+        # Cross-check the bound row against the area's own geometry: its real-cell count
+        # cannot exceed the total cells it describes (one Cells Face and Orientation Info
+        # row per cell). The subgroup order is only a stand-in for the unreadable
+        # Attributes-table order, so this catches a mis-bound row -- e.g. were GDAL ever to
+        # return subgroups sorted rather than in definition order -- and refuses rather than
+        # silently reading another area's cells.
+        flow_area = areas.OpenGroup(area)
+        if _CELL_FACE_INFO in flow_area.GetMDArrayNames():
+            total = int(
+                np.asarray(flow_area.OpenMDArray(_CELL_FACE_INFO).ReadAsArray()).shape[
+                    0
+                ]
+            )
+            if count > total:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} bound flow area {area!r} to a {_CELL_INFO!r} row of "
+                    f"{count} real cells, but the area describes only {total}; the "
+                    f"subgroup order does not match the {_CELL_INFO!r} order"
+                )
         return start, count
 
     def _nodes(self, flow_area) -> tuple[np.ndarray, np.ndarray]:

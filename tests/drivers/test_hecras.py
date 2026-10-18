@@ -21,6 +21,7 @@ from pyramids_mesh.drivers.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasRea
 _DATA = Path(__file__).parent.parent / "data" / "hecras"
 _PLAN = _DATA / "BaldEagleDamBrk.p18.hdf"
 _FACE_FP = "Faces FacePoint Indexes"
+_CELL_FACE_INFO = "Cells Face and Orientation Info"
 
 
 def _read():
@@ -255,6 +256,25 @@ class TestReaderDefensiveBranches:
             arrays={"Cell Info": [[0, 9]]},  # 1 row for 2 areas
         )
         with pytest.raises(FileFormatNotSupportedError, match="Cell Info"):
+            _reader()._cell_slice(areas, "A")
+
+    def test_cell_slice_refuses_a_row_count_exceeding_the_area_geometry(self):
+        """A bound row whose real-cell count exceeds the area's own cells is refused.
+
+        This catches a mis-bound ``Cell Info`` row (e.g. if the subgroup order diverged
+        from the row order) rather than silently reading another area's cells: the area's
+        own ``Cells Face and Orientation Info`` describes only 2 cells, so a row claiming 5
+        real cells is impossible for it.
+        """
+        areas = _Grp(
+            groups={
+                "A": _Grp(
+                    arrays={_FACE_FP: [[0, 1]], _CELL_FACE_INFO: [[0, 1], [1, 1]]}
+                )
+            },
+            arrays={"Cell Info": [[0, 5]]},
+        )
+        with pytest.raises(FileFormatNotSupportedError, match="does not match"):
             _reader()._cell_slice(areas, "A")
 
     def test_centres_absent_cell_points_returns_none(self):
