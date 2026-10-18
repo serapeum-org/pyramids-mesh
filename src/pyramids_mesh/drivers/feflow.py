@@ -77,9 +77,11 @@ class FeflowDriver(BaseDriver):
         - **Node ids are 1-based.** Connectivity is resolved to 0-based and the base
           recorded for a writer. A mixed-valence deck pads short rows; a single-valence
           deck (the triangular test fixture) pads nothing.
-        - **No CRS.** A ``.fem`` file carries no spatial-reference authority, so ``crs`` is
-          ``None`` rather than guessed. The ``SCALE`` transform is applied to the
-          coordinates as the file specifies.
+        - **No CRS.** A ``.fem`` file may carry an optional ``GeoCS`` block (a
+          ``GeoCS_crswkt`` authority string); this reader does not interpret it, so ``crs``
+          is ``None``. Node coordinates are returned in the file's own frame: the ``SCALE``
+          statement's per-axis scale/offset is applied to recover them from the stored
+          ``COOR`` values, as the FEFLOW format specifies.
         - **``.fem`` is shared with Nastran.** ``can_open`` keys on the ``PROBLEM:`` /
           ``CLASS`` signature so a Nastran deck sharing the suffix is declined rather than
           mis-parsed.

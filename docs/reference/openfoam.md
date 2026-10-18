@@ -7,7 +7,7 @@ single file. Read through plain text parsing; no declared dependency.
 | | |
 |---|---|
 | Driver name | `openfoam` |
-| Suffixes | none (directory of extensionless components) |
+| Suffixes | `.foam` (the ParaView case marker; a `polyMesh` directory is also accepted) |
 | Capabilities | `read_mesh` |
 | Extra required | none |
 | Returns | `UgridDataset` |
