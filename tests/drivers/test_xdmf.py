@@ -21,6 +21,7 @@ from pyramids_mesh.drivers.xdmf import (
     XdmfDriver,
     _XdmfReader,
     _read_md_array,
+    _reshape_by_dimensions,
     _resolve_reference,
 )
 
@@ -188,3 +189,23 @@ def test_variables_without_a_collection_is_empty():
     """With no temporal ``Collection`` grid, there are no result variables."""
     reader = _XdmfReader(str(_XDMF), lazy=True)
     assert reader._variables([], n_node=4, n_face=2) == {}
+
+
+class TestReshapeByDimensions:
+    """``_reshape_by_dimensions`` honours the XDMF ``Dimensions``, not the stored rank."""
+
+    def test_reshapes_a_flat_array_to_the_declared_dimensions(self):
+        """A flat HDF5 array is reshaped to the authoritative 2D ``Dimensions``."""
+        out = _reshape_by_dimensions(np.arange(8), (4, 2))
+        assert out.shape == (4, 2)
+        assert out.tolist() == [[0, 1], [2, 3], [4, 5], [6, 7]]
+
+    def test_flat_connectivity_reshapes_by_dimensions(self):
+        """A flat 1D connectivity array becomes (n_face, nodes_per_face) via ``Dimensions``."""
+        out = _reshape_by_dimensions(np.arange(6), (2, 3))
+        assert out.shape == (2, 3)
+
+    def test_falls_back_to_native_2d_shape_without_dimensions(self):
+        """With no usable ``Dimensions`` a 2D-stored array is returned unchanged."""
+        arr = np.arange(8).reshape(4, 2)
+        assert _reshape_by_dimensions(arr, ()).shape == (4, 2)

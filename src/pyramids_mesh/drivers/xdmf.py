@@ -177,6 +177,37 @@ def _resolve_reference(text: str, base_dir: str) -> tuple[str, str]:
     return os.path.join(base_dir, file_part), dataset_part.lstrip("/")
 
 
+def _parse_dimensions(data_item: ET.Element) -> tuple[int, ...]:
+    """Return the ``DataItem`` ``Dimensions`` as a tuple of ints, or ``()`` when absent."""
+    try:
+        return tuple(int(token) for token in data_item.get("Dimensions", "").split())
+    except ValueError:
+        return ()
+
+
+def _reshape_by_dimensions(array: np.ndarray, dims: tuple[int, ...]) -> np.ndarray:
+    """Reshape an HDF5 array to the XDMF ``Dimensions``, not its stored rank.
+
+    XDMF holds the authoritative shape in the ``DataItem`` ``Dimensions`` attribute while the
+    heavy data is often stored flat (1-D). When ``dims`` is a 2-D shape whose product matches
+    the array size, the array is reshaped to it; otherwise the array's native shape is kept
+    (a 1-D array with no usable ``Dimensions`` becomes a single row).
+
+    Args:
+        array: The raw array read from HDF5 (flat or already shaped).
+        dims: The parsed ``Dimensions`` ints, or ``()`` when the attribute is absent.
+
+    Returns:
+        np.ndarray: The array shaped ``(rows, cols)``.
+    """
+    flat = np.asarray(array)
+    if len(dims) == 2 and dims[0] * dims[1] == flat.size:
+        return flat.reshape(dims[0], dims[1])
+    if flat.ndim >= 2:
+        return flat
+    return flat.reshape(1, -1)
+
+
 class _XdmfReader:
     """One XDMF index: parse the XML, read the mesh from HDF5, map the result slabs."""
 
@@ -233,8 +264,9 @@ class _XdmfReader:
         """Read node coordinates (and ``node_z`` for ``XYZ``) from the mesh grid."""
         geometry = mesh_grid.find("Geometry")
         geometry_type = geometry.get("GeometryType", "XY")
-        coords = self._read(geometry.find("DataItem"))
-        coords = np.asarray(coords, dtype=np.float64).reshape(-1, coords.shape[-1])
+        data_item = geometry.find("DataItem")
+        coords = np.asarray(self._read(data_item), dtype=np.float64)
+        coords = _reshape_by_dimensions(coords, _parse_dimensions(data_item))
         node_x = coords[:, 0].copy()
         node_y = coords[:, 1].copy()
         node_z = None
@@ -259,8 +291,9 @@ class _XdmfReader:
 
     def _topology(self, mesh_grid: ET.Element) -> np.ndarray:
         """Read the connectivity array (its type was already validated)."""
-        faces = self._read(mesh_grid.find("Topology").find("DataItem"))
-        return np.asarray(faces, dtype=np.int64).reshape(len(faces), -1)
+        data_item = mesh_grid.find("Topology").find("DataItem")
+        faces = np.asarray(self._read(data_item), dtype=np.int64)
+        return _reshape_by_dimensions(faces, _parse_dimensions(data_item))
 
     def _variables(
         self, grids: list, *, n_node: int, n_face: int
