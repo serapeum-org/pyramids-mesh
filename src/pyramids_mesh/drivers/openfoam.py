@@ -264,10 +264,10 @@ class OpenFoamDriver(BaseDriver):
             return False
         try:
             return self._sniff(poly_dir)
-        except Exception as error:  # noqa: BLE001 - the contract is never to raise
-            # Defensive: os.listdir on a readable directory does not raise, so this
-            # guard mirrors the base class's never-raise contract rather than a
-            # reachable path.
+        except Exception as error:  # noqa: BLE001  # pragma: no cover
+            # Unreachable: _poly_dir only returns an existing directory, so os.listdir
+            # in _sniff cannot raise; the guard just mirrors the base class's
+            # never-raise contract.
             warnings.warn(  # pragma: no cover
                 f"{self.name} failed to sniff {path!r} and is treated as declining it: "
                 f"{type(error).__name__}: {error}",

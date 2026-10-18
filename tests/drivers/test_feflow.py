@@ -197,6 +197,29 @@ def test_sniff_declines_a_path_that_cannot_be_opened(tmp_path):
     assert FeflowDriver()._sniff(str(tmp_path)) is False
 
 
+def test_sniff_skips_leading_blank_lines(tmp_path):
+    """Blank lines before the PROBLEM:/CLASS signature are skipped when sniffing."""
+    fem_path = tmp_path / "blank_lead.fem"
+    fem_path.write_text("\n   \nPROBLEM:\nCLASS (v.7.501)\n   5    1\n")
+    assert FeflowDriver()._sniff(str(fem_path)) is True
+
+
+def test_read_sections_drops_data_before_the_first_header(tmp_path):
+    """A data row before any keyword header has no current section and is dropped."""
+    fem_path = tmp_path / "stray.fem"
+    fem_path.write_text("  12345\nPROBLEM:\nCLASS\n   5   1\n")
+    sections = _FeflowReader(str(fem_path))._read_sections()
+    assert "PROBLEM" in sections
+    assert all("12345" not in rows for rows in sections.values())
+
+
+def test_sniff_declines_a_file_with_too_few_statements(tmp_path):
+    """A .fem with fewer than two non-blank statements fails the signature check."""
+    fem_path = tmp_path / "one_line.fem"
+    fem_path.write_text("PROBLEM:\n")
+    assert FeflowDriver()._sniff(str(fem_path)) is False
+
+
 def test_read_sections_reports_an_unreadable_path(tmp_path):
     """_read_sections turns an OS read error into a clean format error."""
     with pytest.raises(FileFormatNotSupportedError, match="could not be read"):

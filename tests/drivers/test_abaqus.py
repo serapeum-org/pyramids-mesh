@@ -230,3 +230,41 @@ def test_non_numeric_node_coordinate_is_refused(tmp_path):
 
     with pytest.raises(FileFormatNotSupportedError):
         AbaqusDriver()._parse(str(deck), lazy=False)
+
+
+def test_element_line_continues_across_a_trailing_comma(tmp_path):
+    """An ``*ELEMENT`` data line ending in a comma continues onto the next line."""
+    deck = tmp_path / "continued.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "2, 1.0, 0.0\n"
+        "3, 1.0, 1.0\n"
+        "4, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=CPS4\n"
+        "1, 1, 2,\n"
+        "3, 4\n",
+        encoding="utf-8",
+    )
+    parsed = AbaqusDriver()._parse(str(deck), lazy=False)
+    assert parsed.faces.shape == (1, 4)
+    assert parsed.faces[0].tolist() == [0, 1, 2, 3]
+
+
+def test_element_line_with_only_a_label_is_ignored(tmp_path):
+    """An element line carrying only a label (no node ids) builds no face."""
+    deck = tmp_path / "labelonly.inp"
+    deck.write_text(
+        "*NODE\n"
+        "1, 0.0, 0.0\n"
+        "2, 1.0, 0.0\n"
+        "3, 0.0, 1.0\n"
+        "*ELEMENT, TYPE=CPS3\n"
+        "1, 1, 2, 3\n"
+        "7\n",
+        encoding="utf-8",
+    )
+    parsed = AbaqusDriver()._parse(str(deck), lazy=False)
+    # The valid triangle is kept; the stray label-only line adds no face.
+    assert parsed.faces.shape == (1, 3)
+    assert parsed.faces[0].tolist() == [0, 1, 2]

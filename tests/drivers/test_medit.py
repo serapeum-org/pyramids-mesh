@@ -342,3 +342,32 @@ def test_medit_declares_read_mesh():
     """The driver advertises exactly the read_mesh capability."""
     assert "read_mesh" in MeditDriver.capabilities
     assert "needs_mesh" not in MeditDriver.capabilities
+
+
+def test_medit_can_open_skips_leading_blank_lines(tmp_path):
+    """A blank line before the signature is skipped, so the sniff still accepts."""
+    path = _write(tmp_path, "\n\n" + _TWO_D_SQUARE())
+
+    assert MeditDriver().can_open(path) is True
+    assert MeditDriver().read(path).mesh.n_node == 4
+
+
+def test_medit_missing_vertices_block_is_refused(tmp_path):
+    """A file that declares a dimension but no ``Vertices`` block is refused."""
+    text = "MeshVersionFormatted 1\n" "Dimension 2\n" "End\n"
+    with pytest.raises(FileFormatNotSupportedError, match="declares no Vertices"):
+        MeditDriver().read(_write(tmp_path, text))
+
+
+def test_medit_vertices_before_dimension_is_refused(tmp_path):
+    """A ``Vertices`` block before ``Dimension`` is refused: the row width is unknown."""
+    text = "MeshVersionFormatted 1\n" "Vertices\n" "2\n" "0 0 1\n" "1 1 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="before its Dimension"):
+        MeditDriver().read(_write(tmp_path, text))
+
+
+def test_medit_non_integer_count_is_refused(tmp_path):
+    """A field that should be an integer but is a word is refused, naming it."""
+    text = _TWO_D_SQUARE().replace("Dimension 2", "Dimension two")
+    with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
+        MeditDriver().read(_write(tmp_path, text))

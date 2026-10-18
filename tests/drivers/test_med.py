@@ -22,6 +22,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids_mesh.drivers.med import (
     MedDriver,
+    _array_count,
     _MedReader,
     _med_corner_count,
     _pad_groups,
@@ -228,6 +229,46 @@ class TestReaderDefensiveBranches:
         faces, codes = _reader()._faces(step)
         assert faces.shape == (1, 4)
         assert codes == ["QU4"]
+
+    def test_coordinates_of_a_2d_mesh_have_no_node_z(self):
+        """A 2D COO block (dim < 3) yields node_z None."""
+        # coordinate-major: x = [0, 1, 2], y = [3, 4, 5]
+        coo = _Arr([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], 3)
+        step = _Grp(groups={"NOE": _Grp(arrays={"COO": coo})})
+        node_x, node_y, node_z = _reader()._coordinates(step)
+        assert node_z is None
+        assert node_x.tolist() == [0.0, 1.0, 2.0]
+        assert node_y.tolist() == [3.0, 4.0, 5.0]
+
+    def test_coordinates_with_all_zero_z_is_dropped(self):
+        """A 3D COO block whose z column is all zero drops node_z."""
+        # coordinate-major: x = [0, 1], y = [3, 4], z = [0, 0]
+        coo = _Arr([0.0, 1.0, 3.0, 4.0, 0.0, 0.0], 2)
+        step = _Grp(groups={"NOE": _Grp(arrays={"COO": coo})})
+        _, _, node_z = _reader()._coordinates(step)
+        assert node_z is None
+
+    def test_sort_group_skips_an_empty_group(self):
+        """A recognised group whose NOD carries no elements is skipped."""
+        surface: list = []
+        volume: list = []
+        mai = _Grp(groups={"QU4": _Grp(arrays={"NOD": _Arr([], 0)})})
+        _reader()._sort_group(mai, "QU4", surface, volume)
+        assert surface == []
+        assert volume == []
+
+
+def test_array_count_without_an_nbr_attribute_is_refused():
+    """An array carrying no NBR attribute cannot report a count and is refused."""
+
+    class _NoCount:
+        """A stand-in array exposing only a non-NBR attribute."""
+
+        def GetAttributes(self):
+            return [_Attr("FOO", 1)]
+
+    with pytest.raises(FileFormatNotSupportedError, match="no 'NBR'"):
+        _array_count(_NoCount())
 
 
 def test_pad_groups_pads_triangles_to_the_widest_block():

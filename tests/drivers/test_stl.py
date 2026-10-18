@@ -115,6 +115,22 @@ class TestStlAscii:
         assert rows[0][0] == 0
         assert rows[1][0] == 0
 
+    def test_ascii_blank_lines_are_skipped(self, tmp_path):
+        """Blank lines between facets are skipped rather than parsed as records."""
+        text = (
+            "solid square\n"
+            "\n"
+            "facet normal 0 0 1\n outer loop\n"
+            "  vertex 0 0 0\n  vertex 1 0 0\n  vertex 1 1 0\n"
+            " endloop\n endfacet\n"
+            "\n"
+            "endsolid square\n"
+        )
+        dataset = _read(_write_text(tmp_path, text))
+
+        assert dataset.mesh.n_node == 3
+        assert dataset.mesh.n_face == 1
+
     def test_binary_and_ascii_of_the_same_square_agree(self, tmp_path):
         """A binary write of the ASCII square's triangles welds to the same mesh."""
         triangles = [

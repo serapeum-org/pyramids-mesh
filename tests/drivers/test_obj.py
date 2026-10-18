@@ -13,7 +13,7 @@ import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.obj import ObjDriver
+from pyramids_mesh.drivers.obj import ObjDriver, _pad_faces
 
 _SAMPLE = Path(__file__).parent.parent / "data" / "obj" / "elephav.obj"
 
@@ -182,6 +182,11 @@ class TestObjErrors:
         text = "v 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 1.0 1.0 0.0\nf 1 2\n"
         with pytest.raises(FileFormatNotSupportedError, match="fewer than three"):
             ObjDriver().read(_write(tmp_path, text))
+
+    def test_pad_faces_guards_a_short_row_directly(self):
+        """`_pad_faces` defends its own width guard, reached directly past `build`."""
+        with pytest.raises(FileFormatNotSupportedError, match="fewer than three"):
+            _pad_faces([[0, 1, 2], [0, 1]], "surface.obj")
 
     def test_non_numeric_coordinate_is_refused(self, tmp_path):
         """A non-numeric vertex coordinate is refused, naming it."""

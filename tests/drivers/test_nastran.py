@@ -418,6 +418,27 @@ def test_grid_with_a_non_zero_coordinate_frame_is_refused(tmp_path):
         _read(_write(tmp_path, deck))
 
 
+def test_short_grid_card_is_refused(tmp_path):
+    """A GRID card short of its id and both planar coordinates is a format error."""
+    text = "GRID,1,0\nCTRIA3,1,0,1,2,3\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short GRID card"):
+        _read(_write(tmp_path, text, name="shortgrid.bdf"))
+
+
+def test_short_face_card_is_refused(tmp_path):
+    """A CTRIA3 card short of its id, property id and three node ids is refused."""
+    text = "GRID,1,0,0.0,0.0\nGRID,2,0,1.0,0.0\nGRID,3,0,0.0,1.0\nCTRIA3,1,0,1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short CTRIA3 record"):
+        _read(_write(tmp_path, text, name="shortface.bdf"))
+
+
+def test_non_integer_node_id_is_refused(tmp_path):
+    """A GRID id field that is not an integer names the card as a format error."""
+    text = "GRID,x,0,0.0,0.0\nCTRIA3,1,0,1,2,3\n"
+    with pytest.raises(FileFormatNotSupportedError, match="not an integer id"):
+        _read(_write(tmp_path, text, name="badid.bdf"))
+
+
 def test_sniff_reads_past_a_large_node_block(tmp_path):
     """A deck whose GRID block exceeds any fixed sniff window still opens (face follows)."""
     grids = "".join(f"GRID,{i},0,0.0,0.0,0.0\n" for i in range(1, 20001))

@@ -437,3 +437,78 @@ def test_varlocation_without_a_cellcentered_location(tmp_path):
     mesh = _read(path).mesh
     assert mesh.n_face == 1
     assert mesh.n_node == 3
+
+
+def test_preamble_keyword_without_an_equals_sign(tmp_path):
+    """A preamble keyword not followed by ``=`` is read, as Tecplot allows."""
+    path = _write(
+        tmp_path,
+        "no_eq.tec",
+        'VARIABLES "X" "Y"\n'
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    mesh = _read(path).mesh
+    assert mesh.n_face == 1
+    assert np.asarray(mesh.node_x).tolist() == [0.0, 1.0, 0.0]
+
+
+def test_unknown_preamble_keyword_at_end_is_refused(tmp_path):
+    """An unknown preamble keyword at end of file leaves no ZONE, so it is refused."""
+    path = _write(tmp_path, "trailing_key.tec", 'TITLE = "t"\nFOO\n')
+    with pytest.raises(FileFormatNotSupportedError, match="no ZONE header"):
+        TecplotDriver().read(str(path))
+
+
+def test_zone_header_running_to_end_without_data_is_truncated(tmp_path):
+    """A zone header that ends the file with no data is a clean truncation error."""
+    path = _write(
+        tmp_path,
+        "header_only.tec",
+        "VARIABLES = X Y\nZONE N=3 E=1 ZONETYPE=FETRIANGLE\n",
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="truncated"):
+        TecplotDriver().read(str(path))
+
+
+def test_zone_key_without_equals_and_a_non_varlocation_group(tmp_path):
+    """A zone key with no ``=`` reads, and a non-``VARLOCATION`` group is skipped."""
+    path = _write(
+        tmp_path,
+        "zone_variants.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE FETRIANGLE DT=(SINGLE SINGLE) DATAPACKING=POINT\n"
+        "0.0 0.0\n1.0 0.0\n0.0 1.0\n1 2 3\n",
+    )
+    dataset = _read(path)
+    assert dataset.mesh.n_face == 1
+    assert dataset.global_attributes["element_type"] == "FETRIANGLE"
+
+
+def test_varlocation_group_with_nested_parentheses(tmp_path):
+    """Nested parentheses inside a ``VARLOCATION`` group are tracked by bracket depth."""
+    path = _write(
+        tmp_path,
+        "varloc_nested.tec",
+        "VARIABLES = X Y A\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=BLOCK "
+        "VARLOCATION=([3]=CELLCENTERED (note))\n"
+        "0.0 1.0 0.0\n0.0 0.0 1.0\n9.0\n1 2 3\n",
+    )
+    dataset = _read(path)
+    assert dataset.mesh.n_face == 1
+    # The third variable is cell-centred, and only geometry is kept, so it is skipped.
+    assert list(dataset.data_variable_names) == []
+
+
+def test_unterminated_varlocation_group_is_refused(tmp_path):
+    """An unclosed ``VARLOCATION`` group reads to end of file and refuses cleanly."""
+    path = _write(
+        tmp_path,
+        "varloc_open.tec",
+        "VARIABLES = X Y\n"
+        "ZONE N=3 E=1 ZONETYPE=FETRIANGLE DATAPACKING=POINT "
+        "VARLOCATION=([1]=CELLCENTERED\n",
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="truncated"):
+        TecplotDriver().read(str(path))

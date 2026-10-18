@@ -14,6 +14,9 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import pytest
+
+from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.geos import GeosDriver
 from pyramids_mesh.drivers.scrip import ScripDriver
@@ -118,3 +121,20 @@ def test_faces_helper_computes_quads_by_index_arithmetic():
 
     faces = _GeosReader._faces((1, 2, 2))
     assert faces.tolist() == [[0, 1, 3, 2]]
+
+
+def test_require_refuses_a_missing_corner_array():
+    """``_require`` raises when a defining corner array is absent from the file."""
+    from pyramids_mesh.drivers.geos import _GeosReader
+
+    with pytest.raises(FileFormatNotSupportedError, match="not a GEOS grid"):
+        _GeosReader("absent.nc4")._require(set())
+
+
+def test_face_centres_absent_without_both_arrays():
+    """Only one of the centre arrays yields no centres rather than a half pair."""
+    from pyramids_mesh.drivers.geos import _GeosReader
+
+    face_x, face_y = _GeosReader._face_centres(None, {"corner_lons"})
+    assert face_x is None
+    assert face_y is None

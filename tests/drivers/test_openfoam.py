@@ -25,9 +25,11 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids_mesh.drivers.openfoam import (
     OpenFoamDriver,
     _foam_list,
+    _OpenFoamReader,
     _parse_boundary,
     _parse_faces,
     _parse_points,
+    _require_ascii,
 )
 
 _DATA = Path(__file__).parent.parent / "data" / "openfoam"
@@ -217,6 +219,41 @@ def test_boundary_range_past_the_face_list_is_refused(tmp_path):
         OpenFoamDriver().read(str(built))
 
 
+def test_boundary_naming_no_faces_is_refused(tmp_path):
+    """A boundary whose only patch names zero faces leaves no surface and is refused."""
+    points = "3\n(\n(0 0 0)\n(1 0 0)\n(1 1 0)\n)\n"
+    faces = "1\n(\n3(0 1 2)\n)\n"
+    boundary = (
+        "1\n(\n    empty\n    {\n        type empty;\n"
+        "        nFaces 0;\n        startFace 0;\n    }\n)\n"
+    )
+    built = _write_polymesh(
+        tmp_path / "polyMesh", points=points, faces=faces, boundary=boundary
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="names no faces"):
+        OpenFoamDriver().read(str(built))
+
+
+def test_compact_refuses_an_empty_boundary():
+    """_compact refuses directly when the boundary names no faces at all."""
+    with pytest.raises(FileFormatNotSupportedError, match="names no faces"):
+        _OpenFoamReader._compact(np.zeros((1, 3), dtype=np.float64), [])
+
+
+def test_poly_dir_of_a_nonexistent_path_is_none():
+    """A path that is neither a directory nor a file resolves to no polyMesh."""
+    assert OpenFoamDriver._poly_dir("no_such_openfoam_path_xyz") is None
+
+
+def test_poly_dir_foam_marker_without_a_case_polymesh_is_none(tmp_path, monkeypatch):
+    """A '.foam' marker whose case has no polyMesh directory resolves to None."""
+    monkeypatch.chdir(tmp_path)
+    # A bare filename: its dirname is empty, so none of the candidate directories
+    # (constant/polyMesh, polyMesh, the empty case) exists -- the loop finds nothing.
+    (tmp_path / "bare.foam").write_text("", encoding="utf-8")
+    assert OpenFoamDriver._poly_dir("bare.foam") is None
+
+
 class TestFoamParsers:
     """The FoamFile parsing helpers read counts, faces and patches correctly."""
 
@@ -254,3 +291,26 @@ class TestFoamParsers:
         )
         patches = _parse_boundary(text)
         assert patches == [("inlet", 10, 4), ("wall", 14, 2)]
+
+    def test_require_ascii_passes_text_with_no_foamfile_header(self):
+        """Text carrying no FoamFile header is accepted (format cannot be checked)."""
+        # no FoamFile{...} block -- the format guard returns without raising
+        _require_ascii("3\n(\n(0 0 0)\n)\n", "points")
+
+    def test_parse_faces_checks_the_total_face_count(self):
+        """A faces header whose count disagrees with the entries found is refused."""
+        # one valid entry, but the header declares three faces
+        text = "FoamFile{format ascii;}\n3\n(\n3(0 1 2)\n)\n"
+        with pytest.raises(FileFormatNotSupportedError, match="declares 3 faces"):
+            _parse_faces(text)
+
+    def test_parse_boundary_missing_startface_is_refused(self):
+        """A patch missing its startFace entry is refused."""
+        text = (
+            "FoamFile{format ascii;}\n1\n(\n    walls\n    {\n"
+            "        type wall;\n        nFaces 2;\n    }\n)\n"
+        )
+        with pytest.raises(
+            FileFormatNotSupportedError, match="missing startFace or nFaces"
+        ):
+            _parse_boundary(text)

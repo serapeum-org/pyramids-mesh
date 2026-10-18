@@ -25,6 +25,7 @@ from pyramids_mesh.drivers.cgns import (
     CgnsDriver,
     _CgnsReader,
     _cgns_corner_count,
+    _group_label,
     _pad_sections,
 )
 
@@ -240,6 +241,86 @@ class TestReaderDefensiveBranches:
         faces, element_types = _reader()._faces(zone)
         assert faces.shape == (1, 4)
         assert element_types == ["QUAD_4"]
+
+    def test_coordinates_without_coordinate_z_has_no_node_z(self):
+        """A 2D grid carrying no CoordinateZ group yields node_z None."""
+        grid = _Grp(
+            groups={
+                "CoordinateX": _Grp(data=[0.0, 1.0, 2.0]),
+                "CoordinateY": _Grp(data=[0.0, 1.0, 2.0]),
+            }
+        )
+        zone = _Grp(label="Zone_t", groups={"GridCoordinates": grid})
+        node_x, node_y, node_z = _reader()._coordinates(zone)
+        assert node_z is None
+        assert node_x.tolist() == [0.0, 1.0, 2.0]
+        assert node_y.tolist() == [0.0, 1.0, 2.0]
+
+    def test_coordinates_with_all_zero_coordinate_z_is_dropped(self):
+        """An all-zero CoordinateZ is a planar mesh, so node_z is dropped."""
+        grid = _Grp(
+            groups={
+                "CoordinateX": _Grp(data=[0.0, 1.0, 2.0]),
+                "CoordinateY": _Grp(data=[0.0, 1.0, 2.0]),
+                "CoordinateZ": _Grp(data=[0.0, 0.0, 0.0]),
+            }
+        )
+        zone = _Grp(label="Zone_t", groups={"GridCoordinates": grid})
+        _, _, node_z = _reader()._coordinates(zone)
+        assert node_z is None
+
+    def test_sort_section_skips_an_unrecognised_code(self):
+        """A non-MIXED code that is neither a surface nor a volume type is skipped."""
+        surface: list = []
+        volume: list = []
+        section = _Grp(
+            label="Elements_t",
+            groups={
+                "ElementRange": _Grp(data=[1, 1]),
+                "ElementConnectivity": _Grp(data=[1, 2]),
+            },
+            data=[3, 0],  # code 3 (BAR_2): a 1D type, neither surface nor volume
+        )
+        _reader()._sort_section(section, surface, volume)
+        assert surface == []
+        assert volume == []
+
+    def test_sort_section_skips_an_empty_range(self):
+        """A section whose ElementRange yields no elements is skipped."""
+        surface: list = []
+        volume: list = []
+        section = _Grp(
+            label="Elements_t",
+            groups={
+                "ElementRange": _Grp(data=[2, 1]),  # 1 - 2 + 1 == 0 elements
+                "ElementConnectivity": _Grp(data=[1, 2, 3, 4]),
+            },
+            data=[7, 0],  # QUAD_4
+        )
+        _reader()._sort_section(section, surface, volume)
+        assert surface == []
+        assert volume == []
+
+
+def test_group_label_swallows_a_read_error():
+    """A SIDS label attribute whose Read() raises is treated as an absent label."""
+
+    class _RaisingAttr:
+        """A stand-in GDAL attribute whose value read fails."""
+
+        def GetName(self):
+            return "label"
+
+        def Read(self):
+            raise RuntimeError("unreadable attribute")
+
+    class _Group:
+        """A stand-in group carrying a single raising label attribute."""
+
+        def GetAttributes(self):
+            return [_RaisingAttr()]
+
+    assert _group_label(_Group()) == ""
 
 
 def test_pad_sections_pads_triangles_to_the_widest_block():

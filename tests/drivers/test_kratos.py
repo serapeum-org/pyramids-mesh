@@ -240,6 +240,36 @@ def test_non_numeric_coordinate_is_refused(tmp_path):
         KratosDriver().read(_write(tmp_path, "badcoord.mdpa", text))
 
 
+def test_short_nodes_row_is_refused(tmp_path):
+    """A Nodes row short of its id and three coordinates is a format error."""
+    text = (
+        "Begin Nodes\n1 0.0 0.0\nEnd Nodes\n"
+        "Begin Elements Element2D3N\n1 1 1 2 3\nEnd Elements\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="short Nodes row"):
+        KratosDriver().read(_write(tmp_path, "shortnode.mdpa", text))
+
+
+def test_undefined_node_reference_is_refused(tmp_path):
+    """An element naming a node id no Nodes row defines is refused, not guessed."""
+    text = (
+        "Begin Nodes\n1 0.0 0.0 0.0\n2 1.0 0.0 0.0\n3 0.0 1.0 0.0\nEnd Nodes\n"
+        "Begin Elements Element2D3N\n1 1 1 2 99\nEnd Elements\n"
+    )
+    with pytest.raises(ValueError, match="node id 99"):
+        KratosDriver().read(_write(tmp_path, "badref.mdpa", text))
+
+
+def test_non_integer_element_node_id_is_refused(tmp_path):
+    """A non-integer node id in an element row names the block as a format error."""
+    text = (
+        "Begin Nodes\n1 0.0 0.0 0.0\n2 1.0 0.0 0.0\n3 0.0 1.0 0.0\nEnd Nodes\n"
+        "Begin Elements Element2D3N\n1 1 1 2 x\nEnd Elements\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="malformed ELEMENTS field"):
+        KratosDriver().read(_write(tmp_path, "badint.mdpa", text))
+
+
 def test_gapped_node_ids_are_resolved_by_position(tmp_path):
     """Gapped, out-of-order node ids resolve by position, not by value."""
     text = (

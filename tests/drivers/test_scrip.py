@@ -210,6 +210,21 @@ def test_array_units_is_empty_when_read_raises():
     assert _array_units(group, "grid_corner_lat") == ""
 
 
+def test_array_units_skips_a_non_units_attribute():
+    """An attribute whose name is not ``units`` is passed over to find the real one."""
+    group = _FakeGroup(
+        {
+            "grid_corner_lat": _FakeArray(
+                [
+                    _FakeAttribute("long_name", "latitude"),
+                    _FakeAttribute("units", "radians"),
+                ]
+            )
+        }
+    )
+    assert _array_units(group, "grid_corner_lat") == "radians"
+
+
 def test_node_coordinates_keep_full_precision_not_the_rounded_key():
     """Dedup rounds only the matching key; stored node coords keep full precision."""
     lon = np.array([[0.123456789, 1.0, 0.0]])
