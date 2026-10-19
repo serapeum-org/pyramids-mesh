@@ -115,7 +115,9 @@ class OffDriver(BaseDriver):
         """
         try:
             for tokens in _iter_significant(path):
-                return bool(tokens) and tokens[0].upper() == _OFF_MAGIC
+                # _iter_significant skips blank/comment lines, so the first yield is a
+                # non-empty token list; the first token of the first one must be OFF.
+                return tokens[0].upper() == _OFF_MAGIC
         except OSError:  # pragma: no cover - can_open checks isfile first
             return False
         return False
@@ -278,6 +280,13 @@ class _OffReader:
         for _ in range(n_faces):
             tokens = self._next(lines, "face block")
             count = _as_int(tokens[0], "face vertex count", self.path)
+            if count < 0:
+                # A negative count would slice from the tail (tokens[1:1+count]) and
+                # silently build a wrong face; refuse it. A count of 0/1/2 is left to the
+                # short-record and "fewer than three vertices" guards below/downstream.
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has a face with a negative leading vertex count {count}"
+                )
             if len(tokens) < 1 + count:
                 raise FileFormatNotSupportedError(
                     f"{self.path!r} has a short face record: the leading count {count} "

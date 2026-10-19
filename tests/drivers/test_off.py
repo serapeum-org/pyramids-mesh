@@ -216,3 +216,22 @@ class TestOffCanOpen:
         assert driver.can_open(str(empty)) is False
         assert driver.can_open(str(foreign)) is False
         assert driver.can_open(str(directory)) is False
+
+
+def test_negative_face_count_is_refused(tmp_path):
+    """A face line with a negative leading vertex count is refused, not mis-sliced."""
+    text = "OFF\n3 1 0\n0 0 0\n1 0 0\n0 1 0\n-2 0 1 2\n"
+    with pytest.raises(
+        FileFormatNotSupportedError, match="negative leading vertex count"
+    ):
+        OffDriver().read(_write(tmp_path, text))
+
+
+def test_cube_sample_warns_on_planar_degenerate_faces():
+    """The committed 3D cube projects to degenerate faces in the planar model, which warns.
+
+    This pins the documented limitation that a 3D surface is not geometrically faithful in
+    the 2D mesh model; the read still succeeds.
+    """
+    with pytest.warns(UserWarning, match="degenerate"):
+        assert OffDriver().read(str(_COMMENTS_OFF)).mesh.n_face == 6
