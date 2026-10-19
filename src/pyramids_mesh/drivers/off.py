@@ -133,8 +133,9 @@ class OffDriver(BaseDriver):
         Raises:
             FileFormatNotSupportedError: On a missing ``OFF`` magic, a missing or
                 malformed count line, a short vertex record, a face line shorter than its
-                declared vertex count, a face of fewer than three vertices, a non-numeric
-                field, or a file truncated before its header promises.
+                declared vertex count, a file declaring no faces, a face of fewer than
+                three vertices, a non-numeric field, or a file truncated before its
+                header promises.
         """
         return _OffReader(path).build()
 

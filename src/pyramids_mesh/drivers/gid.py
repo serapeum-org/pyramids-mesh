@@ -254,8 +254,9 @@ class GidDriver(BaseDriver):
                 omits ``ElemType``/``Nnode``, a record is short or non-numeric, a
                 ``Coordinates``/``Elements`` block is never closed, or the file declares
                 no surface or volumetric element.
-            ValueError: If an element references an undefined node id, or two nodes share
-                an id within one coordinate block.
+            ValueError: If an element references a node id no coordinate record defines.
+                A node id repeated in the coordinate block does not raise: the first
+                definition is kept (see the class limitations).
         """
         return _GidReader(path).build()
 
@@ -291,8 +292,7 @@ class _GidReader:
             FileFormatNotSupportedError: On a missing ``MESH`` header, a malformed header
                 or record, an unclosed block, or a file with no surface or volumetric
                 element.
-            ValueError: If an element references an undefined node id, or two nodes share
-                an id.
+            ValueError: If an element references a node id no coordinate record defines.
         """
         records = iter_records(self.path, comment=_COMMENT)
         for keyword, fields in records:
@@ -473,8 +473,7 @@ class _GidReader:
         Raises:
             FileFormatNotSupportedError: If the file carries no ``MESH`` header, or no
                 surface or volumetric element to build a face table from.
-            ValueError: If two nodes share an id, or an element references an undefined
-                node id.
+            ValueError: If an element references a node id no coordinate record defines.
         """
         if not self.header_seen:
             raise FileFormatNotSupportedError(
