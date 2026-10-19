@@ -67,6 +67,8 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "openfoam",
     "obj",
     "stl",
+    "off",
+    "gid",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

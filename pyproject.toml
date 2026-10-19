@@ -167,6 +167,8 @@ kratos = "pyramids_mesh.drivers.kratos:KratosDriver"
 openfoam = "pyramids_mesh.drivers.openfoam:OpenFoamDriver"
 obj = "pyramids_mesh.drivers.obj:ObjDriver"
 stl = "pyramids_mesh.drivers.stl:StlDriver"
+off = "pyramids_mesh.drivers.off:OffDriver"
+gid = "pyramids_mesh.drivers.gid:GidDriver"
 
 
 [project.urls]

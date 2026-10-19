@@ -65,6 +65,8 @@ its suffixes, capabilities and documented limitations:
 | `openfoam` | OpenFOAM polyMesh (CFD boundary) | [OpenFOAM polyMesh](openfoam.md) |
 | `obj` | OBJ surface (no georef) | [Wavefront OBJ](obj.md) |
 | `stl` | STL surface (no georef) | [STL](stl.md) |
+| `off` | OFF surface (no georef) | [OFF (Object File Format)](off.md) |
+| `gid` | GiD / Iber mesh (`.msh`) | [GiD / Iber](gid.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their

@@ -164,6 +164,8 @@ nav:
     - OpenFOAM polyMesh: reference/openfoam.md
     - Wavefront OBJ: reference/obj.md
     - STL: reference/stl.md
+    - OFF (Object File Format): reference/off.md
+    - GiD / Iber (.msh): reference/gid.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md
