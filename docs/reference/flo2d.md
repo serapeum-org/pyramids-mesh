@@ -44,5 +44,5 @@ depth = mesh.get("FLOW DEPTH")      # face-located, over time
   max-depth column is a static `max_floodplain_depth` face variable.
 - There is no elevation or CRS in the files read here, so `node_z` and `crs` are `None`.
 
-HDF5 is read through the GDAL multidimensional API over the GDAL vendored in `pyramids-gis`
+HDF5 is read through the GDAL multidimensional API over the GDAL vendored in `pyramids-core`
 (activated by `import pyramids`) — no declared dependency and no `h5py`.

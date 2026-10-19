@@ -43,7 +43,7 @@ wse = mesh.get("Maximum Water Surface")   # face-located, per cell
 - **Values are lazy** — the loader reopens the file per read, closing over a path.
 - There is no CRS in the arrays read here, so `crs` is `None`.
 
-HDF5 is read through the GDAL multidimensional API over the GDAL vendored in `pyramids-gis`
+HDF5 is read through the GDAL multidimensional API over the GDAL vendored in `pyramids-core`
 (activated by `import pyramids`) — no declared dependency and no `h5py`.
 
 ## API

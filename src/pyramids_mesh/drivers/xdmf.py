@@ -4,7 +4,7 @@ XDMF is an XML index over an HDF5 heavy-data payload: the ``.xdmf``/``.xmf`` fil
 mesh topology and geometry and, for a time series, the per-step result slabs, each pointing
 at an HDF5 dataset (``file.h5:/path``). So two parsers cooperate -- stdlib
 ``xml.etree.ElementTree`` for the index, and the GDAL multidimensional API (over the GDAL
-vendored in the ``pyramids-gis`` wheel, activated by ``import pyramids``) for the HDF5 arrays,
+vendored in the ``pyramids-core`` wheel, activated by ``import pyramids``) for the HDF5 arrays,
 with no declared dependency and no ``h5py``. See ``planning/design.md`` section 20.3.
 """
 

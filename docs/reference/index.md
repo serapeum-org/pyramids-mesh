@@ -4,7 +4,7 @@ The API surface of `pyramids_mesh`, generated from the docstrings by
 [mkdocstrings](https://mkdocstrings.github.io/).
 
 What this package publishes is **drivers**, not an API you call directly. A driver is registered
-with `pyramids-gis` through the `pyramids.mesh_drivers` entry-point group, so installing this
+with `pyramids-core` through the `pyramids.mesh_drivers` entry-point group, so installing this
 package is the whole integration: `pyramids` then dispatches a read of a format it does not handle
 itself to the driver that claims it.
 
@@ -65,6 +65,8 @@ its suffixes, capabilities and documented limitations:
 | `openfoam` | OpenFOAM polyMesh (CFD boundary) | [OpenFOAM polyMesh](openfoam.md) |
 | `obj` | OBJ surface (no georef) | [Wavefront OBJ](obj.md) |
 | `stl` | STL surface (no georef) | [STL](stl.md) |
+| `off` | OFF surface (no georef) | [OFF (Object File Format)](off.md) |
+| `gid` | GiD / Iber mesh (`.msh`) | [GiD / Iber](gid.md) |
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their

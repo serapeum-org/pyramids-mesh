@@ -5,7 +5,7 @@ wet/dry ``Active`` mask. A driver declares ``needs_mesh`` and attaches to a mesh
 caller already holds.
 
 HDF5 is read through the GDAL multidimensional API, over the GDAL vendored in the
-``pyramids-gis`` wheel and activated by ``import pyramids`` -- group traversal, attributes
+``pyramids-core`` wheel and activated by ``import pyramids`` -- group traversal, attributes
 and typed array reads, with no declared dependency and no ``h5py``. See
 ``planning/design.md`` section 20.3.
 """

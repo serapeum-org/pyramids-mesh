@@ -9,7 +9,7 @@ regridding and sampling, gap filling, mesh-to-vector conversion, and constructio
 from a raster or a polygon layer. What it cannot do is open other people's mesh
 files; that is this package's job, and its only job.
 
-Drivers are discovered by `pyramids-gis` through the `pyramids.mesh_drivers`
+Drivers are discovered by `pyramids-core` through the `pyramids.mesh_drivers`
 entry-point group, so `UgridDataset.read_file("model.slf")` resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
 (`[dhi]`) and are skipped at discovery when their extra
@@ -41,7 +41,7 @@ Examples:
         ('.2dm',)
 """
 
-# Import pyramids FIRST — before anything else, and keep it first. pyramids-gis
+# Import pyramids FIRST — before anything else, and keep it first. pyramids-core
 # bundles GDAL's osgeo SWIG bindings and native libs inside its platform wheel
 # and activates them on import (puts `_vendor/osgeo` on sys.path, sets
 # GDAL_DATA / PROJ_DATA, registers the Windows DLL directory). Any module here

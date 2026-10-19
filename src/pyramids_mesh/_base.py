@@ -606,7 +606,7 @@ class BaseDriver:
         the file carried beside the topology cannot come along. Rather than drop it
         silently, each omission is warned about by name. Carrying it properly needs
         ``Network1d`` to grow somewhere to put it, which is upstream work in
-        ``pyramids-gis``, not something to fake here.
+        ``pyramids-core``, not something to fake here.
 
         Raises:
             ValueError: If this read was routed to the 1D path but the parse holds no

@@ -12,7 +12,7 @@ variables. Read through the vendored GDAL multidimensional API (no declared depe
 | Returns | `UgridDataset` |
 
 TUFLOW FV results use `.nc`, which is not UGRID, so they are reached through `read_file`'s
-NetCDF-suffix fallback (`pyramids-gis` 0.69.0).
+NetCDF-suffix fallback (`pyramids-core` 0.69.0).
 
 ```python
 from pyramids.netcdf.ugrid import UgridDataset

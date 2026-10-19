@@ -10,7 +10,7 @@ node-located result variables over time.
 ``fort.14``/``fort.63`` have no file suffix and ``fort.63.nc`` ends ``.nc``, so -- as with
 the Esri TIN directory format -- the driver claims a component suffix and overrides
 ``can_open`` to recognise a ``fort.14`` file, or a directory holding one. The NetCDF
-results are read through the GDAL multidimensional API vendored in the ``pyramids-gis``
+results are read through the GDAL multidimensional API vendored in the ``pyramids-core``
 wheel and activated by ``import pyramids`` -- no declared ``netCDF4``/``h5py`` dependency.
 """
 

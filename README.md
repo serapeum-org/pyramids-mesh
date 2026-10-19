@@ -6,11 +6,11 @@
 
 **pyramids-mesh** reads and writes the file formats of hydrodynamic and hydraulic mesh models —
 2DM, Selafin, DFSU, XMDF, PLY and more — as [pyramids](https://github.com/serapeum-org/pyramids)
-UGRID objects. `pyramids-gis` already ships the mesh data model and every operation that follows
+UGRID objects. `pyramids-core` already ships the mesh data model and every operation that follows
 from a topology in hand; what it cannot do is open other people's mesh files. That is this
 package's job, and its only job.
 
-What `pyramids-gis` owns today, and this package therefore does not reimplement:
+What `pyramids-core` owns today, and this package therefore does not reimplement:
 
 - **The data model** — `Mesh2d`, `Network1d`, `UgridDataset`, `Connectivity`, and UGRID-compliant
   NetCDF read/write.
@@ -31,7 +31,7 @@ What this package adds — **file-format drivers, and nothing else**:
 - **Discovery** through the `pyramids.mesh_drivers` entry-point group, so
   `UgridDataset.read_file("model.slf")` just works once this package is installed.
 
-Every mesh *operation* belongs upstream in `pyramids-gis`. A driver parses a file and builds
+Every mesh *operation* belongs upstream in `pyramids-core`. A driver parses a file and builds
 `pyramids.netcdf.ugrid` objects; it implements no GIS, no interpolation and no analysis.
 
 > **Status** — `0.1.0` is the repository scaffold: packaging, CI, docs and the import contract. No
@@ -52,11 +52,11 @@ pixi install -e dev      # creates the dev environment
 pixi shell -e dev
 ```
 
-One extra is declared: `viz`, which adds the plotting stack (`pyramids-gis[viz]` + `cleopatra`) that
+One extra is declared: `viz`, which adds the plotting stack (`pyramids-core[viz]` + `cleopatra`) that
 mesh rendering goes through. The `dev` environment installs it, so the tests run against the same
 set an installed user gets.
 
-GDAL is **not** a dependency. The `pyramids-gis` wheel vendors its own osgeo bindings, and
+GDAL is **not** a dependency. The `pyramids-core` wheel vendors its own osgeo bindings, and
 `import pyramids` is what puts them on `sys.path` — which is why `import pyramids` is the first
 import in every module here.
 

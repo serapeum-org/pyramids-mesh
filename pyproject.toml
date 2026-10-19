@@ -27,15 +27,17 @@ classifiers = [
 requires-python = ">= 3.11, <4"
 
 # GDAL is deliberately absent. It is not a dependency of this package: the
-# `pyramids-gis` wheel vendors its own osgeo bindings and `import pyramids` is
+# `pyramids-core` wheel vendors its own osgeo bindings and `import pyramids` is
 # what puts them on `sys.path` (activate_vendored_osgeo). Nothing here installs
 # or pins a separate GDAL.
 dependencies = [
-    "pyramids-gis >=0.69.0",
+    # `pyramids-core` was renamed to `pyramids-core` in 0.70.0; the import stays
+    # `pyramids`. The floor is 0.70.0, the first release under the new name.
+    "pyramids-core >=0.70.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
-# subsystem requires all three, so they arrive with `pyramids-gis` — but that is
+# subsystem requires all three, so they arrive with `pyramids-core` — but that is
 # its requirement, not a promise to this package. Declare each one here the
 # moment a module under `src/pyramids_mesh/` imports it directly; inheriting a
 # peer's transitive dependency is what breaks when that peer reshuffles its own
@@ -167,6 +169,8 @@ kratos = "pyramids_mesh.drivers.kratos:KratosDriver"
 openfoam = "pyramids_mesh.drivers.openfoam:OpenFoamDriver"
 obj = "pyramids_mesh.drivers.obj:ObjDriver"
 stl = "pyramids_mesh.drivers.stl:StlDriver"
+off = "pyramids_mesh.drivers.off:OffDriver"
+gid = "pyramids_mesh.drivers.gid:GidDriver"
 
 
 [project.urls]
@@ -280,7 +284,7 @@ pyramids-mesh = { path = ".", editable = true }
 # deliberately in no pixi environment yet: each is wired into one when the driver
 # that needs it lands, so the lock never carries a dependency nothing imports.
 #
-# In particular there is no conda `gdal`: the pyramids-gis wheel vendors its own
+# In particular there is no conda `gdal`: the pyramids-core wheel vendors its own
 # osgeo and `import pyramids` prepends that directory to `sys.path`, so a conda
 # GDAL would be installed and never imported. A conda-forge feedstock build does
 # need a real GDAL, but that belongs in the recipe, which takes its run
@@ -318,7 +322,7 @@ dhi = { features = ["py314", "dev", "dhi"], solve-group = "dhi" }
 # and `docs` reuse `py314` rather than declaring a second 3.14 pin of their own.
 # Nothing else constrains them — without a pin their only bound is
 # `requires-python = ">= 3.11, <4"`, so they would float to whatever conda-forge
-# ships newest. pyramids-gis publishes cp311-cp314 wheels only, so once 3.15 is
+# ships newest. pyramids-core publishes cp311-cp314 wheels only, so once 3.15 is
 # out an unpinned re-lock would resolve an interpreter with no wheel and fall
 # back to the sdist, which vendors no osgeo — and with no conda GDAL underneath,
 # that is a hard import failure. Bump the pin when pyramids ships 3.15 wheels.

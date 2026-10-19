@@ -12,7 +12,7 @@ reads the two that define a floodplain grid and its results:
 
 The square cells are lifted to a **quad mesh**: four corner nodes per cell, shared corners
 deduplicated into one node table. HDF5 is read through the GDAL multidimensional API over
-the GDAL vendored in the ``pyramids-gis`` wheel (activated by ``import pyramids``), with no
+the GDAL vendored in the ``pyramids-core`` wheel (activated by ``import pyramids``), with no
 declared dependency and no ``h5py``. See ``planning/design.md`` sections 20.3 and 20.4.
 """
 

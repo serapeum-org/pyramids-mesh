@@ -17,22 +17,22 @@ This page covers installation of **pyramids-mesh** and its native dependencies.
 
 ### Runtime
 
-- `pyramids-gis >= 0.68.0` (provides the `pyramids` import and the mesh-driver registry; pulled from PyPI)
+- `pyramids-core >= 0.70.0` (provides the `pyramids` import and the mesh-driver registry; pulled from PyPI)
 - `numpy >= 2.0.0`
 
 GDAL is deliberately absent from that list. It is not a dependency of this package: the
-`pyramids-gis` wheel vendors its own osgeo bindings, and `import pyramids` is what puts them on
+`pyramids-core` wheel vendors its own osgeo bindings, and `import pyramids` is what puts them on
 `sys.path`. Nothing here installs or pins a separate GDAL.
 
 `scipy`, `shapely` and `geopandas` are not declared either. The UGRID subsystem requires all three,
-so they arrive with `pyramids-gis` — but that is its requirement, not a promise to this package.
+so they arrive with `pyramids-core` — but that is its requirement, not a promise to this package.
 Each gets declared here the moment a module under `src/pyramids_mesh/` imports it directly.
 
 ### Optional extras
 
 | Extra | Purpose | Pulls |
 |---|---|---|
-| `viz` | mesh rendering / colour tables | `pyramids-gis[viz]`, `cleopatra[tiles]` |
+| `viz` | mesh rendering / colour tables | `pyramids-core[viz]`, `cleopatra[tiles]` |
 
 ### Development dependency groups
 
@@ -50,7 +50,7 @@ pixi install -e docs     # mkdocs toolchain
 ## Recommended: Pixi
 
 This repository ships a [Pixi](https://pixi.sh/) configuration that resolves every dependency from
-PyPI, GDAL included — the `pyramids-gis` wheel vendors its own, so no conda channel is involved and
+PyPI, GDAL included — the `pyramids-core` wheel vendors its own, so no conda channel is involved and
 the usual GDAL-wheel headaches do not arise.
 
 Prerequisites: install [Pixi](https://pixi.sh/latest/#installation).
@@ -90,7 +90,7 @@ Python 3.14 like the matrix environment of that name. `viz` is a PEP 621 extra; 
 `[tool.pixi.environments]`.
 
 The 3.13 and 3.14 pins carry a build glob (`*_cp313` / `*_cp314`) that excludes the free-threaded
-interpreter: `pyramids-gis` ships no `cp313t` / `cp314t` wheel, and with no conda GDAL underneath,
+interpreter: `pyramids-core` ships no `cp313t` / `cp314t` wheel, and with no conda GDAL underneath,
 resolving one of those would fail at import rather than at solve time.
 
 ### Where the environments live
@@ -123,8 +123,8 @@ already puts your checkout on the path — there is no separate editable-install
 
 ## Notes
 
-- `pyramids` (conda-forge name) and `pyramids-gis` (PyPI name) are the **same package**.
-  pyramids-mesh depends on the PyPI distribution name (`pyramids-gis`) so it works regardless of how
+- `pyramids` (conda-forge name) and `pyramids-core` (PyPI name) are the **same package**.
+  pyramids-mesh depends on the PyPI distribution name (`pyramids-core`) so it works regardless of how
   pyramids itself was installed.
 - Documentation: <https://serapeum-org.github.io/pyramids-mesh/latest>
 - Source repository: <https://github.com/serapeum-org/pyramids-mesh>
