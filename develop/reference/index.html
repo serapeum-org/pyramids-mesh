@@ -2527,7 +2527,7 @@
 <p>The API surface of <code>pyramids_mesh</code>, generated from the docstrings by
 <a href="https://mkdocstrings.github.io/">mkdocstrings</a>.</p>
 <p>What this package publishes is <strong>drivers</strong>, not an API you call directly. A driver is registered
-with <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> entry-point group, so installing this
+with <code>pyramids-core</code> through the <code>pyramids.mesh_drivers</code> entry-point group, so installing this
 package is the whole integration: <code>pyramids</code> then dispatches a read of a format it does not handle
 itself to the driver that claims it.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
@@ -2818,7 +2818,7 @@ that follows from a topology already in hand — connectivity and graph algorith
 regridding and sampling, gap filling, mesh-to-vector conversion, and construction
 from a raster or a polygon layer. What it cannot do is open other people's mesh
 files; that is this package's job, and its only job.</p>
-<p>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code>
+<p>Drivers are discovered by <code>pyramids-core</code> through the <code>pyramids.mesh_drivers</code>
 entry-point group, so <code>UgridDataset.read_file("model.slf")</code> resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
 (<code>[dhi]</code>) and are skipped at discovery when their extra

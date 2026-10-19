@@ -2681,28 +2681,28 @@
 written during scaffolding, before the gap analysis it was meant to serve, and it does not match the
 work this repository exists to do.</p>
 <p>The actual gap is <strong>format breadth</strong>. A survey of the mesh-format landscape — the eighteen
-driver families the established mesh I/O libraries cover — found that <code>pyramids-gis</code> reads exactly
+driver families the established mesh I/O libraries cover — found that <code>pyramids-core</code> reads exactly
 one of them: UGRID NetCDF. The other seventeen are the native file
 formats of hydrodynamic and hydraulic solvers — SMS, TUFLOW, TELEMAC, DHI MIKE, FLO-2D, 3Di, ANUGA,
 HEC-RAS — and none of them can be opened today.</p>
 <p>That survey also found the comparison runs the other way for everything else: those libraries do no
 interpolation, regridding, reprojection, contouring, gap filling, mesh-to-vector conversion or graph
-analysis. <code>pyramids-gis</code> already has all of it. So the only substantial capability they have over
+analysis. <code>pyramids-core</code> already has all of it. So the only substantial capability they have over
 this stack is <strong>the ability to open other people's mesh files</strong>.</p>
 <p>Reading a format is never out of scope for the stack, but seventeen parsers do not belong in
-<code>pyramids-gis</code> itself: they carry dependencies the core must not take (<code>mikeio</code> alone pulls pandas,
+<code>pyramids-core</code> itself: they carry dependencies the core must not take (<code>mikeio</code> alone pulls pandas,
 matplotlib, scipy and tqdm), and their test fixtures are binary files measured in megabytes against
 a PyPI project that already refills its 10 GB limit roughly every twelve releases.</p>
 <h2 id="decision"><a class="toclink" href="#decision">Decision</a><a class="headerlink" href="#decision" title="Permanent link">#</a></h2>
 <p><strong><code>pyramids-mesh</code> reads and writes the file formats of hydrodynamic and hydraulic mesh models —
 2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats — as <code>pyramids.netcdf.ugrid</code>
-objects. It owns file-format drivers; every mesh operation belongs upstream in <code>pyramids-gis</code>.</strong></p>
+objects. It owns file-format drivers; every mesh operation belongs upstream in <code>pyramids-core</code>.</strong></p>
 <ul>
 <li><strong>Generation, quality and refinement are dropped</strong>, not deferred. They were not an intended scope.
   If mesh generation is wanted later it gets its own package and its own argument.</li>
-<li>Drivers are discovered by <code>pyramids-gis</code> through the <code>pyramids.mesh_drivers</code> <strong>entry-point group</strong>.
-  This package depends on <code>pyramids-gis</code>; <code>pyramids-gis</code> never imports this package. That registry
-  shipped in <code>pyramids-gis 0.68.0</code>, which is this package's floor, so registered drivers are
+<li>Drivers are discovered by <code>pyramids-core</code> through the <code>pyramids.mesh_drivers</code> <strong>entry-point group</strong>.
+  This package depends on <code>pyramids-core</code>; <code>pyramids-core</code> never imports this package. That registry
+  shipped in <code>pyramids-core 0.68.0</code>, which is this package's floor, so registered drivers are
   discovered and dispatched to.</li>
 <li>Each driver is a class declaring <code>name</code>, <code>long_name</code>, <code>suffixes</code>, <code>api_version</code> and a
   <code>capabilities</code> set, implementing <code>can_open</code> and <code>mesh_names</code> — which pyramids calls on every
@@ -2712,11 +2712,11 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in <
   <code>lazy_data</code> and <code>multi_mesh</code> are <strong>declarative</strong> and require no method of their own.</li>
 <li>The one dependency-backed driver family lives behind an extra — <code>[dhi]</code> (<code>mikeio</code>) — and a
   driver whose extra is absent is skipped at discovery, so a bare install stays small and useful.
-  Mesh reading itself is never delegated to a third-party mesh library: that is <code>pyramids-gis</code>'s,
+  Mesh reading itself is never delegated to a third-party mesh library: that is <code>pyramids-core</code>'s,
   and a generic capability missing there is added there. The <code>[interchange]</code> extra (<code>meshio</code>) was
   dropped for this reason; PLY and the TIN formats are parsed here. <code>[hdf]</code> (<code>h5py</code>) went the
   same way: HDF5 is read through the GDAL multidimensional API over the GDAL vendored in the
-  <code>pyramids-gis</code> wheel, which supplies group traversal, attributes and typed reads. <code>mikeio</code>
+  <code>pyramids-core</code> wheel, which supplies group traversal, attributes and typed reads. <code>mikeio</code>
   remains because DFSU and DFS2 are proprietary DHI containers with no portable alternative.</li>
 <li>Test fixtures are hand-built minimal files, committed, and kept out of the built
   distribution. Nothing special is needed for that: setuptools' sdist does not collect
@@ -2727,7 +2727,7 @@ objects. It owns file-format drivers; every mesh operation belongs upstream in <
 <p>Every rule below was correct in ADR-0003 and is restated here because that ADR is superseded in
 full. Only its three-concerns decision was wrong.</p>
 <ul>
-<li><code>pyramids-gis</code> remains the <strong>single owner</strong> of the mesh data model, its persistence, and every
+<li><code>pyramids-core</code> remains the <strong>single owner</strong> of the mesh data model, its persistence, and every
   operation that follows from a topology already in hand. This package imports those types; it never
   redefines them.</li>
 <li>Public functions take and return <code>pyramids.netcdf.ugrid</code> types, so a result can go straight back
@@ -2741,11 +2741,11 @@ full. Only its three-concerns decision was wrong.</p>
 </ul>
 <h2 id="consequences"><a class="toclink" href="#consequences">Consequences</a><a class="headerlink" href="#consequences" title="Permanent link">#</a></h2>
 <ul>
-<li>The <code>pyramids-gis</code> floor is an API floor on the <strong>registry</strong>, not on the mesh model. The registry
-  shipped in <code>pyramids-gis 0.68.0</code>, so the floor is now <code>&gt;= 0.68.0</code> and this package's entry points
+<li>The <code>pyramids-core</code> floor is an API floor on the <strong>registry</strong>, not on the mesh model. The registry
+  shipped in <code>pyramids-core 0.68.0</code>, so the floor is now <code>&gt;= 0.68.0</code> and this package's entry points
   are live: a driver it registers is dispatched to. The earlier hold on publishing to PyPI — kept
   while the registry was unreleased and the entry points inert — is lifted.</li>
-<li>Three concerns these source formats carry and <code>pyramids-gis</code> does not — ragged vertical levels
+<li>Three concerns these source formats carry and <code>pyramids-core</code> does not — ragged vertical levels
   (<code>DataOnVolumes</code>), per-timestep active/dry flags, and a dataset reference time — are <strong>upstream</strong>
   work. A driver meeting them carries the value through without fabricating data: it raises on a
   genuinely ragged vertical profile rather than padding it, and attaches an active mask as a sibling

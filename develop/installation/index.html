@@ -2842,14 +2842,14 @@ release to install from. Use the from-source route below.</p>
 <h2 id="dependencies"><a class="toclink" href="#dependencies">Dependencies</a><a class="headerlink" href="#dependencies" title="Permanent link">#</a></h2>
 <h3 id="runtime"><a class="toclink" href="#runtime">Runtime</a><a class="headerlink" href="#runtime" title="Permanent link">#</a></h3>
 <ul>
-<li><code>pyramids-gis &gt;= 0.68.0</code> (provides the <code>pyramids</code> import and the mesh-driver registry; pulled from PyPI)</li>
+<li><code>pyramids-core &gt;= 0.70.0</code> (provides the <code>pyramids</code> import and the mesh-driver registry; pulled from PyPI)</li>
 <li><code>numpy &gt;= 2.0.0</code></li>
 </ul>
 <p>GDAL is deliberately absent from that list. It is not a dependency of this package: the
-<code>pyramids-gis</code> wheel vendors its own osgeo bindings, and <code>import pyramids</code> is what puts them on
+<code>pyramids-core</code> wheel vendors its own osgeo bindings, and <code>import pyramids</code> is what puts them on
 <code>sys.path</code>. Nothing here installs or pins a separate GDAL.</p>
 <p><code>scipy</code>, <code>shapely</code> and <code>geopandas</code> are not declared either. The UGRID subsystem requires all three,
-so they arrive with <code>pyramids-gis</code> — but that is its requirement, not a promise to this package.
+so they arrive with <code>pyramids-core</code> — but that is its requirement, not a promise to this package.
 Each gets declared here the moment a module under <code>src/pyramids_mesh/</code> imports it directly.</p>
 <h3 id="optional-extras"><a class="toclink" href="#optional-extras">Optional extras</a><a class="headerlink" href="#optional-extras" title="Permanent link">#</a></h3>
 <table>
@@ -2864,7 +2864,7 @@ Each gets declared here the moment a module under <code>src/pyramids_mesh/</code
 <tr>
 <td><code>viz</code></td>
 <td>mesh rendering / colour tables</td>
-<td><code>pyramids-gis[viz]</code>, <code>cleopatra[tiles]</code></td>
+<td><code>pyramids-core[viz]</code>, <code>cleopatra[tiles]</code></td>
 </tr>
 </tbody>
 </table>
@@ -2879,7 +2879,7 @@ extras rather than a single same-named group: <code>dev</code> is <code>py314</c
 </code></pre></div>
 <h2 id="recommended-pixi"><a class="toclink" href="#recommended-pixi">Recommended: Pixi</a><a class="headerlink" href="#recommended-pixi" title="Permanent link">#</a></h2>
 <p>This repository ships a <a href="https://pixi.sh/">Pixi</a> configuration that resolves every dependency from
-PyPI, GDAL included — the <code>pyramids-gis</code> wheel vendors its own, so no conda channel is involved and
+PyPI, GDAL included — the <code>pyramids-core</code> wheel vendors its own, so no conda channel is involved and
 the usual GDAL-wheel headaches do not arise.</p>
 <p>Prerequisites: install <a href="https://pixi.sh/latest/#installation">Pixi</a>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/serapeum-org/pyramids-mesh.git
@@ -2949,7 +2949,7 @@ Python 3.14 like the matrix environment of that name. <code>viz</code> is a PEP 
 <code>notebook</code> are PEP 735 dependency groups. The definitions live in <code>pyproject.toml</code> under
 <code>[tool.pixi.environments]</code>.</p>
 <p>The 3.13 and 3.14 pins carry a build glob (<code>*_cp313</code> / <code>*_cp314</code>) that excludes the free-threaded
-interpreter: <code>pyramids-gis</code> ships no <code>cp313t</code> / <code>cp314t</code> wheel, and with no conda GDAL underneath,
+interpreter: <code>pyramids-core</code> ships no <code>cp313t</code> / <code>cp314t</code> wheel, and with no conda GDAL underneath,
 resolving one of those would fail at import rather than at solve time.</p>
 <h3 id="where-the-environments-live"><a class="toclink" href="#where-the-environments-live">Where the environments live</a><a class="headerlink" href="#where-the-environments-live" title="Permanent link">#</a></h3>
 <p><code>.pixi/config.toml</code> sets <code>detached-environments</code> to <code>C:/python-environments/pixi/envs</code>, keeping the
@@ -2972,8 +2972,8 @@ already puts your checkout on the path — there is no separate editable-install
 </code></pre></div>
 <h2 id="notes"><a class="toclink" href="#notes">Notes</a><a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
 <ul>
-<li><code>pyramids</code> (conda-forge name) and <code>pyramids-gis</code> (PyPI name) are the <strong>same package</strong>.
-  pyramids-mesh depends on the PyPI distribution name (<code>pyramids-gis</code>) so it works regardless of how
+<li><code>pyramids</code> (conda-forge name) and <code>pyramids-core</code> (PyPI name) are the <strong>same package</strong>.
+  pyramids-mesh depends on the PyPI distribution name (<code>pyramids-core</code>) so it works regardless of how
   pyramids itself was installed.</li>
 <li>Documentation: <a href="https://serapeum-org.github.io/pyramids-mesh/latest">https://serapeum-org.github.io/pyramids-mesh/latest</a></li>
 <li>Source repository: <a href="https://github.com/serapeum-org/pyramids-mesh">https://github.com/serapeum-org/pyramids-mesh</a></li>
