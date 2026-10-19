@@ -7,7 +7,7 @@ all z) -- and its elements in ``MAI/<geomcode>`` groups, one per element type (`
 connectivity list.
 
 ``.med`` is not auto-sniffed by GDAL, so the file is opened by forcing the HDF5
-multidimensional driver, over the GDAL vendored in the ``pyramids-gis`` wheel and activated
+multidimensional driver, over the GDAL vendored in the ``pyramids-core`` wheel and activated
 by ``import pyramids`` -- group traversal, attributes and typed array reads, with no
 declared dependency and no ``h5py`` or ``med`` library. See ``planning/design.md`` section
 20.3.

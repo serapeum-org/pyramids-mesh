@@ -1,4 +1,4 @@
-# ADR-0003: Scope boundary with pyramids-gis
+# ADR-0003: Scope boundary with pyramids-core
 
 - Status: Superseded by [ADR-0005](0005-file-format-drivers.md)
 - Date: 2026-10-13
@@ -11,7 +11,7 @@
 
 ## Context
 
-`pyramids-gis` already ships UGRID support in `pyramids.netcdf.ugrid`: the data model (`Mesh2d`,
+`pyramids-core` already ships UGRID support in `pyramids.netcdf.ugrid`: the data model (`Mesh2d`,
 `Network1d`, `UgridDataset`, `Connectivity`), UGRID-compliant NetCDF I/O, connectivity derivation
 and graph algorithms, sampling and mesh-to-mesh regridding, construction by flattening a raster grid
 or a polygon layer, mesh-to-vector conversion, gap filling, spatial indexing, and rendering through
@@ -23,7 +23,7 @@ NetCDF I/O here, which gives the stack two mesh types that drift apart.
 
 ## Decision
 
-- `pyramids-gis` remains the **single owner** of the mesh data model, its persistence, and every
+- `pyramids-core` remains the **single owner** of the mesh data model, its persistence, and every
   operation that follows from a topology already in hand. This package imports those types; it never
   redefines them.
 - `pyramids-mesh` owns three concerns:
@@ -42,7 +42,7 @@ NetCDF I/O here, which gives the stack two mesh types that drift apart.
 
 ## Consequences
 
-- The dependency floor (`pyramids-gis >= 0.66.0`) is an API floor: raising it is the normal way to
+- The dependency floor (`pyramids-core >= 0.66.0`) is an API floor: raising it is the normal way to
   pick up an upstream mesh fix.
 - Some features will be rejected here and routed upstream instead; the table in the
   [docs home page](../index.md) is the quick test for which side a concern falls on.

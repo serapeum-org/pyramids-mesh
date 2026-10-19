@@ -25,7 +25,7 @@ def test_osgeo_resolves_through_pyramids():
     """`from osgeo import gdal` works because importing pyramids activated it.
 
     Nothing in these environments installs a top-level osgeo; the bindings live
-    inside the pyramids-gis wheel. This test is the canary for the import-order
+    inside the pyramids-core wheel. This test is the canary for the import-order
     contract that `pyramids_mesh/__init__.py` and `tests/conftest.py` both rely
     on — if it fails, a stray refactor moved or dropped the `import pyramids`.
     """

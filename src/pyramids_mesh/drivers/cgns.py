@@ -6,7 +6,7 @@ or more ``Elements_t`` sections. A section names an element type code and carrie
 1-based ``ElementConnectivity`` list plus an ``ElementRange``.
 
 ``.cgns`` is not auto-sniffed by GDAL, so the file is opened by forcing the HDF5
-multidimensional driver, over the GDAL vendored in the ``pyramids-gis`` wheel and activated
+multidimensional driver, over the GDAL vendored in the ``pyramids-core`` wheel and activated
 by ``import pyramids`` -- group traversal, attributes and typed array reads, with no
 declared dependency and no ``h5py`` or ``CGNS`` library. See ``planning/design.md`` section
 20.3.

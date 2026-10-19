@@ -12,7 +12,7 @@ multidimensional route the other NetCDF drivers use, with no declared ``netCDF4`
 
 3Di results use the ``.nc`` suffix. ``UgridDataset.read_file`` tries its built-in UGRID
 reader first and, finding no UGRID topology, falls back to a driver claiming the suffix
-(``pyramids-gis`` 0.69.0's dispatch), which is how this driver is reached. A successful
+(``pyramids-core`` 0.69.0's dispatch), which is how this driver is reached. A successful
 UGRID read still pays nothing.
 """
 

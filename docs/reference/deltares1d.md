@@ -18,7 +18,7 @@ A Deltares 1D file carries two one-dimensional topologies — a `network` of bra
 found by their `cf_role` attributes (`mesh_topology`, `edge_node_connectivity`), never by
 a hard-coded name, so the two spellings in the wild (`network`/`mesh1d` and
 `network1d`/`mesh1d`) read identically. The file is not plain 2D UGRID, so it is reached
-through `read_file`'s NetCDF-suffix fallback (`pyramids-gis` 0.69.0).
+through `read_file`'s NetCDF-suffix fallback (`pyramids-core` 0.69.0).
 
 ```python
 from pyramids.netcdf.ugrid import Network1d
@@ -37,7 +37,7 @@ print(network.n_node, network.n_edge)
   offset and the `mesh1d_*` result variables are parsed and validated (node- or
   edge-located, over `time`), but `Network1d` has nowhere to attach them, so the built
   network warns that they are not in the result. Carrying them is upstream work in
-  `pyramids-gis` (design §10).
+  `pyramids-core` (design §10).
 - **Edge indices honour the file's `start_index`** — a 1-based table is re-based to 0 and
   the base recorded for a writer.
 - **A combined 1D2D file is declined by `can_open`.** A file that also carries a 2D

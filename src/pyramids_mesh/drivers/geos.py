@@ -10,7 +10,7 @@ arithmetic, so the structured corner grid becomes an unstructured surface mesh.
 
 Read through the NetCDF substrate the vendored GDAL provides, with no declared
 ``netCDF4`` or ``h5py``. GEOS native grids use ``.nc`` or ``.nc4``; they are reached
-through ``read_file``'s NetCDF-suffix fallback (``pyramids-gis`` 0.69.0), since a GEOS
+through ``read_file``'s NetCDF-suffix fallback (``pyramids-core`` 0.69.0), since a GEOS
 grid is not UGRID.
 """
 

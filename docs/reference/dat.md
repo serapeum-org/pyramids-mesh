@@ -97,7 +97,7 @@ variable name.
 - **`RT_JULIAN` rides on the variables, not the dataset.** `attach_data` merges the variables a
   driver returns and keeps the dataset's own `global_attributes` untouched, so a driver has no
   route to a file-level attribute. Carrying it properly needs the reference time modelled upstream
-  in `pyramids-gis`.
+  in `pyramids-core`.
 - DAT carries **no CRS and no topology**, so neither is produced here.
 - There is **no lazy path**. DAT is plain text with no record index to seek, so the driver does not
   declare `lazy_data` and `lazy=` is accepted and ignored.

@@ -9,7 +9,7 @@ face-node connectivity -- and ships ``cell_area`` as a static face variable.
 
 Read through the NetCDF substrate the vendored GDAL provides, with no declared
 ``netCDF4`` or ``h5py``. ICON grids use ``.nc``; they are reached through ``read_file``'s
-NetCDF-suffix fallback (``pyramids-gis`` 0.69.0), since an ICON grid is not UGRID.
+NetCDF-suffix fallback (``pyramids-core`` 0.69.0), since an ICON grid is not UGRID.
 """
 
 from __future__ import annotations

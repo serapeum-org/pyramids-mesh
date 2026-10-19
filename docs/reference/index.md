@@ -4,7 +4,7 @@ The API surface of `pyramids_mesh`, generated from the docstrings by
 [mkdocstrings](https://mkdocstrings.github.io/).
 
 What this package publishes is **drivers**, not an API you call directly. A driver is registered
-with `pyramids-gis` through the `pyramids.mesh_drivers` entry-point group, so installing this
+with `pyramids-core` through the `pyramids.mesh_drivers` entry-point group, so installing this
 package is the whole integration: `pyramids` then dispatches a read of a format it does not handle
 itself to the driver that claims it.
 
