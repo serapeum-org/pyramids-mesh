@@ -3057,7 +3057,8 @@ False</p>
 <span class="normal"><a href="#__codelineno-0-257">257</a></span>
 <span class="normal"><a href="#__codelineno-0-258">258</a></span>
 <span class="normal"><a href="#__codelineno-0-259">259</a></span>
-<span class="normal"><a href="#__codelineno-0-260">260</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="k">class</span><span class="w"> </span><span class="nc">GidDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="k">class</span><span class="w"> </span><span class="nc">GidDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
 <a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="w">    </span><span class="sd">"""Reader for the GiD / CIMNE ASCII mesh format (Iber 2D export).</span>
 <a id="__codelineno-0-124" name="__codelineno-0-124"></a>
 <a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">    Reads node coordinates and the surface connectivity from one or more ``MESH`` blocks,</span>
@@ -3192,10 +3193,11 @@ False</p>
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">                omits ``ElemType``/``Nnode``, a record is short or non-numeric, a</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">                ``Coordinates``/``Elements`` block is never closed, or the file declares</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">                no surface or volumetric element.</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">            ValueError: If an element references an undefined node id, or two nodes share</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">                an id within one coordinate block.</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">        """</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="k">return</span> <span class="n">_GidReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">            ValueError: If an element references a node id no coordinate record defines.</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">                A node id repeated in the coordinate block does not raise: the first</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">                definition is kept (see the class limitations).</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        """</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="k">return</span> <span class="n">_GidReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
