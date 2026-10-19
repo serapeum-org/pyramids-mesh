@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2695,7 +2695,7 @@ API (no declared dependency).</p>
 found by their <code>cf_role</code> attributes (<code>mesh_topology</code>, <code>edge_node_connectivity</code>), never by
 a hard-coded name, so the two spellings in the wild (<code>network</code>/<code>mesh1d</code> and
 <code>network1d</code>/<code>mesh1d</code>) read identically. The file is not plain 2D UGRID, so it is reached
-through <code>read_file</code>'s NetCDF-suffix fallback (<code>pyramids-gis</code> 0.69.0).</p>
+through <code>read_file</code>'s NetCDF-suffix fallback (<code>pyramids-core</code> 0.69.0).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">Network1d</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">network</span> <span class="o">=</span> <span class="n">Network1d</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"FlowFM_map.nc"</span><span class="p">)</span>   <span class="c1"># mesh1d discretisation</span>
@@ -2711,7 +2711,7 @@ through <code>read_file</code>'s NetCDF-suffix fallback (<code>pyramids-gis</cod
   offset and the <code>mesh1d_*</code> result variables are parsed and validated (node- or
   edge-located, over <code>time</code>), but <code>Network1d</code> has nowhere to attach them, so the built
   network warns that they are not in the result. Carrying them is upstream work in
-  <code>pyramids-gis</code> (design §10).</li>
+  <code>pyramids-core</code> (design §10).</li>
 <li><strong>Edge indices honour the file's <code>start_index</code></strong> — a 1-based table is re-based to 0 and
   the base recorded for a writer.</li>
 <li><strong>A combined 1D2D file is declined by <code>can_open</code>.</strong> A file that also carries a 2D
@@ -2763,7 +2763,7 @@ which only the discretisation carries.</p>
   :class:<code>Network1d</code> has nowhere to attach them, so the built network warns that
   they are not in the result (see :class:<code>~pyramids_mesh._base.BaseDriver</code>).
   Carrying them needs <code>Network1d</code> to grow a home for node data, which is
-  upstream work in <code>pyramids-gis</code> (design section 10).</li>
+  upstream work in <code>pyramids-core</code> (design section 10).</li>
 <li><strong>Edge indices honour the file's <code>start_index</code>.</strong> A 1-based table is re-based
   to 0 and the base recorded for a writer.</li>
 <li><strong>A combined 1D2D file is declined by <code>can_open</code>.</strong> A file that also carries a
@@ -2910,7 +2910,7 @@ print(network.n_node, network.n_edge)
 <a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">          :class:`Network1d` has nowhere to attach them, so the built network warns that</span>
 <a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">          they are not in the result (see :class:`~pyramids_mesh._base.BaseDriver`).</span>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">          Carrying them needs ``Network1d`` to grow a home for node data, which is</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">          upstream work in ``pyramids-gis`` (design section 10).</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">          upstream work in ``pyramids-core`` (design section 10).</span>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">        - **Edge indices honour the file's ``start_index``.** A 1-based table is re-based</span>
 <a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">          to 0 and the base recorded for a writer.</span>
 <a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">        - **A combined 1D2D file is declined by ``can_open``.** A file that also carries a</span>

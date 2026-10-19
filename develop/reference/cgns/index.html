@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2662,7 +2662,7 @@
 names an element-type code (<code>TRI_3=5</code>, <code>QUAD_4=7</code>, <code>TETRA_4=10</code>, <code>HEXA_8=17</code>, …) and carries
 a flat, 1-based <code>ElementConnectivity</code> list plus an <code>ElementRange</code>. Because <code>.cgns</code> is not
 auto-sniffed by GDAL, the file is opened by forcing the HDF5 multidimensional driver, over
-the GDAL vendored in the <code>pyramids-gis</code> wheel (no declared dependency, no <code>h5py</code>/<code>CGNS</code>
+the GDAL vendored in the <code>pyramids-core</code> wheel (no declared dependency, no <code>h5py</code>/<code>CGNS</code>
 library).</p>
 <table>
 <thead>

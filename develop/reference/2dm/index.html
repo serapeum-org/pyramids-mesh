@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2706,7 +2706,7 @@ a larger one is refused rather than allocated.</p>
 <li><strong>A 1D read cannot carry <code>z</code>, variables or global attributes at all.</strong>
   [<code>Network1d</code>][pyramids.netcdf.ugrid.Network1d] holds a topology and a CRS and has no parameter
   for data, so reading the network half of a file reports each of those by name in a warning and
-  returns without them. This is a <code>pyramids-gis</code> limitation, not a decision of this driver: it
+  returns without them. This is a <code>pyramids-core</code> limitation, not a decision of this driver: it
   will be carried properly once <code>Network1d</code> has somewhere to put it.</li>
 <li><strong>No elevation is invented.</strong> If no <code>ND</code> record carries a z column, <code>node_z</code> is omitted
   entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file

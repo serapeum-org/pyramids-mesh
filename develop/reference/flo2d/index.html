@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2599,7 +2599,7 @@ directory with <code>driver="flo2d"</code>:</p>
   max-depth column is a static <code>max_floodplain_depth</code> face variable.</li>
 <li>There is no elevation or CRS in the files read here, so <code>node_z</code> and <code>crs</code> are <code>None</code>.</li>
 </ul>
-<p>HDF5 is read through the GDAL multidimensional API over the GDAL vendored in <code>pyramids-gis</code>
+<p>HDF5 is read through the GDAL multidimensional API over the GDAL vendored in <code>pyramids-core</code>
 (activated by <code>import pyramids</code>) — no declared dependency and no <code>h5py</code>.</p>
 
 

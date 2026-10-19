@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adr-0003-scope-boundary-with-pyramids-gis" class="md-skip">
+        <a href="#adr-0003-scope-boundary-with-pyramids-core" class="md-skip">
           Skip to content
         </a>
       
@@ -2568,7 +2568,7 @@
   
 
 
-<h1 id="adr-0003-scope-boundary-with-pyramids-gis"><a class="toclink" href="#adr-0003-scope-boundary-with-pyramids-gis">ADR-0003: Scope boundary with pyramids-gis</a><a class="headerlink" href="#adr-0003-scope-boundary-with-pyramids-gis" title="Permanent link">#</a></h1>
+<h1 id="adr-0003-scope-boundary-with-pyramids-core"><a class="toclink" href="#adr-0003-scope-boundary-with-pyramids-core">ADR-0003: Scope boundary with pyramids-core</a><a class="headerlink" href="#adr-0003-scope-boundary-with-pyramids-core" title="Permanent link">#</a></h1>
 <ul>
 <li>Status: Superseded by <a href="../0005-file-format-drivers/">ADR-0005</a></li>
 <li>Date: 2026-10-13</li>
@@ -2581,7 +2581,7 @@ every boundary rule from this ADR unchanged. Kept for the record; do not act on 
 Decision section.</p>
 </blockquote>
 <h2 id="context"><a class="toclink" href="#context">Context</a><a class="headerlink" href="#context" title="Permanent link">#</a></h2>
-<p><code>pyramids-gis</code> already ships UGRID support in <code>pyramids.netcdf.ugrid</code>: the data model (<code>Mesh2d</code>,
+<p><code>pyramids-core</code> already ships UGRID support in <code>pyramids.netcdf.ugrid</code>: the data model (<code>Mesh2d</code>,
 <code>Network1d</code>, <code>UgridDataset</code>, <code>Connectivity</code>), UGRID-compliant NetCDF I/O, connectivity derivation
 and graph algorithms, sampling and mesh-to-mesh regridding, construction by flattening a raster grid
 or a polygon layer, mesh-to-vector conversion, gap filling, spatial indexing, and rendering through
@@ -2591,7 +2591,7 @@ mesh model needs a second implementation.</p>
 NetCDF I/O here, which gives the stack two mesh types that drift apart.</p>
 <h2 id="decision"><a class="toclink" href="#decision">Decision</a><a class="headerlink" href="#decision" title="Permanent link">#</a></h2>
 <ul>
-<li><code>pyramids-gis</code> remains the <strong>single owner</strong> of the mesh data model, its persistence, and every
+<li><code>pyramids-core</code> remains the <strong>single owner</strong> of the mesh data model, its persistence, and every
   operation that follows from a topology already in hand. This package imports those types; it never
   redefines them.</li>
 <li><code>pyramids-mesh</code> owns three concerns:<ul>
@@ -2612,7 +2612,7 @@ NetCDF I/O here, which gives the stack two mesh types that drift apart.</p>
 </ul>
 <h2 id="consequences"><a class="toclink" href="#consequences">Consequences</a><a class="headerlink" href="#consequences" title="Permanent link">#</a></h2>
 <ul>
-<li>The dependency floor (<code>pyramids-gis &gt;= 0.66.0</code>) is an API floor: raising it is the normal way to
+<li>The dependency floor (<code>pyramids-core &gt;= 0.66.0</code>) is an API floor: raising it is the normal way to
   pick up an upstream mesh fix.</li>
 <li>Some features will be rejected here and routed upstream instead; the table in the
   <a href="../../">docs home page</a> is the quick test for which side a concern falls on.</li>
