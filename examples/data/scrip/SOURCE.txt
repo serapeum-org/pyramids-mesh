@@ -1,0 +1,4 @@
+SCRIP remapping grid-description NetCDF.
+outCSne8.nc -- cubed-sphere ne8 SCRIP grid, Apache-2.0, UXarray test data.
+grid_corner_lat/lon (384, 4), grid_center_lat/lon, grid_imask.
+  https://github.com/UXARRAY/uxarray (test/meshfiles/scrip/outCSne8/)

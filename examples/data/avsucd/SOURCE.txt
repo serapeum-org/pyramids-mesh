@@ -1,0 +1,3 @@
+AVS-UCD ASCII.
+02_tet_mesh.inp -- lanl/LaGriT, BSD-3-Clause. header 1122 nodes / 4800 tets.
+  https://github.com/lanl/LaGriT (docs/_site/pages/tutorial/lagrit_introduction/step_02/)

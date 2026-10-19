@@ -1,0 +1,3 @@
+Nastran bulk-data deck (ASCII).
+cylinder.fem -- meshio test data, MIT. 33 GRID / 4 CTRIA3 / 18 CQUAD4 (fixed-field).
+  https://github.com/nschloe/meshio (tests/meshes/nastran/) -- via Git-LFS media endpoint

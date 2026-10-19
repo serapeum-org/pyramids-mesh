@@ -1,0 +1,5 @@
+BaldEagleDamBrk.p18.hdf — USACE HEC "Bald Eagle Creek Dam Break" example project (a U.S.
+Government work, public domain), redistributed via the MIT-licensed fema-ffrd/rashdf test data.
+  https://github.com/fema-ffrd/rashdf  (MIT)
+Two 2D flow areas (BaldEagleCr 3359 cells, Upper 2D Area 1066 cells); carries geometry plus
+Maximum/Minimum Water Surface summary results read by the driver.

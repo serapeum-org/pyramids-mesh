@@ -1,0 +1,4 @@
+SRH-2D (SRHGEOM + SRHHYDRO + SRHMAT) -- MIT, psu-efd/pyHMT2D; the mesh is the public-domain USACE
+HEC-RAS Muncie example. .srhgeom = mesh (19407 elems / 21520 nodes, mixed tri/quad/poly);
+.srhhydro = control deck; .srhmat = material zones. Results write to XMDF/VTK (already covered).
+  https://github.com/psu-efd/pyHMT2D (examples/SRH_2D_Model/)

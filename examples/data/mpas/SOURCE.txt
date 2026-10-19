@@ -1,0 +1,3 @@
+MPAS mesh.QU.1920km.151026.nc -- Apache-2.0, UXarray test data (UCAR). Conventions=MPAS,
+nCells=162, nVertices=320, hex-dominant (12 pentagons); verticesOnCell 1-based, 0 = fill.
+  https://github.com/UXARRAY/uxarray (test/meshfiles/mpas/QU/)

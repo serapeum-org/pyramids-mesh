@@ -1,0 +1,5 @@
+MODFLOW 6 DISU (fully-unstructured groundwater grid).
+keating.disu -- MODFLOW-ORG/modflow6-testmodels, mf6/test016_Keating_disu_250/keating.disu.
+NODES 324, NJA 2076, NVERT 162 (quad cells, 1-based). US Government work / public domain,
+CC0-1.0 per the MODFLOW 6 project policy (parent repo MODFLOW-ORG/modflow6 LICENSE.md).
+  https://github.com/MODFLOW-ORG/modflow6-testmodels (mf6/test016_Keating_disu_250/)

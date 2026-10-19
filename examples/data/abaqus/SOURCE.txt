@@ -1,0 +1,3 @@
+Abaqus keyword deck (ASCII).
+nle1xf3c.inp -- meshio test data, MIT. *NODE + *ELEMENT TYPE=CPS3 (triangles).
+  https://github.com/nschloe/meshio (tests/meshes/abaqus/) -- via Git-LFS media endpoint
