@@ -309,6 +309,70 @@ def test_gid_short_element_record_is_refused(tmp_path):
         GidDriver().read(_write(tmp_path, text))
 
 
+def test_gid_reads_a_volumetric_block_verbatim(tmp_path):
+    """A ``Tetrahedra`` block keeps its full node list as a face row, not just corners."""
+    text = (
+        "MESH dimension 3 ElemType Tetrahedra Nnode 4\n"
+        "Coordinates\n"
+        "1 0.0 0.0\n2 1.0 0.0\n3 1.0 1.0\n4 0.0 1.0\n"
+        "end coordinates\n"
+        "Elements\n1 1 2 3 4\n"
+        "end elements\n"
+    )
+    dataset = GidDriver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.n_face == 1
+    assert dataset.mesh.face_node_connectivity.data.shape == (1, 4)
+
+
+def test_gid_header_with_valueless_keyword_is_refused(tmp_path):
+    """A ``MESH`` header whose ``Nnode`` keyword has no value after it is refused."""
+    text = (
+        "MESH dimension 2 ElemType Triangle Nnode\n"
+        "Coordinates\n1 0.0 0.0\nend coordinates\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="has no value"):
+        GidDriver().read(_write(tmp_path, text))
+
+
+def test_gid_repeated_node_id_keeps_first_definition(tmp_path):
+    """A node id re-listed in a later block is skipped, keeping its first definition."""
+    text = (
+        "MESH dimension 2 ElemType Triangle Nnode 3\n"
+        "Coordinates\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\nend coordinates\n"
+        "Elements\n1 1 2 3\nend elements\n"
+        "MESH dimension 2 ElemType Triangle Nnode 3\n"
+        "Coordinates\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n4 1.0 1.0\n"
+        "end coordinates\n"
+        "Elements\n2 2 4 3\nend elements\n"
+    )
+    dataset = GidDriver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+
+
+def test_gid_short_coordinate_record_is_refused(tmp_path):
+    """A coordinate record carrying fewer than an id and two coordinates is refused."""
+    text = (
+        "MESH dimension 2 ElemType Triangle Nnode 3\n"
+        "Coordinates\n1 0.0\nend coordinates\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="short coordinate record"):
+        GidDriver().read(_write(tmp_path, text))
+
+
+def test_gid_file_without_a_mesh_header_is_refused(tmp_path):
+    """A file whose top-level lines are never a ``MESH`` header is refused.
+
+    The stray keyword is neither ``MESH``, ``Coordinates`` nor ``Elements``, so it falls
+    through the block dispatch and the assemble step finds no header.
+    """
+    text = "SomeStrayKeyword 1 2 3\n"
+    with pytest.raises(FileFormatNotSupportedError, match="no MESH header"):
+        GidDriver().read(_write(tmp_path, text))
+
+
 # -- field-conversion helpers --------------------------------------------------------
 
 

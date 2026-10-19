@@ -148,6 +148,53 @@ class TestOffInlineSnippets:
         with pytest.raises(FileFormatNotSupportedError, match="malformed OFF header"):
             OffDriver().read(_write(tmp_path, text))
 
+    def test_empty_file_is_refused(self, tmp_path):
+        """A file with no significant line is refused as missing its ``OFF`` magic."""
+        with pytest.raises(FileFormatNotSupportedError, match="is empty"):
+            OffDriver().read(_write(tmp_path, ""))
+
+    def test_negative_count_is_refused(self, tmp_path):
+        """A negative vertex or face count in the header line is refused."""
+        text = "OFF\n-1 1 0\n0.0 0.0 0.0\n1.0 0.0 0.0\n0.0 1.0 0.0\n3 0 1 2\n"
+        with pytest.raises(FileFormatNotSupportedError, match="negative OFF count"):
+            OffDriver().read(_write(tmp_path, text))
+
+    def test_non_integer_count_is_refused(self, tmp_path):
+        """A count line whose first field is not an integer is refused."""
+        text = "OFF\nx 1 0\n0.0 0.0 0.0\n1.0 0.0 0.0\n0.0 1.0 0.0\n3 0 1 2\n"
+        with pytest.raises(
+            FileFormatNotSupportedError, match="malformed vertex count record"
+        ):
+            OffDriver().read(_write(tmp_path, text))
+
+    def test_short_vertex_record_is_refused(self, tmp_path):
+        """A vertex line carrying fewer than three coordinates is refused."""
+        text = "OFF\n1 1 0\n0.0 0.0\n3 0 1 2\n"
+        with pytest.raises(FileFormatNotSupportedError, match="short vertex record"):
+            OffDriver().read(_write(tmp_path, text))
+
+    def test_non_numeric_vertex_is_refused(self, tmp_path):
+        """A vertex coordinate that is not a number is refused."""
+        text = "OFF\n1 1 0\nx 0.0 0.0\n3 0 1 2\n"
+        with pytest.raises(
+            FileFormatNotSupportedError, match="malformed vertex record"
+        ):
+            OffDriver().read(_write(tmp_path, text))
+
+    def test_file_with_no_faces_is_refused(self, tmp_path):
+        """A header declaring zero faces is a point cloud, not a mesh, so it is refused."""
+        text = "OFF\n3 0 0\n0.0 0.0 0.0\n1.0 0.0 0.0\n0.0 1.0 0.0\n"
+        with pytest.raises(FileFormatNotSupportedError, match="declares no faces"):
+            OffDriver().read(_write(tmp_path, text))
+
+    def test_face_with_fewer_than_three_vertices_is_refused(self, tmp_path):
+        """A two-vertex face is an edge, not a surface element, so it is refused."""
+        text = "OFF\n2 1 0\n0.0 0.0 0.0\n1.0 0.0 0.0\n2 0 1\n"
+        with pytest.raises(
+            FileFormatNotSupportedError, match="fewer than three vertices"
+        ):
+            OffDriver().read(_write(tmp_path, text))
+
 
 class TestOffCanOpen:
     """``can_open`` recognises the magic and never raises on junk."""
