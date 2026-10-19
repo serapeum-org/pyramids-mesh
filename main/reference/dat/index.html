@@ -599,6 +599,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2124,6 +2128,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../off/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OFF (Object File Format)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GiD / Iber (.msh)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2926,7 +2986,7 @@ variable name.</p>
 <li><strong><code>RT_JULIAN</code> rides on the variables, not the dataset.</strong> <code>attach_data</code> merges the variables a
   driver returns and keeps the dataset's own <code>global_attributes</code> untouched, so a driver has no
   route to a file-level attribute. Carrying it properly needs the reference time modelled upstream
-  in <code>pyramids-gis</code>.</li>
+  in <code>pyramids-core</code>.</li>
 <li>DAT carries <strong>no CRS and no topology</strong>, so neither is produced here.</li>
 <li>There is <strong>no lazy path</strong>. DAT is plain text with no record index to seek, so the driver does not
   declare <code>lazy_data</code> and <code>lazy=</code> is accepted and ignored.</li>

@@ -599,6 +599,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2069,6 +2073,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../off/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OFF (Object File Format)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GiD / Iber (.msh)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2691,7 +2751,7 @@ Read through the vendored GDAL multidimensional API (no declared dependency).</p
 </table>
 <p>3Di results use <code>.nc</code>, which is not UGRID. <code>UgridDataset.read_file</code> tries its built-in
 UGRID reader first and, finding no topology, falls back to a driver claiming the suffix
-(<code>pyramids-gis</code> 0.69.0's dispatch) — which is how this driver is reached.</p>
+(<code>pyramids-core</code> 0.69.0's dispatch) — which is how this driver is reached.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"results_3di.nc"</span><span class="p">)</span>

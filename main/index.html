@@ -675,6 +675,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2019,6 +2023,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/off/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OFF (Object File Format)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/gid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GiD / Iber (.msh)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2563,10 +2623,10 @@
 <h1 id="pyramids-mesh"><a class="toclink" href="#pyramids-mesh">pyramids-mesh</a><a class="headerlink" href="#pyramids-mesh" title="Permanent link">#</a></h1>
 <p>Reads and writes the file formats of hydrodynamic and hydraulic mesh models — 2DM, Selafin, DFSU,
 XMDF, PLY and more — as <a href="https://github.com/serapeum-org/pyramids">pyramids</a> UGRID objects.
-<code>pyramids-gis</code> already ships the mesh data model and every operation that follows from a topology
+<code>pyramids-core</code> already ships the mesh data model and every operation that follows from a topology
 in hand; what it cannot do is open other people's mesh files. That is this package's only job.</p>
 <h2 id="the-layer-boundary"><a class="toclink" href="#the-layer-boundary">The layer boundary</a><a class="headerlink" href="#the-layer-boundary" title="Permanent link">#</a></h2>
-<p>The split is the point of the package, so it is worth stating precisely. <code>pyramids-gis</code> owns the
+<p>The split is the point of the package, so it is worth stating precisely. <code>pyramids-core</code> owns the
 mesh <em>data model</em> and everything that follows from a topology already in hand:</p>
 <table>
 <thead>
@@ -2626,15 +2686,15 @@ people's mesh files</strong>:</p>
 </tr>
 <tr>
 <td>Driver discovery via the <code>pyramids.mesh_drivers</code> entry points</td>
-<td><code>pyramids-gis</code> reads, this package registers</td>
+<td><code>pyramids-core</code> reads, this package registers</td>
 </tr>
 </tbody>
 </table>
-<p>A survey of the mesh-format landscape found <code>pyramids-gis</code> reads exactly one of the eighteen
+<p>A survey of the mesh-format landscape found <code>pyramids-core</code> reads exactly one of the eighteen
 driver families the established mesh I/O libraries cover (UGRID NetCDF).
 The other seventeen are what this package is for. In the other direction those libraries do no
-interpolation, regridding, reprojection or graph analysis, all of which <code>pyramids-gis</code> already has.</p>
-<p>Anything that belongs on the left-hand side of the first table is a change to <code>pyramids-gis</code>, not a
+interpolation, regridding, reprojection or graph analysis, all of which <code>pyramids-core</code> already has.</p>
+<p>Anything that belongs on the left-hand side of the first table is a change to <code>pyramids-core</code>, not a
 feature of this package. Report it upstream rather than duplicating it here.</p>
 <h2 id="status"><a class="toclink" href="#status">Status</a><a class="headerlink" href="#status" title="Permanent link">#</a></h2>
 <p><code>0.1.0</code> is the repository scaffold — packaging, CI, docs, and the import contract that pins
