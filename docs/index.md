@@ -2,12 +2,12 @@
 
 Reads and writes the file formats of hydrodynamic and hydraulic mesh models — 2DM, Selafin, DFSU,
 XMDF, PLY and more — as [pyramids](https://github.com/serapeum-org/pyramids) UGRID objects.
-`pyramids-gis` already ships the mesh data model and every operation that follows from a topology
+`pyramids-core` already ships the mesh data model and every operation that follows from a topology
 in hand; what it cannot do is open other people's mesh files. That is this package's only job.
 
 ## The layer boundary
 
-The split is the point of the package, so it is worth stating precisely. `pyramids-gis` owns the
+The split is the point of the package, so it is worth stating precisely. `pyramids-core` owns the
 mesh *data model* and everything that follows from a topology already in hand:
 
 | Concern | Lives in |
@@ -27,14 +27,14 @@ people's mesh files**:
 |---|---|
 | Reading 2DM, Selafin, DFSU, XMDF, XDMF, DAT, FLO-2D, 3Di, PLY, TIN, … | `pyramids_mesh.drivers` |
 | Writing 2DM, Selafin, DAT, PLY, Mike21 | `pyramids_mesh.drivers` |
-| Driver discovery via the `pyramids.mesh_drivers` entry points | `pyramids-gis` reads, this package registers |
+| Driver discovery via the `pyramids.mesh_drivers` entry points | `pyramids-core` reads, this package registers |
 
-A survey of the mesh-format landscape found `pyramids-gis` reads exactly one of the eighteen
+A survey of the mesh-format landscape found `pyramids-core` reads exactly one of the eighteen
 driver families the established mesh I/O libraries cover (UGRID NetCDF).
 The other seventeen are what this package is for. In the other direction those libraries do no
-interpolation, regridding, reprojection or graph analysis, all of which `pyramids-gis` already has.
+interpolation, regridding, reprojection or graph analysis, all of which `pyramids-core` already has.
 
-Anything that belongs on the left-hand side of the first table is a change to `pyramids-gis`, not a
+Anything that belongs on the left-hand side of the first table is a change to `pyramids-core`, not a
 feature of this package. Report it upstream rather than duplicating it here.
 
 ## Status

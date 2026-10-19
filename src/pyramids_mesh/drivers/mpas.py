@@ -16,7 +16,7 @@ the face table carries both 5- and 6-node rows.
 Read through the NetCDF substrate the vendored GDAL already provides -- the same
 multidimensional route the other NetCDF drivers use, with no declared ``netCDF4`` or
 ``h5py``. MPAS grids use ``.nc``; they are reached through ``read_file``'s NetCDF-suffix
-fallback (``pyramids-gis`` 0.69.0), since an MPAS grid is not UGRID.
+fallback (``pyramids-core`` 0.69.0), since an MPAS grid is not UGRID.
 """
 
 from __future__ import annotations

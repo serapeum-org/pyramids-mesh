@@ -85,8 +85,8 @@ jobs:
 
       - name: Install wheel (no extras)
         # --only-binary=:all: is the whole point of a pure-wheel test: every
-        # runtime dependency (pyramids-gis, numpy) must install from a published
-        # wheel on this OS / Python, never build from an sdist. pyramids-gis
+        # runtime dependency (pyramids-core, numpy) must install from a published
+        # wheel on this OS / Python, never build from an sdist. pyramids-core
         # vendors osgeo in its wheel, so a bare install is importable without GDAL.
         shell: bash
         run: |

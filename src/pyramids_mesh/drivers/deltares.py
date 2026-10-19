@@ -21,7 +21,7 @@ multidimensional route the other NetCDF drivers use, with no declared ``netCDF4`
 the root group is listed with ``SHOW_ALL=YES`` to surface them.
 
 A Deltares 1D file uses ``.nc`` and is not plain 2D UGRID, so ``read_file`` reaches this
-driver through its NetCDF-suffix fallback (``pyramids-gis`` 0.69.0).
+driver through its NetCDF-suffix fallback (``pyramids-core`` 0.69.0).
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ class DeltaresNetworkDriver(BaseDriver):
           :class:`Network1d` has nowhere to attach them, so the built network warns that
           they are not in the result (see :class:`~pyramids_mesh._base.BaseDriver`).
           Carrying them needs ``Network1d`` to grow a home for node data, which is
-          upstream work in ``pyramids-gis`` (design section 10).
+          upstream work in ``pyramids-core`` (design section 10).
         - **Edge indices honour the file's ``start_index``.** A 1-based table is re-based
           to 0 and the base recorded for a writer.
         - **A combined 1D2D file is declined by ``can_open``.** A file that also carries a

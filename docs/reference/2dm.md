@@ -77,7 +77,7 @@ Every one of these is deliberate; none is a silent approximation.
 - **A 1D read cannot carry `z`, variables or global attributes at all.**
   [`Network1d`][pyramids.netcdf.ugrid.Network1d] holds a topology and a CRS and has no parameter
   for data, so reading the network half of a file reports each of those by name in a warning and
-  returns without them. This is a `pyramids-gis` limitation, not a decision of this driver: it
+  returns without them. This is a `pyramids-core` limitation, not a decision of this driver: it
   will be carried properly once `Network1d` has somewhere to put it.
 - **No elevation is invented.** If no `ND` record carries a z column, `node_z` is omitted
   entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file

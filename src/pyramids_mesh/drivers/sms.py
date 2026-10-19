@@ -18,7 +18,7 @@ from typing import Iterator
 
 import numpy as np
 
-# Imported from a private module because there is no public one: as of pyramids-gis
+# Imported from a private module because there is no public one: as of pyramids-core
 # 0.68.0 nothing named *Error is re-exported from `pyramids` or `pyramids.base`, while
 # the published driver contract ("Exceptions -- reuse, do not invent") tells a driver to
 # raise exactly this type. ADR-0005 requires a local workaround to name the upstream
@@ -152,7 +152,7 @@ class TwoDmDriver(BaseDriver):
           separate 1D topology, never folded into the surface's edge connectivity.
         - A 1D read carries no ``node_z``, variables or global attributes:
           ``Network1d`` has no parameter for them. Each is named in a warning rather
-          than dropped quietly. That is a ``pyramids-gis`` limitation to fix upstream.
+          than dropped quietly. That is a ``pyramids-core`` limitation to fix upstream.
         - ``node_z`` is omitted entirely when no ``ND`` record carries a z column,
           rather than fabricated as zeros. A file whose ``ND`` records disagree about
           that column is refused instead: a fabricated ``0.0`` cannot be told from a

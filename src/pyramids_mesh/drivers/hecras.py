@@ -6,7 +6,7 @@ structures it understands and fails loudly on an unrecognised layout rather than
 what merely looks familiar.
 
 HDF5 is read through the GDAL multidimensional API, over the GDAL vendored in the
-``pyramids-gis`` wheel and activated by ``import pyramids`` -- group traversal, attributes
+``pyramids-core`` wheel and activated by ``import pyramids`` -- group traversal, attributes
 and typed array reads, with no declared dependency and no ``h5py``. See
 ``planning/design.md`` section 20.3.
 """

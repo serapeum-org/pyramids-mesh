@@ -11,7 +11,7 @@ face-node connectivity into it.
 Read through the NetCDF substrate the vendored GDAL provides, the same multidimensional
 route the other NetCDF drivers use, with no declared ``netCDF4`` or ``h5py``. SCRIP grids
 use ``.nc``; they are reached through ``read_file``'s NetCDF-suffix fallback
-(``pyramids-gis`` 0.69.0), since a SCRIP grid is not UGRID.
+(``pyramids-core`` 0.69.0), since a SCRIP grid is not UGRID.
 """
 
 from __future__ import annotations

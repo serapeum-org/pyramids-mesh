@@ -8,7 +8,7 @@ does not have yet (design section 21.1).
 
 Read through the NetCDF substrate the vendored GDAL provides, with no declared
 ``netCDF4`` or ``h5py``. TUFLOW FV results use ``.nc``; they are reached through
-``read_file``'s NetCDF-suffix fallback (``pyramids-gis`` 0.69.0), since a TUFLOW FV file
+``read_file``'s NetCDF-suffix fallback (``pyramids-core`` 0.69.0), since a TUFLOW FV file
 is not UGRID.
 """
 

@@ -14,7 +14,7 @@ Read through the vendored GDAL multidimensional API (no declared dependency).
 
 3Di results use `.nc`, which is not UGRID. `UgridDataset.read_file` tries its built-in
 UGRID reader first and, finding no topology, falls back to a driver claiming the suffix
-(`pyramids-gis` 0.69.0's dispatch) — which is how this driver is reached.
+(`pyramids-core` 0.69.0's dispatch) — which is how this driver is reached.
 
 ```python
 from pyramids.netcdf.ugrid import UgridDataset

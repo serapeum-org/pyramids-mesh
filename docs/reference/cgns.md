@@ -6,7 +6,7 @@ The CGNS reader. A `.cgns` file is a plain HDF5 container holding a SIDS tree: a
 names an element-type code (`TRI_3=5`, `QUAD_4=7`, `TETRA_4=10`, `HEXA_8=17`, …) and carries
 a flat, 1-based `ElementConnectivity` list plus an `ElementRange`. Because `.cgns` is not
 auto-sniffed by GDAL, the file is opened by forcing the HDF5 multidimensional driver, over
-the GDAL vendored in the `pyramids-gis` wheel (no declared dependency, no `h5py`/`CGNS`
+the GDAL vendored in the `pyramids-core` wheel (no declared dependency, no `h5py`/`CGNS`
 library).
 
 | | |

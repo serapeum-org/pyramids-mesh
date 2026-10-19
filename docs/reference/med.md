@@ -5,7 +5,7 @@ The MED-file reader. A `.med` file is a plain HDF5 container. A mesh lives under
 block (all x, then all y, then all z) — and its elements in `MAI/<geomcode>` groups, one per
 element type (`TR3`, `QU4`, `TE4`, `HE8`, …), each with a flat, 1-based, coordinate-major
 `NOD` connectivity list. Because `.med` is not auto-sniffed by GDAL, the file is opened by
-forcing the HDF5 multidimensional driver, over the GDAL vendored in the `pyramids-gis` wheel
+forcing the HDF5 multidimensional driver, over the GDAL vendored in the `pyramids-core` wheel
 (no declared dependency, no `h5py`/`med` library).
 
 | | |

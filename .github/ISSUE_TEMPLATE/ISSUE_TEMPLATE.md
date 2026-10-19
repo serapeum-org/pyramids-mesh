@@ -1,5 +1,5 @@
 * pyramids-mesh version:
-* pyramids-gis version:
+* pyramids-core version:
 * Python version:
 * Operating System:
 

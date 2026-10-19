@@ -7,7 +7,7 @@ an ``elem_type`` attribute (``QUAD4``, ``TRI3``, ``TETRA``, ...). The block ids 
 ``eb_prop1``.
 
 The NetCDF substrate is read through the GDAL multidimensional API, over the GDAL vendored
-in the ``pyramids-gis`` wheel and activated by ``import pyramids`` -- no declared
+in the ``pyramids-core`` wheel and activated by ``import pyramids`` -- no declared
 ``netCDF4`` dependency and no ``exodus`` library. See ``planning/design.md`` section 20.3.
 """
 
