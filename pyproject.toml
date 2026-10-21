@@ -90,7 +90,9 @@ dev = [
     "black==26.10.1",
     "flake8==7.1.1",
     "Flake8-pyproject>=1.2.3",
-    "pydocstyle==6.3.0"
+    "pydocstyle==6.3.0",
+    # needed for cleopatra[tiles] basemap support in notebooks
+    "xyzservices",
 ]
 docs = [
     "mkdocs >=1.5.3",
