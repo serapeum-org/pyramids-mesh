@@ -32,8 +32,10 @@ requires-python = ">= 3.11, <4"
 # or pins a separate GDAL.
 dependencies = [
     # `pyramids-core` was renamed to `pyramids-core` in 0.70.0; the import stays
-    # `pyramids`. The floor is 0.70.0, the first release under the new name.
-    "pyramids-core >=0.70.0",
+    # `pyramids`. Floor raised to 0.74.0 for the UGRID fixes the notebooks rely on:
+    # Network1d.n_face removed, Network1d.sort(outlet=) on undirected networks,
+    # plot_outline(basemap=)/basemap_epsg, and UgridDataset.set_crs().
+    "pyramids-core >=0.74.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
