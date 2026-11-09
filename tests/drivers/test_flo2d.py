@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.flo2d import Flo2dDriver, _Flo2dReader
 
 _DATA = Path(__file__).parent.parent / "data" / "flo2d"

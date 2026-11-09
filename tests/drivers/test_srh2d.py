@@ -14,8 +14,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.srh2d import Srh2dDriver, _Srh2dReader
 
 _DATA = Path(__file__).parent.parent / "data" / "srh2d"
@@ -301,11 +301,7 @@ def test_nodes_without_z_build_a_mesh_with_no_node_z(tmp_path):
     """Nodes carrying no z column build a mesh with no node_z and no grid_unit."""
     geom = tmp_path / "noz.srhgeom"
     geom.write_text(
-        "SRHGEOM 30\n"
-        "Node 1 0.0 0.0\n"
-        "Node 2 1.0 0.0\n"
-        "Node 3 0.0 1.0\n"
-        "Elem 1 1 2 3\n"
+        "SRHGEOM 30\nNode 1 0.0 0.0\nNode 2 1.0 0.0\nNode 3 0.0 1.0\nElem 1 1 2 3\n"
     )
     dataset = Srh2dDriver().read(str(geom))
     assert "node_z" not in dataset.data_variable_names

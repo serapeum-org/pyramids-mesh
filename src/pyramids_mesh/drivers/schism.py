@@ -15,7 +15,6 @@ import pyramids  # noqa: F401  # isort:skip
 from typing import TextIO
 
 import numpy as np
-
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
@@ -91,7 +90,7 @@ class SchismDriver(BaseDriver):
         Raises:
             FileFormatNotSupportedError: If an element is neither a triangle nor a quad.
         """
-        with open(path, "r", encoding="latin-1") as handle:
+        with open(path, encoding="latin-1") as handle:
             node_x, node_y, node_z, faces = read_gr3_grid(
                 handle, allow_quads=True, source=path
             )

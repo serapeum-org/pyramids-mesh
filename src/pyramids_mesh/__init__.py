@@ -50,11 +50,14 @@ Examples:
 import pyramids  # noqa: F401
 
 try:
-    from importlib.metadata import PackageNotFoundError  # type: ignore
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 except ImportError:  # pragma: no cover
-    from importlib_metadata import PackageNotFoundError  # type: ignore
-    from importlib_metadata import version
+    # importlib_metadata is the pre-3.12 backport and ships no stubs here; the bare
+    # `# type: ignore` must stay on this `from ... import` statement line, where it
+    # suppresses the fallback branch's import-not-found (and no-redef) diagnostics.
+    # Keep it one line — a parenthesised split strands the comment on a member line
+    # and the suppression stops applying to the module-not-found on the `from` line.
+    from importlib_metadata import PackageNotFoundError, version  # type: ignore
 
 
 # The distribution name, not `__name__`: the import name is `pyramids_mesh` and

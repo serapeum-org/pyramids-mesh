@@ -16,11 +16,11 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
-
 from pyramids.netcdf.ugrid import (
     MESH_DRIVER_API_VERSION,
     Connectivity,
@@ -37,7 +37,7 @@ from pyramids_mesh._validate import validate_and_normalise
 _LOCATION_DIMENSION = {"node": "n_node", "face": "n_face", "edge": "n_edge"}
 
 
-def _dimensions_for(parsed_var: "ParsedVariable") -> tuple[str, ...]:
+def _dimensions_for(parsed_var: ParsedVariable) -> tuple[str, ...]:
     """Return the dimension names a variable's shape corresponds to.
 
     Shared with the active-mask sibling, which describes the same elements over the same
@@ -74,7 +74,7 @@ def _as_float_array(values: np.ndarray | None) -> np.ndarray | None:
     return np.asarray(values, dtype=np.float64)
 
 
-def _recorded_start_index(parsed: "ParsedMesh") -> int:
+def _recorded_start_index(parsed: ParsedMesh) -> int:
     """Return the connectivity base to record on ``Connectivity`` for a writer to emit.
 
     Args:

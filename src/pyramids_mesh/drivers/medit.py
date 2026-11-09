@@ -25,7 +25,6 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -464,7 +463,7 @@ def _tokenise(path: str) -> list[str]:
         list[str]: Every significant token, in file order.
     """
     tokens: list[str] = []
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         for line in handle:
             code = line.split("#", 1)[0]
             tokens.extend(code.split())

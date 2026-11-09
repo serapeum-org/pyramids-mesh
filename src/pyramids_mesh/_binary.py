@@ -23,7 +23,8 @@ See ``planning/design.md`` section 19. Implemented by task S4.
 
 from __future__ import annotations
 
-from typing import BinaryIO, Iterator
+from collections.abc import Iterator
+from typing import BinaryIO
 
 import numpy as np
 

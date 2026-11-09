@@ -10,7 +10,6 @@ import pyramids  # noqa: F401  # isort:skip
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.obj import ObjDriver, _pad_faces

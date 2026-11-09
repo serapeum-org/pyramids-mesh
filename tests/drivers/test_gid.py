@@ -19,7 +19,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
@@ -271,7 +270,7 @@ def test_gid_unclosed_elements_block_is_refused(tmp_path):
 
 def test_gid_header_without_elemtype_is_refused(tmp_path):
     """A ``MESH`` header missing ``ElemType`` is refused, naming the missing keyword."""
-    text = "MESH dimension 2 Nnode 3\n" "Coordinates\n1 0.0 0.0\nend coordinates\n"
+    text = "MESH dimension 2 Nnode 3\nCoordinates\n1 0.0 0.0\nend coordinates\n"
     with pytest.raises(FileFormatNotSupportedError, match="elemtype"):
         GidDriver().read(_write(tmp_path, text))
 

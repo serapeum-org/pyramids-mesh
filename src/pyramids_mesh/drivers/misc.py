@@ -17,9 +17,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from osgeo import osr
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -392,7 +390,7 @@ class _Mike21Scan:
         """
         split: list[list[str]] = []
         raw: list[str] = []
-        with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(path, encoding="utf-8-sig", errors="replace") as handle:
             for line in handle:
                 stripped = line.strip()
                 if stripped:

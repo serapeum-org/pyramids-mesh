@@ -83,16 +83,12 @@ dev = [
     "mypy>=1.10.0",
     "types-PyYAML>=6.0.0",
     "pytest-mock>=3.12.0",
-    # Same versions the pre-commit hooks pin, so `pixi run -e dev python -m black`,
-    # `-m flake8` and `-m pydocstyle` match what CI and the hooks enforce.
-    #
-    # black must stay >= 26.3.1: 24.10.0 (which digital-rivers still pins, and
-    # this file inherited) carries PYSEC-2026-2120 and PYSEC-2026-2121, so
-    # `pip-audit.yml` fails on the py311 resolution. Keep this pin and the
-    # `.pre-commit-config.yaml` rev in step.
-    "black==26.10.1",
-    "flake8==7.1.1",
-    "Flake8-pyproject>=1.2.3",
+    # ruff replaces black (format), flake8 (E/F/W lint) and isort (I) in one tool. Pinned
+    # to the `.pre-commit-config.yaml` ruff-pre-commit rev so `pixi run -e dev ruff ...`
+    # matches exactly what the hook and CI enforce — bump both together. pydocstyle stays:
+    # ruff is not configured for docstring-style (D) rules, so it covers a distinct
+    # concern and is not a duplicate of anything ruff does.
+    "ruff==0.15.22",
     "pydocstyle==6.3.0"
 ]
 docs = [
@@ -111,10 +107,10 @@ docs = [
     "notebook<7.0",
 ]
 notebook = [
-    "pip",
-    "jupyterlab",
-    "notebook",
-    "jupyter",
+    # Layers on top of `dev`: every environment that enables the `notebook` feature also
+    # enables `dev` (which already carries pip/jupyterlab/notebook/jupyter), so the only
+    # thing the notebook runtime must add is the kernel. Re-listing the jupyter entries
+    # here would just duplicate `dev` — exactly the kind of duplication this group avoids.
     "ipykernel"
 ]
 
@@ -204,22 +200,41 @@ exclude = ["tests*"]
 # modules riding along costs nothing, so there is no MANIFEST.in.
 
 
-[tool.flake8]
-ignore = ["E203", "E266", "E501", "W503", "E722", "C901", "E741", "E731"]
-max-line-length = 88
-max-complexity = 18
-select = "B,C,E,F,W,T4"
-
-[tool.black]
-# No `profile` key: black does not have one (that is an isort concept) and warns
-# "Invalid config keys detected: 'profile'" on every run when it is present.
+[tool.ruff]
 line-length = 88
-skip-string-normalization = true
+target-version = "py311"  # requires-python floors at 3.11
 
-[tool.isort]
-profile = "black"
-line_length = 88
-multi_line_output = 3
+[tool.ruff.format]
+# black ran with skip-string-normalization = true; `preserve` is its ruff equivalent, so
+# existing quote styles are left untouched and the formatter switch produces no churn.
+quote-style = "preserve"
+
+[tool.ruff.lint]
+# ruff's lint replaces flake8 (E/F/W) and isort (I) — both tools this repo used — and the
+# formatter below replaces black, mirroring pyramids-core. The old flake8
+# `select = "B,C,E,F,W,T4"` named B (bugbear) and T4, but those plugins were never
+# installed, so the effective flake8 set was E/F/W; nothing is lost by dropping B/T4. UP
+# (pyupgrade) is the one genuinely new rule group — there was no pyupgrade here before, so
+# it adds capability rather than replacing a tool.
+#
+# The import-order contract (`import pyramids` first, so the vendored GDAL is on sys.path
+# before any `from osgeo import ...`) is preserved: those lines carry `# isort:skip`,
+# which ruff honours — verified, it leaves each one in place and only normalises blank
+# lines within the remaining import groups.
+select = ["E", "F", "W", "I", "UP"]
+# Mirrors pyramids-core's ignore list (itself the old [tool.flake8].ignore). W503 is gone
+# — ruff does not implement that formatter-owned pycodestyle code, so there is nothing to
+# ignore; E226/E701 are added to match pyramids-core. C901 keeps complexity off, as the
+# old `max-complexity` + ignored C901 effectively did.
+ignore = ["E203", "E226", "E266", "E501", "E701", "E722", "C901", "E741", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+# flake8 excluded tests/ and examples/ from linting; keep E/F/W and UP off there so the
+# lint surface stays on shipped src/. Import-sorting (I) still applies everywhere.
+"tests/**" = ["E", "F", "W", "UP"]
+"examples/**" = ["E", "F", "W", "UP"]
+# Notebooks legitimately import next to first use / after a setup cell, tripping E402.
+"*.ipynb" = ["E402"]
 
 
 [tool.commitizen]
@@ -282,10 +297,13 @@ pyramids-mesh = { path = ".", editable = true }
 # The editable self-install is the only entry, and there is no
 # [tool.pixi.dependencies] table at all: every environment is built from the
 # standard declarations — runtime deps from [project.dependencies], tooling from
-# the `dev` / `docs` dependency groups — all resolved from PyPI. The per-driver
-# extra (`dhi`) is declared for pip users and is
-# deliberately in no pixi environment yet: each is wired into one when the driver
-# that needs it lands, so the lock never carries a dependency nothing imports.
+# the `dev` / `docs` dependency groups — all resolved from PyPI. A per-driver
+# extra (`dhi`) is a PEP 621 `[project.optional-dependencies]` group; pixi maps
+# each such group to a feature of the same name automatically, so an extra is
+# pulled into an environment by listing its name in that environment's `features`
+# (see the `dhi` environment) — never by re-declaring the dependency in a
+# `[tool.pixi.feature.*]` table here. The lock carries an extra only for the
+# environments that opt in, so it never holds a dependency nothing imports.
 #
 # In particular there is no conda `gdal`: the pyramids-core wheel vendors its own
 # osgeo and `import pyramids` prepends that directory to `sys.path`, so a conda
@@ -306,17 +324,26 @@ cz-changelog = { cmd = "cz changelog", description = "Generate the changelog wit
 cz-bump = { cmd = "cz bump", description = "Bump the version with commitizen" }
 
 [tool.pixi.environments]
+# The `notebook` feature (the PEP 735 `notebook` dependency-group: ipykernel + jupyter)
+# is added to every environment that executes notebooks — `dev` for local
+# `pixi run -e dev notebooks`, and the py311-py314 matrix envs CI runs the `notebooks`
+# task in. ipykernel otherwise only arrived transitively via jupyterlab; this makes the
+# notebook runtime an explicit, declared dependency of those envs. The minimal `default`
+# runtime env and the `docs` env (which carries its own jupyter stack) are left without it.
 default = { features = ["py314"], solve-group = "default" }
-dev = { features = ["py314", "dev"], solve-group = "default" }
+dev = { features = ["py314", "dev", "notebook"], solve-group = "default" }
 docs = { features = ["py314", "docs"], solve-group = "default" }
-py311 = { features = ["py311", "dev"], solve-group = "py311" }
-py312 = { features = ["py312", "dev"], solve-group = "py312" }
-py313 = { features = ["py313", "dev"], solve-group = "py313" }
-py314 = { features = ["py314", "dev"], solve-group = "py314" }
-# The dhi extra (mikeio) wired into its own environment now that the DFSU driver has
-# landed. mikeio needs Python >= 3.12, so it cannot join the shared `dev` feature (the
-# matrix includes py311); it gets a dedicated py314 environment with its own solve-group,
-# so the heavy mikeio stack (mikecore, matplotlib, scipy, pandas) never perturbs the other
+py311 = { features = ["py311", "dev", "notebook"], solve-group = "py311" }
+py312 = { features = ["py312", "dev", "notebook"], solve-group = "py312" }
+py313 = { features = ["py313", "dev", "notebook"], solve-group = "py313" }
+py314 = { features = ["py314", "dev", "notebook"], solve-group = "py314" }
+# The `dhi` feature listed here is the PEP 621 `[project.optional-dependencies].dhi`
+# extra (mikeio), which pixi exposes as a feature of the same name automatically —
+# there is no `[tool.pixi.feature.dhi]` table; the floor lives only at that extra.
+# Wired into its own environment now that the DFSU driver has landed. mikeio needs
+# Python >= 3.12, so it cannot join the shared `dev` feature (the matrix includes
+# py311); it gets a dedicated py314 environment with its own solve-group, so the heavy
+# mikeio stack (mikecore, matplotlib, scipy, pandas) never perturbs the other
 # environments' locks. CI adds `dhi` to the test matrix so the DFSU driver is exercised.
 dhi = { features = ["py314", "dev", "dhi"], solve-group = "dhi" }
 
@@ -349,9 +376,3 @@ python = "3.12.*"
 python = { version = "3.13.*", build = "*_cp313" }
 [tool.pixi.feature.py314.dependencies]
 python = { version = "3.14.*", build = "*_cp314" }
-
-# The dhi extra's backing library. Kept in its own feature, used only by the `dhi`
-# environment above, so the matrix environments stay free of the heavy mikeio stack and
-# py311 (which mikeio does not support) keeps resolving.
-[tool.pixi.feature.dhi.pypi-dependencies]
-mikeio = ">=3.0.0"

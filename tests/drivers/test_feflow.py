@@ -14,9 +14,9 @@ import warnings
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
+
 from pyramids_mesh.drivers.feflow import FeflowDriver, _FeflowReader
 
 _DATA = Path(__file__).parent.parent / "data"
@@ -238,8 +238,7 @@ def test_a_missing_node_section_is_a_format_error(tmp_path):
     """A deck without a NODE section has no connectivity and is a format error."""
     fem_path = tmp_path / "no_node.fem"
     fem_path.write_text(
-        f"{_HEADER}DIMENS\n  3   1   3\nSCALE\n 1,0,1,0,1,0\n"
-        "COOR\n 0,1,0,0,0,1\nEND\n"
+        f"{_HEADER}DIMENS\n  3   1   3\nSCALE\n 1,0,1,0,1,0\nCOOR\n 0,1,0,0,0,1\nEND\n"
     )
     with pytest.raises(FileFormatNotSupportedError, match="no NODE section"):
         _FeflowReader(str(fem_path)).build()

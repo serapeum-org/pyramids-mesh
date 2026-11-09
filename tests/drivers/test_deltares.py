@@ -16,14 +16,14 @@ import warnings
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d
+
 from pyramids_mesh.drivers.deltares import (
     DeltaresNetworkDriver,
-    _DeltaresReader,
     _as_str,
     _attr_map,
+    _DeltaresReader,
     _fill_value,
     _split,
     _string_attr,

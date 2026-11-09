@@ -12,9 +12,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
+
 from pyramids_mesh.drivers.telemac import SelafinDriver
 
 _SLF = Path(__file__).parent.parent / "data" / "minimal.slf"

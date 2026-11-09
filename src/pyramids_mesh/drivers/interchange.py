@@ -17,10 +17,9 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import struct
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -484,7 +483,7 @@ class _PlyReader:
 
     def _read_ascii(self, offset: int) -> tuple[dict[str, np.ndarray], list[list[int]]]:
         """Read the ASCII body: vertex rows then face rows."""
-        with open(self.path, "r", encoding="ascii", errors="replace") as handle:
+        with open(self.path, encoding="ascii", errors="replace") as handle:
             handle.seek(offset)
             tokens = handle.read().split()
         cursor = 0

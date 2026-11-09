@@ -23,9 +23,7 @@ import os
 import warnings
 
 import numpy as np
-
 from osgeo import osr
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 

@@ -15,10 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.scrip import _ScripReader, _array_units, ScripDriver
+from pyramids_mesh.drivers.scrip import ScripDriver, _array_units, _ScripReader
 
 _DATA = Path(__file__).parent.parent / "data"
 _GRID = _DATA / "scrip" / "outCSne8.nc"

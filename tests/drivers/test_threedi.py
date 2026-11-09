@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.netcdf.ugrid import MeshDataset
+
 from pyramids_mesh.drivers.threedi import ThreeDiDriver
 
 _RESULTS = Path(__file__).parent.parent / "data" / "3di" / "results_3di.nc"

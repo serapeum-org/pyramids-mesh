@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.adcirc import AdcircDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "adcirc"
