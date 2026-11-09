@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2830,7 +2830,8 @@ level = mesh.get("Surface elevation")   # face-located, over time
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/dhi.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-36">36</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
 <span class="normal"><a href="#__codelineno-0-37">37</a></span>
 <span class="normal"><a href="#__codelineno-0-38">38</a></span>
 <span class="normal"><a href="#__codelineno-0-39">39</a></span>
@@ -2885,64 +2886,63 @@ level = mesh.get("Surface elevation")   # face-located, over time
 <span class="normal"><a href="#__codelineno-0-88">88</a></span>
 <span class="normal"><a href="#__codelineno-0-89">89</a></span>
 <span class="normal"><a href="#__codelineno-0-90">90</a></span>
-<span class="normal"><a href="#__codelineno-0-91">91</a></span>
-<span class="normal"><a href="#__codelineno-0-92">92</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="k">class</span><span class="w"> </span><span class="nc">DfsuDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="w">    </span><span class="sd">"""Reader for the DHI MIKE DFSU unstructured-mesh format.</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    DFSU carries both a mesh and cell-centred results, so the driver declares</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    ``read_mesh`` and ``read_data``. The mesh comes from ``mikeio``'s geometry -- node</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    coordinates and the (0-based) element table -- node elevation becomes a ``node_z``</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">    variable, and each item becomes a face-located variable over time.</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">        - **Requires the ``dhi`` extra.** Without ``mikeio`` installed the driver is not</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">          registered at all; nothing here is reachable.</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">        - **Elements are cell-centred, so every item is face-located.** Mixed triangles</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">          and quads are padded to the widest row with ``-1``.</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">        - **The projection is mapped to a CRS only when it is a real one.** DHI writes an</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">          internal projection name such as ``UTM-33`` or ``LONG/LAT``, which carries no</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">          datum this package can resolve, so ``crs`` is left ``None`` rather than guessed.</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">        - **Values are lazy.** The loader reopens the file and reads one item, closing</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">          over a path and an item name, never an open handle (design section 7).</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">        - The element table ``mikeio`` returns is already 0-based, so the recorded base is</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">          0.</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">        Read a DFSU mesh and its results (shown, not run as a doctest -- it needs the</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        ``dhi`` extra and a real DFSU file)::</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">            mesh = MeshDataset.read_file("results.dfsu")</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">            level = mesh.get("Surface elevation")   # face-located, over time</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">    """</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"dfsu"</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"DHI MIKE DFSU"</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".dfsu"</span><span class="p">,)</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="w">        </span><span class="sd">"""Report whether the file opens with the DFS binary tag."""</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="k">return</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_DFS_MAGIC</span><span class="p">))</span> <span class="o">==</span> <span class="n">_DFS_MAGIC</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="w">        </span><span class="sd">"""Read a DFSU file into a :class:`ParsedMesh`.</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">            path: The DFSU file.</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">            lazy: When ``True``, leave each item behind a loader.</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">            ParsedMesh: The mesh, ``node_z`` and the per-element variables.</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">            FileFormatNotSupportedError: If ``mikeio`` cannot open the file as a DFSU</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">                mesh (for example a DFS0/DFS2 that is not an unstructured mesh).</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        """</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>        <span class="k">return</span> <span class="n">_DfsuReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<span class="normal"><a href="#__codelineno-0-91">91</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="k">class</span><span class="w"> </span><span class="nc">DfsuDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="w">    </span><span class="sd">"""Reader for the DHI MIKE DFSU unstructured-mesh format.</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    DFSU carries both a mesh and cell-centred results, so the driver declares</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    ``read_mesh`` and ``read_data``. The mesh comes from ``mikeio``'s geometry -- node</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    coordinates and the (0-based) element table -- node elevation becomes a ``node_z``</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    variable, and each item becomes a face-located variable over time.</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">        - **Requires the ``dhi`` extra.** Without ``mikeio`` installed the driver is not</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">          registered at all; nothing here is reachable.</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">        - **Elements are cell-centred, so every item is face-located.** Mixed triangles</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">          and quads are padded to the widest row with ``-1``.</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">        - **The projection is mapped to a CRS only when it is a real one.** DHI writes an</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">          internal projection name such as ``UTM-33`` or ``LONG/LAT``, which carries no</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">          datum this package can resolve, so ``crs`` is left ``None`` rather than guessed.</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">        - **Values are lazy.** The loader reopens the file and reads one item, closing</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">          over a path and an item name, never an open handle (design section 7).</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">        - The element table ``mikeio`` returns is already 0-based, so the recorded base is</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">          0.</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">        Read a DFSU mesh and its results (shown, not run as a doctest -- it needs the</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">        ``dhi`` extra and a real DFSU file)::</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">            mesh = MeshDataset.read_file("results.dfsu")</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">            level = mesh.get("Surface elevation")   # face-located, over time</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">    """</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"dfsu"</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"DHI MIKE DFSU"</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".dfsu"</span><span class="p">,)</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="w">        </span><span class="sd">"""Report whether the file opens with the DFS binary tag."""</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>            <span class="k">return</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_DFS_MAGIC</span><span class="p">))</span> <span class="o">==</span> <span class="n">_DFS_MAGIC</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="w">        </span><span class="sd">"""Read a DFSU file into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">            path: The DFSU file.</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">            lazy: When ``True``, leave each item behind a loader.</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">            ParsedMesh: The mesh, ``node_z`` and the per-element variables.</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">            FileFormatNotSupportedError: If ``mikeio`` cannot open the file as a DFSU</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">                mesh (for example a DFS0/DFS2 that is not an unstructured mesh).</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        """</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>        <span class="k">return</span> <span class="n">_DfsuReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
