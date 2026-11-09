@@ -628,9 +628,7 @@ class BaseDriver:
             cf_role="edge_node_connectivity",
             original_start_index=_recorded_start_index(parsed),
         )
-        return Mesh1d(
-            node_x, node_y, edge_node_connectivity=edge_conn, crs=parsed.crs
-        )
+        return Mesh1d(node_x, node_y, edge_node_connectivity=edge_conn, crs=parsed.crs)
 
     def _construct_dataset(
         self,
