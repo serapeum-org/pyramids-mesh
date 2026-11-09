@@ -58,9 +58,9 @@ class DfsuDriver(BaseDriver):
         Read a DFSU mesh and its results (shown, not run as a doctest -- it needs the
         ``dhi`` extra and a real DFSU file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("results.dfsu")
+            mesh = MeshDataset.read_file("results.dfsu")
             level = mesh.get("Surface elevation")   # face-located, over time
     """
 

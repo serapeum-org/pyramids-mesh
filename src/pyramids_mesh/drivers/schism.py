@@ -49,9 +49,9 @@ class SchismDriver(BaseDriver):
         Read a SCHISM grid and reach its depth and boundary lists (shown, not run as a
         doctest -- it needs a real ``hgrid.gr3``)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("run/hgrid.gr3")
+            mesh = MeshDataset.read_file("run/hgrid.gr3")
             bed = mesh.get("node_z")                       # SCHISM node depth
             ocean = mesh.global_attributes["open_boundary_nodes"]  # 0-based node ids
     """

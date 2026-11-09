@@ -99,9 +99,9 @@ class MpasDriver(BaseDriver):
         Read an MPAS grid (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("mesh.QU.1920km.nc")
+            mesh = MeshDataset.read_file("mesh.QU.1920km.nc")
             mesh.mesh.n_node          # the Voronoi dual vertices
             mesh.mesh.n_face          # the primal (hex-dominant) cells
     """

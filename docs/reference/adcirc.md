@@ -11,20 +11,20 @@ results are read through the vendored GDAL multidimensional API (no declared dep
 | Suffixes | `.14` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 `fort.14`/`fort.63` have no file suffix and `fort.63.nc` ends `.nc`, so — as with the Esri
 TIN directory format — `read_file` reaches the driver through the `fort.14` file or its
 directory:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 # point at the fort.14 grid (its fort.63.nc sibling, if present, is attached)
-mesh = UgridDataset.read_file("run/fort.14")
+mesh = MeshDataset.read_file("run/fort.14")
 
 # or pass the run directory with an explicit driver
-mesh = UgridDataset.read_file("run", driver="adcirc")
+mesh = MeshDataset.read_file("run", driver="adcirc")
 
 zeta = mesh.get("zeta")       # node-located sea-surface elevation, over time
 bed = mesh.get("node_z")      # ADCIRC bathymetric depth

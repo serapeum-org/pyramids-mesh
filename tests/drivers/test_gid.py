@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset, _drivers
+from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
 from pyramids_mesh.drivers.gid import GidDriver, _as_float, _as_int
 from pyramids_mesh.drivers.gmsh import GmshDriver
@@ -75,7 +75,7 @@ def test_gid_reads_expected_counts():
     """The quadratic-triangle sample reads to its 943 nodes and 414 faces."""
     dataset = GidDriver().read(_GID)
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_node == _EXPECTED_NODES
     assert dataset.mesh.n_face == _EXPECTED_FACES
 
@@ -117,9 +117,9 @@ def test_gid_has_no_crs():
 
 def test_gid_is_reachable_through_read_file(gid_dispatch):
     """The suffix dispatch routes the ``.msh`` sample to this driver via ``read_file``."""
-    dataset = UgridDataset.read_file(_GID)
+    dataset = MeshDataset.read_file(_GID)
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_node == _EXPECTED_NODES
     assert dataset.mesh.n_face == _EXPECTED_FACES
 

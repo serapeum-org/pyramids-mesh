@@ -118,9 +118,9 @@ class EsmfDriver(BaseDriver):
         Read an ESMF mesh (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("ne4np4-esmf.nc")
+            mesh = MeshDataset.read_file("ne4np4-esmf.nc")
             mesh.mesh.n_node          # the ESMF node list
             mesh.mesh.n_face          # the ESMF elements
     """

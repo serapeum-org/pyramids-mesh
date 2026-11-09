@@ -12,13 +12,13 @@ dependency.
 | Suffixes | `.msh` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 # an Iber / GiD export dispatches by the .msh suffix
-mesh = UgridDataset.read_file("tube.GiD.msh")
+mesh = MeshDataset.read_file("tube.GiD.msh")
 
 faces = mesh.mesh.face_node_connectivity   # triangles and quadrilaterals
 ```

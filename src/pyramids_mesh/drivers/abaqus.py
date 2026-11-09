@@ -80,9 +80,9 @@ class AbaqusDriver(BaseDriver):
         Read an Abaqus deck (shown, not run as a doctest -- it needs a real ``.inp``
         file), reached through ``read_file``::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("part.inp")
+            mesh = MeshDataset.read_file("part.inp")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 

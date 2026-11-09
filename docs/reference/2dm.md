@@ -10,12 +10,12 @@ other driver in this package follows.
 | Capabilities | `read_mesh`, `read_data`, `multi_mesh`, `write_mesh`, `write_data` |
 | | `read_data` and `multi_mesh` are **declarative** — they describe the driver in `info(drivers=True)` and require no method. There is no `read_data()` to call: `read_data` here means the file carries values (material, elevation) that `read` returns alongside the topology. A results-only format declares `needs_mesh` instead and *does* implement the method. |
 | Extra required | none |
-| Returns | `UgridDataset` for the surface mesh, `Network1d` for the `E2L` network |
+| Returns | `MeshDataset` for the surface mesh, `Mesh1d` for the `E2L` network |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.2dm")
+mesh = MeshDataset.read_file("domain.2dm")
 ```
 
 ## Files holding both a surface and a network
@@ -24,11 +24,11 @@ A 2DM may carry a surface mesh (`E3T`/`E4Q`/`E6T`), a 1D network (`E2L`), or bot
 named separately, so `mesh_names` tells you what a file holds and `mesh_name=` picks one:
 
 ```python
-from pyramids.netcdf.ugrid import Network1d, UgridDataset
+from pyramids.netcdf.ugrid import Mesh1d, MeshDataset
 
-UgridDataset.mesh_names("domain.2dm")            # ['mesh2d', 'network1d']
-mesh = UgridDataset.read_file("domain.2dm")      # the surface mesh
-channels = Network1d.read_file("domain.2dm", mesh_name="network1d")   # the 1D network
+MeshDataset.mesh_names("domain.2dm")            # ['mesh2d', 'network1d']
+mesh = MeshDataset.read_file("domain.2dm")      # the surface mesh
+channels = Mesh1d.read_file("domain.2dm", mesh_name="network1d")   # the 1D network
 ```
 
 Reading the surface of a file that also holds `E2L` elements warns that the network is not in
@@ -68,17 +68,17 @@ Every one of these is deliberate; none is a silent approximation.
 - **`E6T` is kept as a six-node face.** Its node order is corner, mid-side, corner,
   mid-side, corner, mid-side, so the hexagon through those points *is* the element
   outline; it is not demoted to its corner triangle.
-- **One read returns one topology.** `UgridDataset` and `Network1d` are separate types, so a
+- **One read returns one topology.** `MeshDataset` and `Mesh1d` are separate types, so a
   file holding both is read twice, once per `mesh_name` (see above). Reading either half warns
   about what the other half leaves behind rather than omitting it silently.
 - **No elevation coordinate.** The pyramids mesh model is planar, so on the **surface** path `z`
   survives as a node-located `node_z` variable. Anything consuming the mesh *geometry* sees the
   planar projection.
 - **A 1D read cannot carry `z`, variables or global attributes at all.**
-  [`Network1d`][pyramids.netcdf.ugrid.Network1d] holds a topology and a CRS and has no parameter
+  [`Mesh1d`][pyramids.netcdf.ugrid.Mesh1d] holds a topology and a CRS and has no parameter
   for data, so reading the network half of a file reports each of those by name in a warning and
   returns without them. This is a `pyramids-core` limitation, not a decision of this driver: it
-  will be carried properly once `Network1d` has somewhere to put it.
+  will be carried properly once `Mesh1d` has somewhere to put it.
 - **No elevation is invented.** If no `ND` record carries a z column, `node_z` is omitted
   entirely rather than filled with zeros a consumer could not tell from a real zero datum. A file
   whose `ND` records *disagree* about the z column is refused, since the ones without it would
@@ -102,7 +102,7 @@ Every one of these is deliberate; none is a silent approximation.
 
 ## Writing
 
-`UgridDataset.to_file("out.2dm", driver="2dm")` writes the mesh back. It emits `MESH2D`,
+`MeshDataset.to_file("out.2dm", driver="2dm")` writes the mesh back. It emits `MESH2D`,
 one `ND` per node, and one `E3T`/`E4Q`/`E6T` per face — the element keyword chosen from
 the face's **real** vertex count, ignoring `-1` fill.
 
@@ -119,9 +119,9 @@ the face's **real** vertex count, ignoring `-1` fill.
   refused; a dataset with no face connectivity is not a 2DM mesh and is refused.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.2dm")
+mesh = MeshDataset.read_file("domain.2dm")
 mesh.to_file("copy.2dm", driver="2dm")              # exact round trip
 mesh.to_file("small.2dm", driver="2dm", precision=8)  # 8 significant digits
 ```

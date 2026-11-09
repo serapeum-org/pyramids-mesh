@@ -235,9 +235,9 @@ class NastranDriver(BaseDriver):
     Example:
         Read a Nastran deck (shown, not run as a doctest -- it needs a real deck)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model.bdf")
+            mesh = MeshDataset.read_file("model.bdf")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 

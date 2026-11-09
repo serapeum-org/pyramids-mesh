@@ -153,7 +153,7 @@ def test_dispatch_resolves_the_project_from_either_entry():
 
     The entry point is registered as ``srh2d``; here the driver is exercised directly (the
     installed package need not yet carry the entry point), which is the same resolution
-    ``UgridDataset.read_file`` performs once the driver is discovered.
+    ``MeshDataset.read_file`` performs once the driver is discovered.
     """
     driver = Srh2dDriver()
     assert driver._geom_path(str(_HYDRO)) == str(_GEOM)

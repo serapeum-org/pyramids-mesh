@@ -15,15 +15,15 @@ dependency).
 | Suffixes | `.nc`, `.nc4` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 A GEOS grid is not UGRID, so `read_file` reaches the driver through its NetCDF-suffix
 fallback:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("test-c12.native.nc4")
+mesh = MeshDataset.read_file("test-c12.native.nc4")
 mesh.mesh.n_face          # the cubed-sphere cells
 ```
 

@@ -13,15 +13,15 @@ through the vendored GDAL multidimensional API (no declared dependency).
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 An MPAS grid is not UGRID, so `read_file` reaches the driver through its NetCDF-suffix
 fallback:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("mesh.QU.1920km.nc")
+mesh = MeshDataset.read_file("mesh.QU.1920km.nc")
 mesh.mesh.n_node          # the Voronoi dual vertices
 mesh.mesh.n_face          # the primal (hex-dominant) cells
 ```

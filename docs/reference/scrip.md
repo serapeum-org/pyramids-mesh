@@ -14,15 +14,15 @@ vendored GDAL multidimensional API (no declared dependency).
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 A SCRIP grid is not UGRID, so `read_file` reaches the driver through its NetCDF-suffix
 fallback:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("outCSne8.nc")   # corners -> shared nodes
+mesh = MeshDataset.read_file("outCSne8.nc")   # corners -> shared nodes
 mesh.mesh.n_face                               # the SCRIP cells
 ```
 

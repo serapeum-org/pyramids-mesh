@@ -14,15 +14,15 @@ water-surface summary in the plan file becomes face-located variables.
 | **Suffixes** | `.hdf`, `.hdf5` |
 | **Capabilities** | `read_mesh`, `read_data`, `lazy_data` |
 | **Extra required** | none |
-| **Returns** | `UgridDataset` |
+| **Returns** | `MeshDataset` |
 
 `.hdf` is shared with other HDF5 formats, so the sniff keys on the HEC-RAS group layout
 (`Geometry/2D Flow Areas` with a `Faces FacePoint Indexes` geometry), not the suffix.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.p01.hdf")
+mesh = MeshDataset.read_file("model.p01.hdf")
 wse = mesh.get("Maximum Water Surface")   # face-located, per cell
 ```
 

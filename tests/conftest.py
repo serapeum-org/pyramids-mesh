@@ -23,7 +23,7 @@ def unit_square_mesh() -> tuple:
     The smallest topology that is still a mesh: four nodes at the corners of the
     unit square and two triangular faces splitting it along the diagonal. It is
     returned as the `(node_x, node_y, face_node_connectivity)` triple that
-    `pyramids.netcdf.ugrid.UgridDataset.from_arrays` takes, so a test decides for
+    `pyramids.netcdf.ugrid.MeshDataset.from_arrays` takes, so a test decides for
     itself whether to build a `Mesh2d` from it or work on the raw arrays.
 
     Returns:

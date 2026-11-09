@@ -22,9 +22,9 @@ A directory has no suffix, so point `read_file` at the `DEPFP.OUT` component, or
 directory with `driver="flo2d"`:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("flo2d_project", driver="flo2d")
+mesh = MeshDataset.read_file("flo2d_project", driver="flo2d")
 depth = mesh.get("FLOW DEPTH")      # face-located, over time
 ```
 

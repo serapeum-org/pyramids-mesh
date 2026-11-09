@@ -12,7 +12,7 @@
 ## Context
 
 `pyramids-core` already ships UGRID support in `pyramids.netcdf.ugrid`: the data model (`Mesh2d`,
-`Network1d`, `UgridDataset`, `Connectivity`), UGRID-compliant NetCDF I/O, connectivity derivation
+`Mesh1d`, `MeshDataset`, `Connectivity`), UGRID-compliant NetCDF I/O, connectivity derivation
 and graph algorithms, sampling and mesh-to-mesh regridding, construction by flattening a raster grid
 or a polygon layer, mesh-to-vector conversion, gap filling, spatial indexing, and rendering through
 cleopatra. This repository exists because three things are missing from that list, not because the
@@ -33,7 +33,7 @@ NetCDF I/O here, which gives the stack two mesh types that drift apart.
       smoothing.
     - **Refinement** — local refinement and coarsening of an existing mesh.
 - Public functions take and return `pyramids.netcdf.ugrid` types, so a result can go straight back
-  into a `UgridDataset` and be written as UGRID NetCDF without a conversion step.
+  into a `MeshDataset` and be written as UGRID NetCDF without a conversion step.
 - A gap or bug on the pyramids side of the boundary is reported and fixed upstream. A local
   workaround, if one is unavoidable, carries a comment naming the upstream issue and is removed when
   that lands.

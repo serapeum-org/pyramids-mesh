@@ -12,12 +12,12 @@ deck wires correctly.
 | Suffixes | `.bdf`, `.nas`, `.fem` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.bdf")
+mesh = MeshDataset.read_file("model.bdf")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

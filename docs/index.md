@@ -12,7 +12,7 @@ mesh *data model* and everything that follows from a topology already in hand:
 
 | Concern | Lives in |
 |---|---|
-| `Mesh2d`, `Network1d`, `UgridDataset`, `Connectivity` | `pyramids.netcdf.ugrid` |
+| `Mesh2d`, `Mesh1d`, `MeshDataset`, `Connectivity` | `pyramids.netcdf.ugrid` |
 | UGRID-compliant NetCDF read / write | `pyramids.netcdf.ugrid.io` |
 | Connectivity derivation, graph algorithms, boundary extraction | `pyramids.netcdf.ugrid.graph` |
 | Sampling, `rasterize_like`, mesh-to-mesh regridding, time interpolation | `pyramids.netcdf.ugrid.regrid` |

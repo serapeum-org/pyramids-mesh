@@ -26,7 +26,7 @@ import pyramids  # noqa: F401  # isort:skip
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid import UgridDataset, mesh_drivers
+from pyramids.netcdf.ugrid import MeshDataset, mesh_drivers
 
 from pyramids_mesh._validate import _area_tolerance, _signed_area_2
 
@@ -90,7 +90,7 @@ def junk_files(tmp_path):
 
 def _connectivity(result):
     """The connectivity array and node count of a dataset or a network."""
-    if isinstance(result, UgridDataset):
+    if isinstance(result, MeshDataset):
         return result.mesh.face_node_connectivity.data, result.mesh.n_node
     return result.edge_node_connectivity.data, result.n_node
 
@@ -140,7 +140,7 @@ def test_fill_is_minus_one_and_only_trailing(driver, minimal_file):
 def test_faces_are_counter_clockwise(driver, minimal_file):
     """Every non-degenerate face has a positive signed area."""
     result = _read_or_skip(driver, minimal_file, lazy=True)
-    if not isinstance(result, UgridDataset):
+    if not isinstance(result, MeshDataset):
         pytest.skip("a 1D network has no faces")
     mesh = result.mesh
 
@@ -157,7 +157,7 @@ def test_faces_are_counter_clockwise(driver, minimal_file):
 def test_variable_shape_matches_its_loaded_array(driver, minimal_file):
     """``shape`` is the array's real shape, so the along-time API can trust it."""
     result = _read_or_skip(driver, minimal_file, lazy=True)
-    if not isinstance(result, UgridDataset):
+    if not isinstance(result, MeshDataset):
         pytest.skip("a 1D network carries no data variables")
 
     for name in result.data_variable_names:
@@ -170,7 +170,7 @@ def test_lazy_driver_defers_its_values(driver, minimal_file):
     if "lazy_data" not in set(driver.capabilities):
         pytest.skip("driver does not declare lazy_data")
     result = _read_or_skip(driver, minimal_file, lazy=True)
-    if not isinstance(result, UgridDataset):
+    if not isinstance(result, MeshDataset):
         pytest.skip("a 1D network carries no data variables")
 
     for name in result.data_variable_names:
@@ -182,7 +182,7 @@ def test_lazy_driver_defers_its_values(driver, minimal_file):
 def test_crs_is_a_valid_value_or_none(driver, minimal_file):
     """The CRS is a real CRS or ``None`` -- never a malformed string."""
     result = _read_or_skip(driver, minimal_file, lazy=True)
-    crs = result.crs_wkt if isinstance(result, UgridDataset) else result.crs
+    crs = result.crs_wkt if isinstance(result, MeshDataset) else result.crs
 
     assert crs is None or isinstance(crs, (str, int))
     if isinstance(crs, str):

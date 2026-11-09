@@ -96,9 +96,9 @@ class Srh2dDriver(BaseDriver):
         Read an SRH-2D mesh by either member file (shown, not run as a doctest -- it needs
         the committed sample trio)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("Muncie.srhgeom", driver="srh2d")
+            mesh = MeshDataset.read_file("Muncie.srhgeom", driver="srh2d")
             elevation = mesh.get("node_z")      # node-located bed elevation
             zone = mesh.get("material")         # face-located material-zone id
     """

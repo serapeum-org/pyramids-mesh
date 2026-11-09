@@ -210,7 +210,7 @@ class SelafinDriver(BaseDriver):
         ``precision="single"`` for the smaller, lossy ``float32`` layout.
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.slf`` path.
             **options: ``precision`` is ``"double"`` (default) or ``"single"``.
 

@@ -31,9 +31,12 @@ requires-python = ">= 3.11, <4"
 # what puts them on `sys.path` (activate_vendored_osgeo). Nothing here installs
 # or pins a separate GDAL.
 dependencies = [
-    # `pyramids-core` was renamed to `pyramids-core` in 0.70.0; the import stays
-    # `pyramids`. The floor is 0.70.0, the first release under the new name.
-    "pyramids-core >=0.70.0",
+    # `pyramids-gis` was renamed to `pyramids-core` in 0.70.0; the import stays
+    # `pyramids`. The floor is 0.75.0: that release renamed the mesh data model
+    # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`), and this package now
+    # imports the new names. The old aliases are deprecated and removed in a
+    # future pyramids release, so the floor must stay >= 0.75.0.
+    "pyramids-core >=0.75.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID

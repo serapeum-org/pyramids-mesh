@@ -10,12 +10,12 @@ element table, a node table, and named boundary markers.
 | Suffixes | `.su2` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.su2")   # resolved to this package's su2 driver
+mesh = MeshDataset.read_file("domain.su2")   # resolved to this package's su2 driver
 mesh.mesh.n_face
 ```
 

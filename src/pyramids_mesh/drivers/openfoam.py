@@ -229,9 +229,9 @@ class OpenFoamDriver(BaseDriver):
         Read an OpenFOAM mesh by its ``polyMesh`` directory path (shown, not run as a
         doctest -- it needs a real polyMesh directory)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("case/constant/polyMesh", driver="openfoam")
+            mesh = MeshDataset.read_file("case/constant/polyMesh", driver="openfoam")
             elevation = mesh.get("node_z")
     """
 

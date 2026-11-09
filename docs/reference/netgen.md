@@ -13,12 +13,12 @@ mesh library.
 | Suffixes | `.vol`, `.vol.gz` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.vol")   # or domain.vol.gz
+mesh = MeshDataset.read_file("domain.vol")   # or domain.vol.gz
 ```
 
 ## Sections

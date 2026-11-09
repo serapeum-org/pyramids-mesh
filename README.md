@@ -12,7 +12,7 @@ package's job, and its only job.
 
 What `pyramids-core` owns today, and this package therefore does not reimplement:
 
-- **The data model** — `Mesh2d`, `Network1d`, `UgridDataset`, `Connectivity`, and UGRID-compliant
+- **The data model** — `Mesh2d`, `Mesh1d`, `MeshDataset`, `Connectivity`, and UGRID-compliant
   NetCDF read/write.
 - **Topology operations on a mesh already in hand** — connectivity derivation, graph algorithms
   (components, RCM ordering, dilation/erosion, Voronoi, circumcenters, boundary extraction), facet
@@ -29,7 +29,7 @@ What this package adds — **file-format drivers, and nothing else**:
   Mike21, HEC-RAS 2D, plus the geometry interchange formats PLY and TIN.
 - **Writers** for the formats that support it — 2DM, Selafin, DAT, PLY, Mike21.
 - **Discovery** through the `pyramids.mesh_drivers` entry-point group, so
-  `UgridDataset.read_file("model.slf")` just works once this package is installed.
+  `MeshDataset.read_file("model.slf")` just works once this package is installed.
 
 Every mesh *operation* belongs upstream in `pyramids-core`. A driver parses a file and builds
 `pyramids.netcdf.ugrid` objects; it implements no GIS, no interpolation and no analysis.

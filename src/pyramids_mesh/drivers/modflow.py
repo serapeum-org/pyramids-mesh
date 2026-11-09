@@ -111,9 +111,9 @@ class Modflow6DisvDriver(BaseDriver):
         Read a MODFLOW 6 DISV grid by its ``.disv`` file (shown, not run as a doctest -- it
         needs a real DISV file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
+            mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
             footprint = mesh.mesh      # NCPL polygons, one horizontal layer
     """
 
@@ -438,9 +438,9 @@ class Modflow6DisuDriver(BaseDriver):
         Read a MODFLOW 6 DISU grid by its ``.disu`` file (shown, not run as a doctest -- it
         needs a real DISU file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model/keating.disu", driver="modflow6_disu")
+            mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6_disu")
             footprint = mesh.mesh      # NODES polygons, one horizontal footprint
     """
 

@@ -19,7 +19,7 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, UgridDataset
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset, MeshVariable
 
 from pyramids_mesh._base import BaseDriver, ParsedVariable
 
@@ -54,7 +54,7 @@ class XmdfDriver(BaseDriver):
 
     XMDF carries values and no topology, so the driver declares ``needs_mesh`` and
     implements ``read_data`` rather than ``read``; the values attach to a mesh the caller
-    already holds, through ``UgridDataset.read_file("domain.2dm").attach_data("r.xmdf")``.
+    already holds, through ``MeshDataset.read_file("domain.2dm").attach_data("r.xmdf")``.
 
     The file is an HDF5 tree. Each dataset is a group carrying a ``Grouptype`` attribute
     beginning ``DATASET``, with ``Values`` shaped ``(n_time, n_element)``, a ``Times``
@@ -89,9 +89,9 @@ class XmdfDriver(BaseDriver):
         rather than executed as a doctest because XMDF needs a real HDF5 file, which
         cannot be built inline::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            dataset = UgridDataset.read_file("domain.2dm")
+            dataset = MeshDataset.read_file("domain.2dm")
             attached = dataset.attach_data("results.xmdf")
             depth = attached.get("Minimum dt")       # node-located, (n_time, n_node)
             depth.attributes["time_values"]           # the Times coordinate
@@ -137,7 +137,7 @@ class XmdfDriver(BaseDriver):
 
     def read(
         self, path: str, *, mesh_name: str | None = None, lazy: bool = True
-    ) -> UgridDataset:
+    ) -> MeshDataset:
         """Refuse the mesh-reading entry point, naming the one to use instead.
 
         Args:
@@ -146,7 +146,7 @@ class XmdfDriver(BaseDriver):
             lazy: Unused.
 
         Returns:
-            UgridDataset: Never -- the signature matches the driver protocol so the
+            MeshDataset: Never -- the signature matches the driver protocol so the
                 refusal is a clear message rather than a ``TypeError``.
 
         Raises:
@@ -155,11 +155,11 @@ class XmdfDriver(BaseDriver):
         raise ValueError(
             f"{self.name} carries values but no mesh, so it has no read(); attach it to "
             f"a mesh you already have with "
-            f"UgridDataset.read_file(mesh_path).attach_data({path!r})"
+            f"MeshDataset.read_file(mesh_path).attach_data({path!r})"
         )
 
     def read_data(
-        self, path: str, dataset: UgridDataset, *, lazy: bool = True
+        self, path: str, dataset: MeshDataset, *, lazy: bool = True
     ) -> dict[str, MeshVariable]:
         """Read an XMDF file's datasets as variables for a mesh the caller supplies.
 

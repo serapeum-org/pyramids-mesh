@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 from pyramids_mesh.drivers.esri import EsriTinDriver, _EsriTinReader
 
 _DATA = Path(__file__).parent.parent / "data" / "esri_tin"
@@ -96,7 +96,7 @@ def test_reached_through_read_file_via_adf_component():
     """read_file dispatches to this driver when pointed at any .adf component."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        dataset = UgridDataset.read_file(str(_DEM / "tdenv9.adf"))
+        dataset = MeshDataset.read_file(str(_DEM / "tdenv9.adf"))
     assert dataset.mesh.n_face == 528
 
 
@@ -104,7 +104,7 @@ def test_reached_through_read_file_with_driver_on_directory():
     """read_file dispatches to this driver for a directory when driver= is given."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        dataset = UgridDataset.read_file(str(_DEM), driver="esri_tin")
+        dataset = MeshDataset.read_file(str(_DEM), driver="esri_tin")
     assert dataset.mesh.n_face == 528
 
 

@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.exodus import ExodusDriver, _ExodusReader, _pad_blocks
 
@@ -192,8 +192,8 @@ def test_can_open_accepts_exodus_and_declines_others(tmp_path):
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_QUAD), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_QUAD), MeshDataset)
 
 
 def test_declares_read_mesh_only():

@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.kratos import KratosDriver
 
@@ -89,8 +89,8 @@ def test_element_type_is_recorded_as_metadata():
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a UgridDataset."""
-    assert isinstance(_read(_CUBE), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a MeshDataset."""
+    assert isinstance(_read(_CUBE), MeshDataset)
 
 
 def test_declares_read_mesh_only():

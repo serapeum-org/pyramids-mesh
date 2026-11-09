@@ -3,14 +3,14 @@
 `pyramids-mesh` reads and writes the file formats of hydrodynamic and hydraulic
 mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats —
 as `pyramids.netcdf.ugrid` objects. `pyramids.netcdf.ugrid` owns the UGRID data
-model (`Mesh2d`, `Network1d`, `UgridDataset`), its NetCDF I/O, and every operation
+model (`Mesh2d`, `Mesh1d`, `MeshDataset`), its NetCDF I/O, and every operation
 that follows from a topology already in hand — connectivity and graph algorithms,
 regridding and sampling, gap filling, mesh-to-vector conversion, and construction
 from a raster or a polygon layer. What it cannot do is open other people's mesh
 files; that is this package's job, and its only job.
 
 Drivers are discovered by `pyramids-core` through the `pyramids.mesh_drivers`
-entry-point group, so `UgridDataset.read_file("model.slf")` resolves to a driver
+entry-point group, so `MeshDataset.read_file("model.slf")` resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
 (`[dhi]`) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.

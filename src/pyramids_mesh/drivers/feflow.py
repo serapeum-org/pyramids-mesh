@@ -90,9 +90,9 @@ class FeflowDriver(BaseDriver):
         Read a FEFLOW mesh by its ``.fem`` file (shown, not run as a doctest -- it needs a
         real FEFLOW file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model/disv_nodes.fem", driver="feflow")
+            mesh = MeshDataset.read_file("model/disv_nodes.fem", driver="feflow")
             surface = mesh.mesh      # the finite-element mesh
     """
 

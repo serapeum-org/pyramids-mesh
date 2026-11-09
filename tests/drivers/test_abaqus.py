@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.abaqus import AbaqusDriver
 from pyramids_mesh.drivers.avsucd import AvsUcdDriver
@@ -82,8 +82,8 @@ def test_volumetric_element_maps_to_a_face(tmp_path):
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_ABAQUS), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_ABAQUS), MeshDataset)
 
 
 def test_can_open_accepts_abaqus_and_declines_others(tmp_path):

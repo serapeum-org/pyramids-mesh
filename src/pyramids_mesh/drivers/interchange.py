@@ -192,7 +192,7 @@ class PlyDriver(BaseDriver):
         geometrically faithful but drops those extras (design sections 6 and 20.3).
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.ply`` path.
             **options: ``format`` selects ``"ascii"`` (default),
                 ``"binary_little_endian"`` or ``"binary_big_endian"``.

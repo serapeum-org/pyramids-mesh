@@ -67,9 +67,9 @@ class AdcircDriver(BaseDriver):
         Read an ADCIRC grid and its elevation series (shown, not run as a doctest -- it
         needs the real ``fort.14``/``fort.63.nc`` pair)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("run/fort.14")
+            mesh = MeshDataset.read_file("run/fort.14")
             zeta = mesh.get("zeta")       # node-located, over time
             bed = mesh.get("node_z")      # ADCIRC depth
     """

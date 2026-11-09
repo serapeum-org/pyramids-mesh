@@ -10,12 +10,12 @@ by `import pyramids`, with no declared `netCDF4` or `h5py`.
 | Suffixes | `.sww` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-dataset = UgridDataset.read_file("model.sww")
+dataset = MeshDataset.read_file("model.sww")
 stage = dataset.get("stage").data   # deferred until this line
 ```
 

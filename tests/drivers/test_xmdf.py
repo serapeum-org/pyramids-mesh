@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.xmdf import _GROUPTYPE, XmdfDriver, _XmdfReader
 
@@ -29,7 +29,7 @@ _XMDF = _DATA / "minimal.xmdf"
 @pytest.fixture
 def mesh():
     """The 25-node, 16-face 2DM mesh the XMDF results attach to."""
-    return UgridDataset.read_file(str(_MESH))
+    return MeshDataset.read_file(str(_MESH))
 
 
 def test_read_raises_pointing_at_attach_data():
@@ -117,7 +117,7 @@ def test_element_count_mismatch_is_refused(tmp_path):
         "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nND 3 1.0 1.0 0.0\nE3T 1 1 2 3 1\n",
         encoding="utf-8",
     )
-    dataset = UgridDataset.read_file(str(wrong))
+    dataset = MeshDataset.read_file(str(wrong))
     with pytest.raises(ValueError, match="do not belong to this mesh"):
         dataset.attach_data(str(_XMDF))
 
