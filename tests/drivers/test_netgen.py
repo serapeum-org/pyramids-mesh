@@ -17,8 +17,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.netgen import NetgenDriver, _iter_records
 
 _DATA = Path(__file__).parent.parent / "data" / "netgen"
@@ -233,8 +233,7 @@ def test_truncated_section_is_refused(tmp_path):
 def test_out_of_range_node_id_is_refused(tmp_path):
     """A face referencing a node id beyond the point count is caught by validation."""
     body = (
-        "mesh3d\npoints\n3\n0 0 0\n1 0 0\n0 1 0\n"
-        "surfaceelements\n1\n1 1 1 0 3 1 2 9\n"
+        "mesh3d\npoints\n3\n0 0 0\n1 0 0\n0 1 0\nsurfaceelements\n1\n1 1 1 0 3 1 2 9\n"
     )
     with pytest.raises(ValueError, match="out of range"):
         NetgenDriver().read(_write(tmp_path, body))

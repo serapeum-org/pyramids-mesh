@@ -15,9 +15,9 @@ pytest.importorskip("mikeio", reason="the dhi extra (mikeio) is not installed")
 from pathlib import Path  # noqa: E402
 
 import numpy as np  # noqa: E402
-
 from pyramids.base._errors import FileFormatNotSupportedError  # noqa: E402
 from pyramids.netcdf.ugrid import MeshDataset  # noqa: E402
+
 from pyramids_mesh.drivers.dhi import DfsuDriver  # noqa: E402
 
 _RESULTS = Path(__file__).parent.parent / "data" / "dhi" / "OdenseHD2D.dfsu"

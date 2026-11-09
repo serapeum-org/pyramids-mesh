@@ -22,9 +22,7 @@ import os
 import warnings
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -176,7 +174,7 @@ class AdcircDriver(BaseDriver):
         Raises:
             FileFormatNotSupportedError: If an element is not a 3-node triangle.
         """
-        with open(grid, "r", encoding="latin-1") as handle:
+        with open(grid, encoding="latin-1") as handle:
             return read_gr3_grid(handle, allow_quads=False, source=grid)
 
     def _read_results(self, directory: str, *, lazy: bool) -> dict[str, ParsedVariable]:

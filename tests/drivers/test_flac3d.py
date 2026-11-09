@@ -14,7 +14,6 @@ import warnings
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 

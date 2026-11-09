@@ -49,7 +49,6 @@ import pyramids  # noqa: F401  # isort:skip
 import os
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -137,7 +136,7 @@ class Modflow6DisvDriver(BaseDriver):
             bool: ``True`` when the DISV blocks and dimensions are all present.
         """
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 text = handle.read().upper()
         except OSError:
             return False
@@ -220,7 +219,7 @@ class _Modflow6DisvReader:
             FileFormatNotSupportedError: If the file cannot be read.
         """
         try:
-            with open(self.path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(self.path, encoding="utf-8", errors="replace") as handle:
                 raw_lines = handle.readlines()
         except OSError as error:
             raise FileFormatNotSupportedError(
@@ -468,7 +467,7 @@ class Modflow6DisuDriver(BaseDriver):
                 present.
         """
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 text = handle.read().upper()
         except OSError:
             return False
@@ -582,7 +581,7 @@ class _Modflow6DisuReader(_Modflow6DisvReader):
                 else os.path.join(os.path.dirname(self.path), name)
             )
             try:
-                with open(external, "r", encoding="utf-8", errors="replace") as handle:
+                with open(external, encoding="utf-8", errors="replace") as handle:
                     raw_lines = handle.readlines()
             except OSError as error:
                 raise FileFormatNotSupportedError(

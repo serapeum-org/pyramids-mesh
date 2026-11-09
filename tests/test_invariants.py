@@ -25,7 +25,6 @@ import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
 import pytest
-
 from pyramids.netcdf.ugrid import MeshDataset, mesh_drivers
 
 from pyramids_mesh._validate import _area_tolerance, _signed_area_2

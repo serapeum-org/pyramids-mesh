@@ -15,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
+
 from pyramids_mesh.drivers.modflow import Modflow6DisuDriver, _Modflow6DisuReader
 
 _DATA = Path(__file__).parent.parent / "data" / "modflow6_disu"

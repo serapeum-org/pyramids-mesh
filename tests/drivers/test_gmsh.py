@@ -13,7 +13,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
@@ -252,7 +251,7 @@ def test_first_record_not_header_is_refused(tmp_path):
 
 def test_v22_short_node_record_is_refused(tmp_path):
     """A v2.2 node record with fewer than four fields is refused."""
-    text = "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n" "$Nodes\n1\n1 0.0 0.0\n$EndNodes\n"
+    text = "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n$Nodes\n1\n1 0.0 0.0\n$EndNodes\n"
 
     with pytest.raises(FileFormatNotSupportedError, match="short node record"):
         GmshDriver().read(_write(tmp_path, text))

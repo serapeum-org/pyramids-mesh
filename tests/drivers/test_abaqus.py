@@ -12,7 +12,6 @@ import warnings
 from pathlib import Path
 
 import pytest
-
 from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.abaqus import AbaqusDriver
@@ -144,12 +143,7 @@ def test_deck_with_only_unsupported_elements_is_refused(tmp_path):
     """An unmodelled element type (``B31``) builds no face, so the deck is refused."""
     deck = tmp_path / "beams.inp"
     deck.write_text(
-        "*NODE\n"
-        "1, 0.0, 0.0\n"
-        "2, 1.0, 0.0\n"
-        "3, 0.0, 1.0\n"
-        "*ELEMENT, TYPE=B31\n"
-        "1, 1, 2\n",
+        "*NODE\n1, 0.0, 0.0\n2, 1.0, 0.0\n3, 0.0, 1.0\n*ELEMENT, TYPE=B31\n1, 1, 2\n",
         encoding="utf-8",
     )
     from pyramids.base._errors import FileFormatNotSupportedError

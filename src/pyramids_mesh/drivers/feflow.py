@@ -35,7 +35,6 @@ import pyramids  # noqa: F401  # isort:skip
 import os
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -120,7 +119,7 @@ class FeflowDriver(BaseDriver):
         """
         try:
             statements: list[str] = []
-            with open(path, "r", encoding="latin-1") as handle:
+            with open(path, encoding="latin-1") as handle:
                 for raw in handle:
                     stripped = raw.strip()
                     if stripped:
@@ -214,7 +213,7 @@ class _FeflowReader:
             FileFormatNotSupportedError: If the file cannot be read.
         """
         try:
-            with open(self.path, "r", encoding="latin-1") as handle:
+            with open(self.path, encoding="latin-1") as handle:
                 raw_lines = handle.readlines()
         except OSError as error:
             raise FileFormatNotSupportedError(

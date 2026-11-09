@@ -23,7 +23,6 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -188,7 +187,7 @@ def _logical_cards(path: str) -> list[tuple[str, list[str]]]:
         list[tuple[str, list[str]]]: One ``(keyword, fields)`` pair per logical card.
     """
     cards: list[tuple[str, list[str]]] = []
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         for raw in handle:
             line = raw.rstrip("\r\n")
             if not line.strip() or line.lstrip().startswith(_COMMENT):

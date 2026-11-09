@@ -22,7 +22,6 @@ matplotlib.use("Agg")  # non-interactive; must precede the mikeio import below
 import mikeio  # noqa: E402  # isort:skip
 
 import numpy as np  # noqa: E402
-
 from pyramids.base._errors import FileFormatNotSupportedError  # noqa: E402
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION  # noqa: E402
 

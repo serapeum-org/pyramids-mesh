@@ -31,7 +31,6 @@ import re
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -239,7 +238,7 @@ class Srh2dDriver(BaseDriver):
         wins. The value is taken from the quotes rather than the whitespace split so a
         path containing spaces survives.
         """
-        with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(path, encoding="utf-8-sig", errors="replace") as handle:
             for line in handle:
                 stripped = line.strip()
                 if stripped.split()[:1] == [card]:

@@ -19,12 +19,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.cgns import (
     CgnsDriver,
-    _CgnsReader,
     _cgns_corner_count,
+    _CgnsReader,
     _group_label,
     _pad_sections,
 )

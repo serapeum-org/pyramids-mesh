@@ -61,21 +61,19 @@ repos:
         # and the hook silently passes on every file.
         files: ^src/pyramids_mesh/
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+  # ruff replaces flake8 (lint), black (format) and isort in one tool. ruff-check --fix
+  # applies autofixable lint (E/F/W) and import sorting (I); ruff-format reformats. Keep
+  # `rev` in step with the `ruff==` pin in pyproject.toml's dev group. Rule selection,
+  # ignores and per-file-ignores live in [tool.ruff.lint]; the `# isort:skip` guards on
+  # the `import pyramids` lines are honoured, so the import-order contract is preserved.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22
     hooks:
-      - id: flake8
-        additional_dependencies: [Flake8-pyproject]
-        name: "[py   - check] flake8"
-        exclude: ^(examples/|tests/)
-
-  - repo: https://github.com/ambv/black
-    # Keep in step with the `black==` pin in pyproject.toml's dev group; see the
-    # comment there for why it may not go below 26.3.1.
-    rev: 26.10.1
-    hooks:
-      - id: black
-        name: "[py   - format] black"
+      - id: ruff-check
+        name: "[py   -   lint] ruff"
+        args: [--fix]
+      - id: ruff-format
+        name: "[py   - format] ruff-format"
 
   - repo: https://github.com/lovesegfault/beautysh
     rev: v6.2.1
@@ -110,7 +108,7 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest -v --cov=src/pyramids_mesh --cov-report=term-missing -m "not plot"
+        entry: pytest -v --cov=src/pyramids_mesh --cov-report=term-missing -m "not vendor_data"
         language: system
         pass_filenames: false
         always_run: true

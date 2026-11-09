@@ -13,7 +13,7 @@ See ``planning/design.md`` section 19. Implemented by task S4.
 
 from __future__ import annotations
 
-from typing import Iterator, Sequence
+from collections.abc import Iterator, Sequence
 
 
 def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[str]]]:
@@ -85,7 +85,7 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
     # `utf-8-sig` drops a leading byte-order mark. Windows editors write one routinely,
     # and without this the first keyword of an otherwise valid file reads as
     # '﻿MESH2D' and the file is refused.
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         for line in handle:
             stripped = line.strip()
             if not stripped or stripped.startswith(comment):

@@ -17,8 +17,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.vtk import (
     VtkDriver,
     _cells_from_offsets,
@@ -281,7 +281,7 @@ def test_vtu_missing_child_element_is_refused(tmp_path):
     """A VTKFile with no inner <UnstructuredGrid> element names what is missing."""
     path = tmp_path / "empty.vtu"
     path.write_text(
-        '<?xml version="1.0"?>\n' '<VTKFile type="UnstructuredGrid"></VTKFile>\n',
+        '<?xml version="1.0"?>\n<VTKFile type="UnstructuredGrid"></VTKFile>\n',
         encoding="utf-8",
     )
     with pytest.raises(FileFormatNotSupportedError, match="UnstructuredGrid"):

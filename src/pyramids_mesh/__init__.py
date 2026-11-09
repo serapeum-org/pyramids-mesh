@@ -50,11 +50,15 @@ Examples:
 import pyramids  # noqa: F401
 
 try:
-    from importlib.metadata import PackageNotFoundError  # type: ignore
-    from importlib.metadata import version
+    from importlib.metadata import (
+        PackageNotFoundError,  # type: ignore
+        version,
+    )
 except ImportError:  # pragma: no cover
-    from importlib_metadata import PackageNotFoundError  # type: ignore
-    from importlib_metadata import version
+    from importlib_metadata import (
+        PackageNotFoundError,  # type: ignore
+        version,
+    )
 
 
 # The distribution name, not `__name__`: the import name is `pyramids_mesh` and

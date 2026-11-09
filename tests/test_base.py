@@ -12,7 +12,6 @@ import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
 import pytest
-
 from pyramids.netcdf.ugrid import Mesh1d, MeshDataset
 
 from pyramids_mesh._base import (

@@ -16,7 +16,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.exodus import ExodusDriver, _ExodusReader, _pad_blocks
