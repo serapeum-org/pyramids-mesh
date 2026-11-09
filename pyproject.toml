@@ -90,8 +90,6 @@ dev = [
     # concern and is not a duplicate of anything ruff does.
     "ruff==0.15.22",
     "pydocstyle==6.3.0",
-    # needed for cleopatra[tiles] basemap support in notebooks
-    "xyzservices",
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -113,7 +111,14 @@ notebook = [
     # enables `dev` (which already carries pip/jupyterlab/notebook/jupyter), so the only
     # thing the notebook runtime must add is the kernel. Re-listing the jupyter entries
     # here would just duplicate `dev` — exactly the kind of duplication this group avoids.
-    "ipykernel"
+    "ipykernel",
+    # The example notebooks render through cleopatra, which pyramids-core 0.75.0 moved
+    # behind its `viz` extra (`cleopatra[tiles]>=0.44.0`, which pulls matplotlib and the
+    # xyzservices / pyproj / Pillow basemap-tile stack). A bare `pyramids-mesh` install
+    # pulls no plotting stack (ADR-0005), so the notebook runtime adds it here rather than
+    # the package declaring a plotting dependency. This replaces the standalone
+    # `xyzservices` pin — `cleopatra[tiles]` already carries it.
+    "pyramids-core[viz]>=0.75.0",
 ]
 
 
@@ -347,7 +352,9 @@ py314 = { features = ["py314", "dev", "notebook"], solve-group = "py314" }
 # py311); it gets a dedicated py314 environment with its own solve-group, so the heavy
 # mikeio stack (mikecore, matplotlib, scipy, pandas) never perturbs the other
 # environments' locks. CI adds `dhi` to the test matrix so the DFSU driver is exercised.
-dhi = { features = ["py314", "dev", "dhi"], solve-group = "dhi" }
+# It also carries the `notebook` feature: `dfsu.ipynb` can only read a DFSU file with
+# mikeio installed, so this is the one environment that can execute that example.
+dhi = { features = ["py314", "dev", "notebook", "dhi"], solve-group = "dhi" }
 
 
 # Interpreter pins, one feature per environment in the matrix. `default`, `dev`
