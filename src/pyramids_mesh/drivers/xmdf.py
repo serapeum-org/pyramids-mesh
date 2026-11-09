@@ -19,7 +19,7 @@ import numpy as np
 from osgeo import gdal
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, MeshDataset
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset, MeshVariable
 
 from pyramids_mesh._base import BaseDriver, ParsedVariable
 

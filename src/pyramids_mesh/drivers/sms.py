@@ -27,7 +27,7 @@ import numpy as np
 # _base.py needs for the same reason). Until then a patch release renaming the private
 # module would break this import, so `tests/test_package.py` keeps a canary on it.
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, MeshDataset
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset, MeshVariable
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh._text import iter_records, native_id_map

@@ -24,10 +24,10 @@ import numpy as np
 from pyramids.netcdf.ugrid import (
     MESH_DRIVER_API_VERSION,
     Connectivity,
-    Mesh2d,
-    MeshVariable,
     Mesh1d,
+    Mesh2d,
     MeshDataset,
+    MeshVariable,
 )
 
 from pyramids_mesh._validate import validate_and_normalise
