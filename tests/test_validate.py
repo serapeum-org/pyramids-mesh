@@ -439,7 +439,7 @@ def test_interior_padding_is_caught_even_on_a_short_row():
 def test_two_dimensional_parse_without_faces_raises():
     """A 2D topology with no faces is a contradiction, refused where it is made.
 
-    Left alone it was not even a loud failure: ``read`` returned a ``UgridDataset``
+    Left alone it was not even a loud failure: ``read`` returned a ``MeshDataset``
     whose connectivity was a 0-d object array, and the ``IndexError`` surfaced later
     when the caller touched ``n_face`` -- far from the driver that caused it.
     """

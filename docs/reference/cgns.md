@@ -15,12 +15,12 @@ library).
 | Suffixes | `.cgns` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("grid.cgns")
+mesh = MeshDataset.read_file("grid.cgns")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

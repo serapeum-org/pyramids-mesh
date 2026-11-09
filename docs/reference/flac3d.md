@@ -10,12 +10,12 @@ gridpoints and zones: `G <id> <x> <y> <z>` rows give node coordinates and
 | Suffixes | `.f3grid` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.f3grid")
+mesh = MeshDataset.read_file("model.f3grid")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

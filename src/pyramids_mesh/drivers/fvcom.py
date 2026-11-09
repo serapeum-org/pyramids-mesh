@@ -111,9 +111,9 @@ class FvcomDriver(BaseDriver):
         Read an FVCOM grid by its ``_grd.dat`` file (shown, not run as a doctest -- it
         needs the real trio on disk)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("path/to/chn_grd.dat")
+            mesh = MeshDataset.read_file("path/to/chn_grd.dat")
             depth = mesh.get("node_z")
     """
 

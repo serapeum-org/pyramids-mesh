@@ -36,10 +36,10 @@ def test_osgeo_resolves_through_pyramids():
 
 def test_ugrid_tier_is_available():
     """The pyramids UGRID surface this package extends is importable."""
-    from pyramids.netcdf.ugrid import Mesh2d, UgridDataset
+    from pyramids.netcdf.ugrid import Mesh2d, MeshDataset
 
     assert Mesh2d is not None
-    assert UgridDataset is not None
+    assert MeshDataset is not None
 
 
 def test_private_upstream_api_this_package_depends_on_still_exists():

@@ -13,16 +13,16 @@ through the vendored GDAL multidimensional API (no declared dependency).
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
-ICON grids use `.nc`, which is not UGRID. `UgridDataset.read_file` tries its built-in
+ICON grids use `.nc`, which is not UGRID. `MeshDataset.read_file` tries its built-in
 UGRID reader first and, finding no topology, falls back to a driver claiming the suffix
 (`pyramids-core` 0.69.0's dispatch) — which is how this driver is reached.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("icon_grid.nc")
+mesh = MeshDataset.read_file("icon_grid.nc")
 area = mesh.get("cell_area")   # face-located cell areas
 ```
 

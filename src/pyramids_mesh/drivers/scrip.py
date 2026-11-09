@@ -96,7 +96,7 @@ class ScripDriver(BaseDriver):
     SCRIP stores each cell's corner coordinates (``grid_corner_lat``/``grid_corner_lon``)
     rather than a node list and connectivity. The driver deduplicates the corners into a
     shared node table and builds face-node connectivity into it, so a SCRIP grid becomes
-    an ordinary :class:`~pyramids.netcdf.ugrid.UgridDataset`. The cell centres
+    an ordinary :class:`~pyramids.netcdf.ugrid.MeshDataset`. The cell centres
     (``grid_center_lat``/``grid_center_lon``) become the face centres.
 
     Documented limitations:
@@ -121,9 +121,9 @@ class ScripDriver(BaseDriver):
         Read a SCRIP grid (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("outCSne8.nc")   # corners -> shared nodes
+            mesh = MeshDataset.read_file("outCSne8.nc")   # corners -> shared nodes
             mesh.mesh.n_face                               # the SCRIP cells
     """
 

@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.nastran import NastranDriver, _parse_real
 
@@ -395,8 +395,8 @@ def test_can_open_requires_both_a_grid_and_a_face_card(tmp_path):
 
 
 def test_read_yields_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_CYLINDER), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_CYLINDER), MeshDataset)
 
 
 def test_driver_identity_and_capabilities():

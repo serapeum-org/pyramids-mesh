@@ -63,9 +63,9 @@ class EsriTinDriver(BaseDriver):
         Read an Esri TIN by its directory path (shown, not run as a doctest -- it needs a
         real TIN directory)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("path/to/tin_directory")
+            mesh = MeshDataset.read_file("path/to/tin_directory")
             elevation = mesh.get("node_z")
     """
 

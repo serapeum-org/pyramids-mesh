@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 from pyramids_mesh.drivers.tuflowfv import TuflowFvDriver, _TuflowFvReader
 
 _RESULTS = Path(__file__).parent.parent / "data" / "tuflowfv" / "Cone_003.nc"
@@ -99,7 +99,7 @@ def test_faces_are_counter_clockwise():
 
 def test_reached_through_read_file_netcdf_fallback():
     """A plain read_file dispatches to this driver via the NetCDF-suffix fallback."""
-    dataset = UgridDataset.read_file(str(_RESULTS))
+    dataset = MeshDataset.read_file(str(_RESULTS))
     assert dataset.mesh.n_node == 1497
 
 

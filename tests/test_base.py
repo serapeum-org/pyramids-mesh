@@ -13,7 +13,7 @@ import pyramids  # noqa: F401  # isort:skip
 import numpy as np
 import pytest
 
-from pyramids.netcdf.ugrid import Network1d, UgridDataset
+from pyramids.netcdf.ugrid import Mesh1d, MeshDataset
 
 from pyramids_mesh._base import (
     BaseDriver,
@@ -50,10 +50,10 @@ def _unit_square(**overrides) -> ParsedMesh:
 
 
 def test_base_driver_read_is_template_method():
-    """A valid stub ``_parse`` flows through to a built ``UgridDataset``."""
+    """A valid stub ``_parse`` flows through to a built ``MeshDataset``."""
     dataset = _StubDriver(_unit_square()).read("mesh.stub")
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
 
@@ -194,7 +194,7 @@ def test_face_centres_are_converted_to_float_arrays():
 
 
 def test_topology_dimension_1_yields_network1d():
-    """A 1D topology builds a ``Network1d`` rather than a ``UgridDataset``."""
+    """A 1D topology builds a ``Mesh1d`` rather than a ``MeshDataset``."""
     parsed = ParsedMesh(
         node_x=np.array([0.0, 1.0, 2.0]),
         node_y=np.array([0.0, 0.0, 0.0]),
@@ -205,7 +205,7 @@ def test_topology_dimension_1_yields_network1d():
 
     result = _StubDriver(parsed).read("channels.stub")
 
-    assert isinstance(result, Network1d)
+    assert isinstance(result, Mesh1d)
     assert result.n_node == 3
     assert result.n_edge == 2
 
@@ -323,9 +323,9 @@ def test_edges_become_edge_connectivity_on_a_2d_mesh():
 
 
 def test_network_construction_warns_about_what_it_cannot_carry():
-    """A 1D build names everything ``Network1d`` has no room for, instead of dropping it.
+    """A 1D build names everything ``Mesh1d`` has no room for, instead of dropping it.
 
-    ``Network1d`` takes a topology and a CRS only, so variables, node elevation and
+    ``Mesh1d`` takes a topology and a CRS only, so variables, node elevation and
     global attributes cannot come along. The loss is unavoidable until upstream grows
     somewhere to put them; being silent about it is not.
     """
@@ -345,7 +345,7 @@ def test_network_construction_warns_about_what_it_cannot_carry():
     with pytest.warns(UserWarning, match="node_z") as record:
         result = _StubDriver(parsed).read("channels.stub")
 
-    assert isinstance(result, Network1d)
+    assert isinstance(result, Mesh1d)
     message = str(record[0].message)
     assert "wl" in message
     assert "global_attributes" in message
@@ -557,7 +557,7 @@ def test_network_edges_win_over_edges_when_a_parse_carries_both():
 
     A real driver sets one or the other, so the precedence in ``_network_edges`` was
     only ever executed one branch at a time. Swapping the two would hand a mixed
-    file's surface edges to ``Network1d`` as its channels -- the mislabelling the two
+    file's surface edges to ``Mesh1d`` as its channels -- the mislabelling the two
     separate fields exist to prevent.
     """
     parsed = ParsedMesh(
@@ -592,7 +592,7 @@ def test_a_one_dimensional_parse_builds_a_network_under_any_offered_name():
 
     result = _StubDriver(parsed).read("channels.stub", mesh_name="mesh2d")
 
-    assert isinstance(result, Network1d)
+    assert isinstance(result, Mesh1d)
     assert result.n_edge == 2
 
 

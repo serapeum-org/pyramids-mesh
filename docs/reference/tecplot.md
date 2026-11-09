@@ -15,7 +15,7 @@ the `X`/`Y` (and `Z`) coordinates and the connectivity are read, everything else
 | Suffixes | `.dat`, `.tec` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
 from pyramids_mesh.drivers.tecplot import TecplotDriver

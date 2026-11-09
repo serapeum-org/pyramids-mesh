@@ -223,7 +223,7 @@ class Mike21Driver(BaseDriver):
         projection field, else the DHI-internal ``LONG/LAT`` placeholder.
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.mesh`` path.
             **options: Unused; accepted for a uniform writer signature.
 

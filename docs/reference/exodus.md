@@ -12,12 +12,12 @@ vendored GDAL multidimensional API (no declared `netCDF4` dependency, no `exodus
 | Suffixes | `.exo`, `.e` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.exo")
+mesh = MeshDataset.read_file("model.exo")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

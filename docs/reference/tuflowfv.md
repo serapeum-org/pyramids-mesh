@@ -9,15 +9,15 @@ variables. Read through the vendored GDAL multidimensional API (no declared depe
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 TUFLOW FV results use `.nc`, which is not UGRID, so they are reached through `read_file`'s
 NetCDF-suffix fallback (`pyramids-core` 0.69.0).
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("results.nc")
+mesh = MeshDataset.read_file("results.nc")
 depth = mesh.get("D")      # face-located, over time
 wet = mesh.get("stat")     # per-step wet/dry status
 ```

@@ -9,12 +9,12 @@ line, node records, an element header, element records.
 | Suffixes | `.mesh` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.mesh")
+mesh = MeshDataset.read_file("domain.mesh")
 ```
 
 ## Layout

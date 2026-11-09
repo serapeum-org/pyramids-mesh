@@ -66,7 +66,7 @@ full. Only its three-concerns decision was wrong.
   operation that follows from a topology already in hand. This package imports those types; it never
   redefines them.
 - Public functions take and return `pyramids.netcdf.ugrid` types, so a result can go straight back
-  into a `UgridDataset` and be written as UGRID NetCDF without a conversion step.
+  into a `MeshDataset` and be written as UGRID NetCDF without a conversion step.
 - A gap or bug on the pyramids side of the boundary is reported and fixed upstream. A local
   workaround, if one is unavoidable, carries a comment naming the upstream issue and is removed when
   that lands.

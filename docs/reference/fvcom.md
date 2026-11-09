@@ -11,19 +11,19 @@ beyond numpy.
 | Suffixes | `.dat` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 `.dat` is a generic suffix, so the driver sniffs the `Node Number` / `Cell Number` header
 and is reached through the `_grd.dat` component or the directory holding it:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 # point at the _grd.dat component of the trio
-mesh = UgridDataset.read_file("path/to/chn_grd.dat")
+mesh = MeshDataset.read_file("path/to/chn_grd.dat")
 
 # or pass the directory with an explicit driver
-mesh = UgridDataset.read_file("path/to/grid_dir", driver="fvcom")
+mesh = MeshDataset.read_file("path/to/grid_dir", driver="fvcom")
 
 depth = mesh.get("node_z")
 ```

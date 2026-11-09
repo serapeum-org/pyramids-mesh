@@ -14,12 +14,12 @@ forcing the HDF5 multidimensional driver, over the GDAL vendored in the `pyramid
 | Suffixes | `.med` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("cylinder.med")
+mesh = MeshDataset.read_file("cylinder.med")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

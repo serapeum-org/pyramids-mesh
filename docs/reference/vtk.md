@@ -13,12 +13,12 @@ other mesh library.
 | Suffixes | `.vtk`, `.vtu` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("surface.vtk")   # or surface.vtu
+mesh = MeshDataset.read_file("surface.vtk")   # or surface.vtu
 ```
 
 ## Cell types

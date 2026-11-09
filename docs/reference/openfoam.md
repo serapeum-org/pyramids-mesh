@@ -10,15 +10,15 @@ single file. Read through plain text parsing; no declared dependency.
 | Suffixes | `.foam` (the ParaView case marker; a `polyMesh` directory is also accepted) |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 A directory has no suffix, and the component files are extensionless, so `read_file` cannot
 dispatch the mesh by name. Pass the `polyMesh` directory with an explicit driver:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("case/constant/polyMesh", driver="openfoam")
+mesh = MeshDataset.read_file("case/constant/polyMesh", driver="openfoam")
 
 elevation = mesh.get("node_z")
 ```

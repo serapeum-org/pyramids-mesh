@@ -11,12 +11,12 @@ blocks: `Begin Nodes` lists `id x y z`, and `Begin Elements <ElementType>` lists
 | Suffixes | `.mdpa` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.mdpa")
+mesh = MeshDataset.read_file("model.mdpa")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

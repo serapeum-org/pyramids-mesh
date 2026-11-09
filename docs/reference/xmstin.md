@@ -9,12 +9,12 @@ The XMS / SMS TIN reader. A text triangulated irregular network: a `VERT` block 
 | Suffixes | `.tin` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("surface.tin")
+mesh = MeshDataset.read_file("surface.tin")
 ```
 
 ## Documented limitations

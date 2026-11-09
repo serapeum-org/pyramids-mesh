@@ -3,7 +3,7 @@
 2DM is the reference driver every later one copies (task D1). DAT carries values but no
 topology, so it declares ``needs_mesh`` and implements ``read_data`` rather than ``read``
 (task D2): a results file is attached to a mesh the caller already has, through
-``UgridDataset.attach_data``. See ``planning/design.md`` section 20.1.
+``MeshDataset.attach_data``. See ``planning/design.md`` section 20.1.
 
 The 2DM structure here was verified against the 2DM format specification: a plain-text file
 whose first significant line is ``MESH2D``, then one record per line.
@@ -27,7 +27,7 @@ import numpy as np
 # _base.py needs for the same reason). Until then a patch release renaming the private
 # module would break this import, so `tests/test_package.py` keeps a canary on it.
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, UgridDataset
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshVariable, MeshDataset
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh._text import iter_records, native_id_map
@@ -151,7 +151,7 @@ class TwoDmDriver(BaseDriver):
           half warns about what the other leaves behind. ``E2L`` elements are a
           separate 1D topology, never folded into the surface's edge connectivity.
         - A 1D read carries no ``node_z``, variables or global attributes:
-          ``Network1d`` has no parameter for them. Each is named in a warning rather
+          ``Mesh1d`` has no parameter for them. Each is named in a warning rather
           than dropped quietly. That is a ``pyramids-core`` limitation to fix upstream.
         - ``node_z`` is omitted entirely when no ``ND`` record carries a z column,
           rather than fabricated as zeros. A file whose ``ND`` records disagree about
@@ -444,7 +444,7 @@ class TwoDmDriver(BaseDriver):
         wrong by metres.
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.2dm`` path.
             **options: ``precision`` sets the coordinate format: an int number of
                 significant digits, or the default ``"repr"`` for an exact float64
@@ -511,7 +511,7 @@ class DatDriver(BaseDriver):
     DAT carries values and no topology -- it is a results-only format --
     so this driver declares ``needs_mesh`` and implements ``read_data`` instead of
     ``read``. The values attach to a mesh the caller already holds, through
-    ``UgridDataset.read_file("domain.2dm").attach_data("depth.dat")``.
+    ``MeshDataset.read_file("domain.2dm").attach_data("depth.dat")``.
 
     Two dialects are supported. The **new** one opens with a ``DATASET`` card; the
     **old** one has no such line and is recognised by ``SCALAR``, ``VECTOR``, ``TS`` or
@@ -560,7 +560,7 @@ class DatDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids.netcdf.ugrid import UgridDataset
+            >>> from pyramids.netcdf.ugrid import MeshDataset
             >>> from pyramids_mesh.drivers.sms import (
             ...     build_minimal_fixture,
             ...     build_minimal_fixture_dat,
@@ -570,7 +570,7 @@ class DatDriver(BaseDriver):
             ...     dat_path = os.path.join(directory, "depth.dat")
             ...     build_minimal_fixture(mesh_path)
             ...     build_minimal_fixture_dat(dat_path)
-            ...     attached = UgridDataset.read_file(mesh_path).attach_data(dat_path)
+            ...     attached = MeshDataset.read_file(mesh_path).attach_data(dat_path)
             >>> sorted(attached.data_variable_names)
             ['depth', 'material', 'node_z']
             >>> depth = attached.get("depth")
@@ -594,7 +594,7 @@ class DatDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids.netcdf.ugrid import UgridDataset
+            >>> from pyramids.netcdf.ugrid import MeshDataset
             >>> from pyramids_mesh.drivers.sms import build_minimal_fixture
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     mesh_path = os.path.join(directory, "domain.2dm")
@@ -607,7 +607,7 @@ class DatDriver(BaseDriver):
             ...         print("NAME depth", file=handle)
             ...         print("ENDDS", file=handle)
             ...     try:
-            ...         UgridDataset.read_file(mesh_path).attach_data(dat_path)
+            ...         MeshDataset.read_file(mesh_path).attach_data(dat_path)
             ...     except ValueError as error:
             ...         print(str(error).split(": ")[-1])
             declares ND 9 but the mesh has 4 nodes
@@ -619,7 +619,7 @@ class DatDriver(BaseDriver):
     api_version = MESH_DRIVER_API_VERSION
     # `needs_mesh` is what makes `read_data` the entry point rather than `read`: the
     # format carries no topology, so the mesh has to come from the caller.
-    # `write_mesh` is declared because `UgridDataset.to_file` dispatches every driver
+    # `write_mesh` is declared because `MeshDataset.to_file` dispatches every driver
     # write through it; `write()` here writes the per-element value groups, not a mesh
     # (DAT carries no topology), and `write_data` marks that the data variables are
     # persisted so `to_file` does not warn that they were dropped.
@@ -660,7 +660,7 @@ class DatDriver(BaseDriver):
 
     def read(
         self, path: str, *, mesh_name: str | None = None, lazy: bool = True
-    ) -> UgridDataset:
+    ) -> MeshDataset:
         """Refuse the mesh-reading entry point, naming the one to use instead.
 
         Args:
@@ -669,7 +669,7 @@ class DatDriver(BaseDriver):
             lazy: Unused.
 
         Returns:
-            UgridDataset: Never. The signature matches the driver protocol so the
+            MeshDataset: Never. The signature matches the driver protocol so the
                 refusal is a clear message rather than a ``TypeError``.
 
         Raises:
@@ -679,11 +679,11 @@ class DatDriver(BaseDriver):
         raise ValueError(
             f"{self.name} carries values but no mesh, so it has no read(); attach it to "
             f"a mesh you already have with "
-            f"UgridDataset.read_file(mesh_path).attach_data({path!r})"
+            f"MeshDataset.read_file(mesh_path).attach_data({path!r})"
         )
 
     def read_data(
-        self, path: str, dataset: UgridDataset, *, lazy: bool = True
+        self, path: str, dataset: MeshDataset, *, lazy: bool = True
     ) -> dict[str, MeshVariable]:
         """Read a DAT file's groups as variables for a mesh the caller supplies.
 
@@ -741,7 +741,7 @@ class DatDriver(BaseDriver):
         keeps one location per file.
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` whose data variables
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` whose data variables
                 are written.
             path: The output ``.dat`` path.
             **options: ``ndigits`` (or ``precision``) sets the value format -- an int number

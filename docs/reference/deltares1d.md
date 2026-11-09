@@ -1,6 +1,6 @@
 # Deltares 1D network — Delft3D FM / D-HYDRO UGRID NetCDF
 
-The Deltares 1D reader, building a `Network1d` from the **`mesh1d` discretisation** of a
+The Deltares 1D reader, building a `Mesh1d` from the **`mesh1d` discretisation** of a
 Delft3D FM / D-HYDRO UGRID-1.0 + Deltares-extension file: the computational nodes along
 the branches and their edge connectivity. Read through the vendored GDAL multidimensional
 API (no declared dependency).
@@ -11,7 +11,7 @@ API (no declared dependency).
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
-| Returns | `Network1d` |
+| Returns | `Mesh1d` |
 
 A Deltares 1D file carries two one-dimensional topologies — a `network` of branches and a
 `mesh1d` discretisation — plus `mesh1d_*` results over `time` on a map file. Both are
@@ -21,9 +21,9 @@ a hard-coded name, so the two spellings in the wild (`network`/`mesh1d` and
 through `read_file`'s NetCDF-suffix fallback (`pyramids-core` 0.69.0).
 
 ```python
-from pyramids.netcdf.ugrid import Network1d
+from pyramids.netcdf.ugrid import Mesh1d
 
-network = Network1d.read_file("FlowFM_map.nc")   # mesh1d discretisation
+network = Mesh1d.read_file("FlowFM_map.nc")   # mesh1d discretisation
 print(network.n_node, network.n_edge)
 ```
 
@@ -31,11 +31,11 @@ print(network.n_node, network.n_edge)
 
 - **Only the `mesh1d` discretisation is built.** The coarser `network` of branch
   endpoints and its branch geometry are not returned; results live on the discretisation,
-  which is what a `Network1d` represents. The discretisation is told from the bare network
+  which is what a `Mesh1d` represents. The discretisation is told from the bare network
   by its `coordinate_space` attribute.
-- **A `Network1d` carries a topology and a CRS only.** The per-node branch index and
+- **A `Mesh1d` carries a topology and a CRS only.** The per-node branch index and
   offset and the `mesh1d_*` result variables are parsed and validated (node- or
-  edge-located, over `time`), but `Network1d` has nowhere to attach them, so the built
+  edge-located, over `time`), but `Mesh1d` has nowhere to attach them, so the built
   network warns that they are not in the result. Carrying them is upstream work in
   `pyramids-core` (design §10).
 - **Edge indices honour the file's `start_index`** — a 1-based table is re-based to 0 and

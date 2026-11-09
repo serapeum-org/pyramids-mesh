@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.flac3d import Flac3dDriver
 
@@ -126,8 +126,8 @@ def test_group_and_face_tables_are_ignored():
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a UgridDataset."""
-    assert isinstance(_read(_MESH), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a MeshDataset."""
+    assert isinstance(_read(_MESH), MeshDataset)
 
 
 def test_declares_read_mesh_only():

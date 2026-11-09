@@ -10,17 +10,17 @@ standard library and numpy (no declared dependency).
 | Suffixes | `.node`, `.ele` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 `.node` and `.ele` are a pair sharing a stem. Point `read_file` at either file; the sibling
 is read from beside it:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 # point at either half of the pair
-mesh = UgridDataset.read_file("path/to/mesh.node")
-mesh = UgridDataset.read_file("path/to/mesh.ele")
+mesh = MeshDataset.read_file("path/to/mesh.node")
+mesh = MeshDataset.read_file("path/to/mesh.ele")
 
 elevation = mesh.get("node_z")  # present only for a 3-D (TetGen) mesh
 ```

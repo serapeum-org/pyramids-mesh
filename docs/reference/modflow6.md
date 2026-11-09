@@ -43,9 +43,9 @@ A `.disv` file dispatches by its suffix; `can_open` confirms the DISV blocks are
 rather than only matching the name:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
+mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
 footprint = mesh.mesh      # NCPL polygons, one horizontal layer
 ```
 

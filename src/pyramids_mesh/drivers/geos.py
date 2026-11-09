@@ -95,9 +95,9 @@ class GeosDriver(BaseDriver):
         Read a GEOS grid (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("test-c12.native.nc4")
+            mesh = MeshDataset.read_file("test-c12.native.nc4")
             mesh.mesh.n_face          # the cubed-sphere cells
     """
 

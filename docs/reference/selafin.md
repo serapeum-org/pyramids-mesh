@@ -11,12 +11,12 @@ variable's per-timestep slab is left behind a loader that seeks straight to it.
 | Suffixes | `.slf`, `.srf`, `.ser`, `.sel` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data`, `write_mesh`, `write_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-dataset = UgridDataset.read_file("model.slf")
+dataset = MeshDataset.read_file("model.slf")
 depth = dataset.get("WATER DEPTH").data   # read now; deferred until this line
 
 dataset.to_file("copy.slf", driver="selafin")                 # lossless double precision

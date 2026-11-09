@@ -10,19 +10,19 @@ a single file. Read through plain binary parsing and the vendored GDAL for the p
 | Suffixes | `.adf` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 A directory has no suffix, so `read_file` cannot dispatch a bare directory path. Reach the
 driver either way:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 # point at any .adf component of the TIN
-mesh = UgridDataset.read_file("path/to/tin/tdenv9.adf")
+mesh = MeshDataset.read_file("path/to/tin/tdenv9.adf")
 
 # or pass the directory with an explicit driver
-mesh = UgridDataset.read_file("path/to/tin", driver="esri_tin")
+mesh = MeshDataset.read_file("path/to/tin", driver="esri_tin")
 
 elevation = mesh.get("node_z")
 ```

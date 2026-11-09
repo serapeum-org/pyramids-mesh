@@ -14,7 +14,7 @@ material and time-series sections are not interpreted.
 | Suffixes | `.fem` (shared with Nastran — see below) |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ## The geometry sections
 
@@ -48,9 +48,9 @@ requires the FEFLOW signature — the first two non-blank statements being `PROB
 `CLASS` — and declines a Nastran deck (which opens on `$` comment lines and `BEGIN BULK`):
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model/disv_nodes.fem", driver="feflow")
+mesh = MeshDataset.read_file("model/disv_nodes.fem", driver="feflow")
 surface = mesh.mesh      # the finite-element mesh
 ```
 

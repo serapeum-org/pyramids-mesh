@@ -71,9 +71,9 @@ class AvsUcdDriver(BaseDriver):
         Read an AVS-UCD mesh (shown, not run as a doctest -- it needs a real file),
         reached through ``read_file``::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("mesh.avs")
+            mesh = MeshDataset.read_file("mesh.avs")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 

@@ -69,9 +69,9 @@ class ExodusDriver(BaseDriver):
         Read an Exodus mesh (shown, not run as a doctest -- it needs a real ``.exo``
         file), reached through ``read_file``::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model.exo")
+            mesh = MeshDataset.read_file("model.exo")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 

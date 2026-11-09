@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset, _drivers
+from pyramids.netcdf.ugrid import MeshDataset, _drivers
 from pyramids_mesh.drivers.feflow import FeflowDriver, _FeflowReader
 
 _DATA = Path(__file__).parent.parent / "data"
@@ -95,7 +95,7 @@ def test_dispatch_through_read_file_by_driver_name():
         _drivers._CACHE = registry
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            dataset = UgridDataset.read_file(str(_FEM), driver="feflow")
+            dataset = MeshDataset.read_file(str(_FEM), driver="feflow")
     finally:
         _drivers._CACHE = original
     assert dataset.mesh.n_face == 4842
