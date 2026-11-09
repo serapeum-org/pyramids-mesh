@@ -210,10 +210,12 @@ target-version = "py311"  # requires-python floors at 3.11
 quote-style = "preserve"
 
 [tool.ruff.lint]
-# ruff replaces flake8 (E/F/W lint), isort (I) and pyupgrade (UP) in one tool, mirroring
-# pyramids-core. The old flake8 `select = "B,C,E,F,W,T4"` named B (bugbear) and T4, but
-# those plugins were never installed, so the effective rule set was E/F/W — nothing is
-# lost by dropping them. I and UP are genuinely new.
+# ruff's lint replaces flake8 (E/F/W) and isort (I) — both tools this repo used — and the
+# formatter below replaces black, mirroring pyramids-core. The old flake8
+# `select = "B,C,E,F,W,T4"` named B (bugbear) and T4, but those plugins were never
+# installed, so the effective flake8 set was E/F/W; nothing is lost by dropping B/T4. UP
+# (pyupgrade) is the one genuinely new rule group — there was no pyupgrade here before, so
+# it adds capability rather than replacing a tool.
 #
 # The import-order contract (`import pyramids` first, so the vendored GDAL is on sys.path
 # before any `from osgeo import ...`) is preserved: those lines carry `# isort:skip`,
