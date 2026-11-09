@@ -107,10 +107,10 @@ docs = [
     "notebook<7.0",
 ]
 notebook = [
-    "pip",
-    "jupyterlab",
-    "notebook",
-    "jupyter",
+    # Layers on top of `dev`: every environment that enables the `notebook` feature also
+    # enables `dev` (which already carries pip/jupyterlab/notebook/jupyter), so the only
+    # thing the notebook runtime must add is the kernel. Re-listing the jupyter entries
+    # here would just duplicate `dev` — exactly the kind of duplication this group avoids.
     "ipykernel"
 ]
 
