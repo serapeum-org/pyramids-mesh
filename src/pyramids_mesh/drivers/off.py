@@ -20,10 +20,9 @@ from __future__ import annotations
 
 import pyramids  # noqa: F401  # isort:skip
 
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -156,7 +155,7 @@ def _iter_significant(path: str) -> Iterator[list[str]]:
     Yields:
         list[str]: The whitespace-separated tokens of one significant line.
     """
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         for line in handle:
             marker = line.find(_OFF_COMMENT)
             if marker != -1:

@@ -19,9 +19,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -118,9 +116,9 @@ class EsmfDriver(BaseDriver):
         Read an ESMF mesh (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("ne4np4-esmf.nc")
+            mesh = MeshDataset.read_file("ne4np4-esmf.nc")
             mesh.mesh.n_node          # the ESMF node list
             mesh.mesh.n_face          # the ESMF elements
     """

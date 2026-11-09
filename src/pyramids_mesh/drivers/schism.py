@@ -15,7 +15,6 @@ import pyramids  # noqa: F401  # isort:skip
 from typing import TextIO
 
 import numpy as np
-
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
@@ -49,9 +48,9 @@ class SchismDriver(BaseDriver):
         Read a SCHISM grid and reach its depth and boundary lists (shown, not run as a
         doctest -- it needs a real ``hgrid.gr3``)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("run/hgrid.gr3")
+            mesh = MeshDataset.read_file("run/hgrid.gr3")
             bed = mesh.get("node_z")                       # SCHISM node depth
             ocean = mesh.global_attributes["open_boundary_nodes"]  # 0-based node ids
     """
@@ -91,7 +90,7 @@ class SchismDriver(BaseDriver):
         Raises:
             FileFormatNotSupportedError: If an element is neither a triangle nor a quad.
         """
-        with open(path, "r", encoding="latin-1") as handle:
+        with open(path, encoding="latin-1") as handle:
             node_x, node_y, node_z, faces = read_gr3_grid(
                 handle, allow_quads=True, source=path
             )

@@ -11,12 +11,12 @@ id map rather than by assuming `id == index + 1`.
 | Suffixes | `.inp` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.inp", driver="abaqus")
+mesh = MeshDataset.read_file("model.inp", driver="abaqus")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

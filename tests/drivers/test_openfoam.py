@@ -20,8 +20,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.openfoam import (
     OpenFoamDriver,
     _foam_list,
@@ -87,7 +87,9 @@ def test_connectivity_is_pinned_not_just_counted():
     digest = hashlib.sha256(faces.tobytes()).hexdigest()
     assert digest == (
         "641d8bd4f5d050867a8b6436618170c8c41836cb3d2548f8eec82299d741a170"
-    ), "OpenFOAM boundary selection/compaction changed; regenerate the hash if intended."
+    ), (
+        "OpenFOAM boundary selection/compaction changed; regenerate the hash if intended."
+    )
 
 
 def test_point_indices_are_zero_based():

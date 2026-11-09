@@ -38,7 +38,6 @@ import re
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -229,9 +228,9 @@ class OpenFoamDriver(BaseDriver):
         Read an OpenFOAM mesh by its ``polyMesh`` directory path (shown, not run as a
         doctest -- it needs a real polyMesh directory)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("case/constant/polyMesh", driver="openfoam")
+            mesh = MeshDataset.read_file("case/constant/polyMesh", driver="openfoam")
             elevation = mesh.get("node_z")
     """
 
@@ -377,7 +376,7 @@ class _OpenFoamReader:
     def _read(self, component: str) -> str:
         """Read one component file as text, tolerating undecodable bytes."""
         with open(
-            os.path.join(self.path, component), "r", encoding="utf-8", errors="replace"
+            os.path.join(self.path, component), encoding="utf-8", errors="replace"
         ) as handle:
             return handle.read()
 

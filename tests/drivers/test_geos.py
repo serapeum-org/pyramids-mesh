@@ -15,12 +15,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
+from pyramids_mesh.drivers.esmf import EsmfDriver
 from pyramids_mesh.drivers.geos import GeosDriver
 from pyramids_mesh.drivers.scrip import ScripDriver
-from pyramids_mesh.drivers.esmf import EsmfDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _GRID = _DATA / "geos" / "test-c12.native.nc4"

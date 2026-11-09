@@ -1,7 +1,7 @@
 """Tests for the SMS ASCII DAT reader (D2).
 
 DAT is the ``needs_mesh`` exemplar: it carries values and no topology, so the tests go
-through ``UgridDataset.attach_data`` rather than ``read``. The emphasis is on the
+through ``MeshDataset.attach_data`` rather than ``read``. The emphasis is on the
 element-count check, which is the only thing tying a results file to its mesh, and on
 the two dialects, which differ in ``TS`` arity and so fail silently when conflated.
 """
@@ -12,9 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers import sms
 from pyramids_mesh.drivers.sms import DatDriver, build_minimal_fixture
@@ -45,7 +44,7 @@ def mesh(tmp_path):
     """A 2DM mesh of four nodes and two faces, for a DAT to attach to."""
     path = tmp_path / "domain.2dm"
     build_minimal_fixture(str(path))
-    return UgridDataset.read_file(str(path))
+    return MeshDataset.read_file(str(path))
 
 
 def _write_dat(tmp_path, text, name="results.dat"):
@@ -655,7 +654,7 @@ class TestDatWriter:
     @staticmethod
     def _attached():
         """The committed 2DM mesh with the committed DAT results attached."""
-        mesh = UgridDataset.read_file(str(_DATA / "minimal.2dm"))
+        mesh = MeshDataset.read_file(str(_DATA / "minimal.2dm"))
         import warnings
 
         with warnings.catch_warnings():
@@ -673,7 +672,7 @@ class TestDatWriter:
         out = tmp_path / "round.dat"
         single.to_file(str(out), driver="dat")
 
-        reloaded = UgridDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
+        reloaded = MeshDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
             str(out)
         )
         before, after = attached.get("depth"), reloaded.get("depth")
@@ -692,7 +691,7 @@ class TestDatWriter:
 
     def test_no_data_variables_is_refused(self, tmp_path):
         """A bare mesh with no data variables cannot be written as a DAT."""
-        mesh = UgridDataset.read_file(str(_DATA / "minimal.2dm"))
+        mesh = MeshDataset.read_file(str(_DATA / "minimal.2dm"))
         bare = mesh.drop_variables(list(mesh.data_variable_names))
         with pytest.raises(FileFormatNotSupportedError, match="no data variables"):
             DatDriver().write(bare, str(tmp_path / "empty.dat"))
@@ -702,7 +701,7 @@ class TestDatWriter:
         single = self._attached().drop_variables(["material", "node_z"])
         out = tmp_path / "rounded.dat"
         single.to_file(str(out), driver="dat", ndigits=3)
-        reloaded = UgridDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
+        reloaded = MeshDataset.read_file(str(_DATA / "minimal.2dm")).attach_data(
             str(out)
         )
         assert np.allclose(

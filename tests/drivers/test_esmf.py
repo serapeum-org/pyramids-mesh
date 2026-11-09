@@ -15,17 +15,16 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.esmf import (
-    _EsmfReader,
-    _array_attribute,
-    _to_degrees,
     EsmfDriver,
+    _array_attribute,
+    _EsmfReader,
+    _to_degrees,
 )
-from pyramids_mesh.drivers.scrip import ScripDriver
 from pyramids_mesh.drivers.geos import GeosDriver
+from pyramids_mesh.drivers.scrip import ScripDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _MESH = _DATA / "esmf" / "ne4np4-esmf.nc"

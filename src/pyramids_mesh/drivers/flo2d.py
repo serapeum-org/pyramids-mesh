@@ -24,9 +24,7 @@ import os
 import warnings
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -78,9 +76,9 @@ class Flo2dDriver(BaseDriver):
         Read a FLO-2D project by its directory (shown, not run as a doctest -- it needs a
         real project directory)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("flo2d_project", driver="flo2d")
+            mesh = MeshDataset.read_file("flo2d_project", driver="flo2d")
             depth = mesh.get("FLOW DEPTH")      # face-located, over time
     """
 

@@ -12,12 +12,12 @@ parser.
 | Suffixes | `.gr3` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("run/hgrid.gr3")
+mesh = MeshDataset.read_file("run/hgrid.gr3")
 
 bed = mesh.get("node_z")                                   # SCHISM node depth
 ocean = mesh.global_attributes["open_boundary_nodes"]      # 0-based node-id arrays

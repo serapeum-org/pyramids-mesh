@@ -42,7 +42,7 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only, avoids a circular impor
     from pyramids_mesh._base import ParsedMesh
 
 
-def validate_and_normalise(parsed: "ParsedMesh") -> "ParsedMesh":
+def validate_and_normalise(parsed: ParsedMesh) -> ParsedMesh:
     """Enforce every pyramids invariant, returning a corrected copy.
 
     The copy is 0-based, ``-1``-padded and counter-clockwise, and it describes its own
@@ -512,7 +512,7 @@ def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:
     return 8.0 * float(np.finfo(np.float64).eps) * span * max(span, magnitude)
 
 
-def _check_node_arrays(parsed: "ParsedMesh", n_node: int) -> None:
+def _check_node_arrays(parsed: ParsedMesh, n_node: int) -> None:
     """Check every per-node and per-face array is as long as the topology it describes.
 
     ``node_y`` and ``node_z`` are measured against ``node_x``; ``face_x`` and ``face_y``
@@ -575,7 +575,7 @@ def _signed_area_2(xs: np.ndarray, ys: np.ndarray) -> float:
     )
 
 
-def check_shapes(parsed: "ParsedMesh") -> None:
+def check_shapes(parsed: ParsedMesh) -> None:
     """Check every variable's declared shape against its element and time counts.
 
     Reads ``shape`` only -- never ``values`` or ``loader`` -- so a lazy variable is

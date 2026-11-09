@@ -15,9 +15,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.tecplot import TecplotDriver
 
@@ -100,8 +99,8 @@ def test_metadata_and_element_type_are_carried():
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_SAMPLE), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_SAMPLE), MeshDataset)
 
 
 def test_declares_read_mesh_only():

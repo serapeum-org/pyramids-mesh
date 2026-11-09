@@ -24,7 +24,6 @@ import os
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -65,9 +64,9 @@ class TriangleDriver(BaseDriver):
         Read a Triangle/TetGen pair by either of its files (shown, not run as a doctest --
         it needs a real ``.node``/``.ele`` pair)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("path/to/mesh.node")
+            mesh = MeshDataset.read_file("path/to/mesh.node")
             elevation = mesh.get("node_z")  # present only for a 3-D (TetGen) mesh
     """
 

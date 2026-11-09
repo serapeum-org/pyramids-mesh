@@ -24,9 +24,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -99,9 +97,9 @@ class MpasDriver(BaseDriver):
         Read an MPAS grid (shown, not run as a doctest -- it needs a real NetCDF file),
         reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("mesh.QU.1920km.nc")
+            mesh = MeshDataset.read_file("mesh.QU.1920km.nc")
             mesh.mesh.n_node          # the Voronoi dual vertices
             mesh.mesh.n_face          # the primal (hex-dominant) cells
     """

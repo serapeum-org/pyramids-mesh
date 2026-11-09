@@ -22,7 +22,6 @@ matplotlib.use("Agg")  # non-interactive; must precede the mikeio import below
 import mikeio  # noqa: E402  # isort:skip
 
 import numpy as np  # noqa: E402
-
 from pyramids.base._errors import FileFormatNotSupportedError  # noqa: E402
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION  # noqa: E402
 
@@ -58,9 +57,9 @@ class DfsuDriver(BaseDriver):
         Read a DFSU mesh and its results (shown, not run as a doctest -- it needs the
         ``dhi`` extra and a real DFSU file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("results.dfsu")
+            mesh = MeshDataset.read_file("results.dfsu")
             level = mesh.get("Surface elevation")   # face-located, over time
     """
 

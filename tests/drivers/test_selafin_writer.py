@@ -12,9 +12,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
+
 from pyramids_mesh.drivers.telemac import SelafinDriver
 
 _SLF = Path(__file__).parent.parent / "data" / "minimal.slf"
@@ -93,7 +93,7 @@ def test_round_trip_preserves_mesh_and_results(tmp_path):
 
 
 def test_round_trip_through_to_file_dispatch(tmp_path):
-    """The write reaches the driver through ``UgridDataset.to_file(driver="selafin")``."""
+    """The write reaches the driver through ``MeshDataset.to_file(driver="selafin")``."""
     original = _read(_SLF)
     out = tmp_path / "via_facade.slf"
     original.to_file(str(out), driver="selafin")

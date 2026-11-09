@@ -10,16 +10,16 @@ Read through the vendored GDAL multidimensional API (no declared dependency).
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
-3Di results use `.nc`, which is not UGRID. `UgridDataset.read_file` tries its built-in
+3Di results use `.nc`, which is not UGRID. `MeshDataset.read_file` tries its built-in
 UGRID reader first and, finding no topology, falls back to a driver claiming the suffix
 (`pyramids-core` 0.69.0's dispatch) — which is how this driver is reached.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("results_3di.nc")
+mesh = MeshDataset.read_file("results_3di.nc")
 water_level = mesh.get("Mesh2D_s1")   # face-located, over time
 ```
 

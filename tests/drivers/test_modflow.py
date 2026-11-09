@@ -14,9 +14,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset, _drivers
+from pyramids.netcdf.ugrid import MeshDataset, _drivers
+
 from pyramids_mesh.drivers.modflow import Modflow6DisvDriver, _Modflow6DisvReader
 
 _DATA = Path(__file__).parent.parent / "data" / "modflow6"
@@ -112,7 +112,7 @@ def test_dispatch_through_read_file_by_driver_name():
         _drivers._CACHE = registry
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            dataset = UgridDataset.read_file(str(_DISV), driver="modflow6_disv")
+            dataset = MeshDataset.read_file(str(_DISV), driver="modflow6_disv")
     finally:
         _drivers._CACHE = original
     assert dataset.mesh.n_face == 200

@@ -13,9 +13,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.su2 import Su2Driver
 
@@ -186,14 +185,14 @@ def test_dispatch_accepts_the_committed_files_and_returns_a_dataset():
     """The dispatch gate (can_open) selects both samples, and read yields a dataset.
 
     can_open is the discriminator pyramids uses to route a path to a driver, so a True
-    here on each committed file, paired with a built UgridDataset, is the dispatch path
+    here on each committed file, paired with a built MeshDataset, is the dispatch path
     this driver exposes once its entry point is registered.
     """
     driver = Su2Driver()
 
     for path in (_QUADS, _TRIANGLES):
         assert driver.can_open(str(path)) is True
-        assert isinstance(driver.read(str(path)), UgridDataset)
+        assert isinstance(driver.read(str(path)), MeshDataset)
 
 
 def test_declares_read_mesh_only():

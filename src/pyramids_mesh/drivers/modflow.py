@@ -49,7 +49,6 @@ import pyramids  # noqa: F401  # isort:skip
 import os
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -111,9 +110,9 @@ class Modflow6DisvDriver(BaseDriver):
         Read a MODFLOW 6 DISV grid by its ``.disv`` file (shown, not run as a doctest -- it
         needs a real DISV file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
+            mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
             footprint = mesh.mesh      # NCPL polygons, one horizontal layer
     """
 
@@ -137,7 +136,7 @@ class Modflow6DisvDriver(BaseDriver):
             bool: ``True`` when the DISV blocks and dimensions are all present.
         """
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 text = handle.read().upper()
         except OSError:
             return False
@@ -220,7 +219,7 @@ class _Modflow6DisvReader:
             FileFormatNotSupportedError: If the file cannot be read.
         """
         try:
-            with open(self.path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(self.path, encoding="utf-8", errors="replace") as handle:
                 raw_lines = handle.readlines()
         except OSError as error:
             raise FileFormatNotSupportedError(
@@ -438,9 +437,9 @@ class Modflow6DisuDriver(BaseDriver):
         Read a MODFLOW 6 DISU grid by its ``.disu`` file (shown, not run as a doctest -- it
         needs a real DISU file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model/keating.disu", driver="modflow6_disu")
+            mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6_disu")
             footprint = mesh.mesh      # NODES polygons, one horizontal footprint
     """
 
@@ -468,7 +467,7 @@ class Modflow6DisuDriver(BaseDriver):
                 present.
         """
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 text = handle.read().upper()
         except OSError:
             return False
@@ -582,7 +581,7 @@ class _Modflow6DisuReader(_Modflow6DisvReader):
                 else os.path.join(os.path.dirname(self.path), name)
             )
             try:
-                with open(external, "r", encoding="utf-8", errors="replace") as handle:
+                with open(external, encoding="utf-8", errors="replace") as handle:
                     raw_lines = handle.readlines()
             except OSError as error:
                 raise FileFormatNotSupportedError(

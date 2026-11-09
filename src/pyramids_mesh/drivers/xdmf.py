@@ -16,9 +16,7 @@ import os
 import xml.etree.ElementTree as ET
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -69,9 +67,9 @@ class XdmfDriver(BaseDriver):
         Read an XDMF time series (shown, not run as a doctest -- it needs a real ``.xdmf``
         plus its ``.h5`` payload)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("out.xdmf")
+            mesh = MeshDataset.read_file("out.xdmf")
             phi = mesh.get("phi")          # node-located, over time
             a = mesh.get("a")              # cell (face) located, over time
     """

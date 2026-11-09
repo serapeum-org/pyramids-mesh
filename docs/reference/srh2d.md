@@ -27,9 +27,9 @@ Point `read_file` at either the `.srhgeom` or the `.srhhydro`; the driver resolv
 of the trio from the `Grid` / `HydroMat` cards, falling back to the shared basename stem:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("Muncie.srhgeom", driver="srh2d")
+mesh = MeshDataset.read_file("Muncie.srhgeom", driver="srh2d")
 elevation = mesh.get("node_z")      # node-located bed elevation
 zone = mesh.get("material")         # face-located material-zone id
 ```

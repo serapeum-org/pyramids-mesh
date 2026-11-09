@@ -23,7 +23,6 @@ import os
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -48,7 +47,7 @@ def _significant_lines(path: str) -> list[str]:
     Returns:
         list[str]: Every line that is not blank, whitespace trimmed.
     """
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         return [stripped for line in handle if (stripped := line.strip())]
 
 
@@ -111,9 +110,9 @@ class FvcomDriver(BaseDriver):
         Read an FVCOM grid by its ``_grd.dat`` file (shown, not run as a doctest -- it
         needs the real trio on disk)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("path/to/chn_grd.dat")
+            mesh = MeshDataset.read_file("path/to/chn_grd.dat")
             depth = mesh.get("node_z")
     """
 

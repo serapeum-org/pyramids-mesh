@@ -18,13 +18,13 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.med import (
     MedDriver,
     _array_count,
-    _MedReader,
     _med_corner_count,
+    _MedReader,
     _pad_groups,
 )
 

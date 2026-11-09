@@ -12,8 +12,7 @@ import warnings
 from pathlib import Path
 
 import pytest
-
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.abaqus import AbaqusDriver
 from pyramids_mesh.drivers.avsucd import AvsUcdDriver
@@ -82,8 +81,8 @@ def test_volumetric_element_maps_to_a_face(tmp_path):
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_ABAQUS), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_ABAQUS), MeshDataset)
 
 
 def test_can_open_accepts_abaqus_and_declines_others(tmp_path):
@@ -144,12 +143,7 @@ def test_deck_with_only_unsupported_elements_is_refused(tmp_path):
     """An unmodelled element type (``B31``) builds no face, so the deck is refused."""
     deck = tmp_path / "beams.inp"
     deck.write_text(
-        "*NODE\n"
-        "1, 0.0, 0.0\n"
-        "2, 1.0, 0.0\n"
-        "3, 0.0, 1.0\n"
-        "*ELEMENT, TYPE=B31\n"
-        "1, 1, 2\n",
+        "*NODE\n1, 0.0, 0.0\n2, 1.0, 0.0\n3, 0.0, 1.0\n*ELEMENT, TYPE=B31\n1, 1, 2\n",
         encoding="utf-8",
     )
     from pyramids.base._errors import FileFormatNotSupportedError

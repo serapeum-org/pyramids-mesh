@@ -31,7 +31,6 @@ import re
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -96,9 +95,9 @@ class Srh2dDriver(BaseDriver):
         Read an SRH-2D mesh by either member file (shown, not run as a doctest -- it needs
         the committed sample trio)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("Muncie.srhgeom", driver="srh2d")
+            mesh = MeshDataset.read_file("Muncie.srhgeom", driver="srh2d")
             elevation = mesh.get("node_z")      # node-located bed elevation
             zone = mesh.get("material")         # face-located material-zone id
     """
@@ -239,7 +238,7 @@ class Srh2dDriver(BaseDriver):
         wins. The value is taken from the quotes rather than the whitespace split so a
         path containing spaces survives.
         """
-        with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(path, encoding="utf-8-sig", errors="replace") as handle:
             for line in handle:
                 stripped = line.strip()
                 if stripped.split()[:1] == [card]:

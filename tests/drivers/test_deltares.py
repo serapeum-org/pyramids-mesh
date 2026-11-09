@@ -2,7 +2,7 @@
 
 Delft3D FM / D-HYDRO writes 1D hydrodynamic models as UGRID-1.0 + Deltares-extension
 NetCDF: a ``network`` of branches and a ``mesh1d`` discretisation of computational nodes,
-with ``mesh1d_*`` results over time on a map file. The driver builds a ``Network1d`` from
+with ``mesh1d_*`` results over time on a map file. The driver builds a ``Mesh1d`` from
 the ``mesh1d`` discretisation, finding both topologies by their ``cf_role`` attributes.
 
 Three genuine samples are committed under ``tests/data/deltares1d/``: a pure-1D topology
@@ -16,14 +16,14 @@ import warnings
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import Network1d
+from pyramids.netcdf.ugrid import Mesh1d
+
 from pyramids_mesh.drivers.deltares import (
     DeltaresNetworkDriver,
-    _DeltaresReader,
     _as_str,
     _attr_map,
+    _DeltaresReader,
     _fill_value,
     _split,
     _string_attr,
@@ -55,7 +55,7 @@ def _parse(path, *, lazy=True):
 def test_pure_1d_network_reads_node_and_edge_counts():
     """The korte-woerden mesh1d discretisation reads as an 86-node, 91-edge network."""
     network = _read(_KORTE)
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     assert network.n_node == 86
     assert network.n_edge == 91
     data = network.edge_node_connectivity.data
@@ -65,7 +65,7 @@ def test_pure_1d_network_reads_node_and_edge_counts():
 
 
 def test_both_sample_topologies_parse_to_a_network():
-    """Both the pure-1D and the combined-1D2D samples yield a mesh1d Network1d.
+    """Both the pure-1D and the combined-1D2D samples yield a mesh1d Mesh1d.
 
     The two topologies are found by cf_role, so a file is read the same regardless of
     how it spells its topologies; the combined 1D2D file's 1D half reads via a direct
@@ -73,8 +73,8 @@ def test_both_sample_topologies_parse_to_a_network():
     """
     korte = _read(_KORTE)
     combined = _read(_UGRID_1D2D)
-    assert isinstance(korte, Network1d)
-    assert isinstance(combined, Network1d)
+    assert isinstance(korte, Mesh1d)
+    assert isinstance(combined, Mesh1d)
     assert (combined.n_node, combined.n_edge) == (4, 3)
 
 

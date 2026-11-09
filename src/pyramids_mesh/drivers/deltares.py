@@ -7,7 +7,7 @@ and a ``mesh1d`` discretisation of computational nodes along those branches
 (``mesh1d_node_x``/``mesh1d_node_y``, ``mesh1d_edge_nodes``, with a branch index and an
 offset per node). A map file adds ``mesh1d_*`` result variables over ``time``.
 
-This reader builds a :class:`~pyramids.netcdf.ugrid.Network1d` from the ``mesh1d``
+This reader builds a :class:`~pyramids.netcdf.ugrid.Mesh1d` from the ``mesh1d``
 discretisation -- its nodes and its ``edge_node_connectivity`` -- because that is the
 computational network results live on. Both topologies are found by their ``cf_role``
 attributes (``mesh_topology`` on the dummy topology variable, ``edge_node_connectivity``
@@ -29,9 +29,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -114,7 +112,7 @@ def _fill_value(array):
 class DeltaresNetworkDriver(BaseDriver):
     """Reader for Delft3D FM / D-HYDRO 1D network UGRID NetCDF.
 
-    The driver builds a :class:`~pyramids.netcdf.ugrid.Network1d` from the ``mesh1d``
+    The driver builds a :class:`~pyramids.netcdf.ugrid.Mesh1d` from the ``mesh1d``
     discretisation: its nodes come from the node x/y coordinates and its edges from the
     ``edge_node_connectivity`` table (re-based to 0 if the file is 1-based, the base kept
     for a writer). The per-node branch index and offset, and every ``mesh1d_*`` result
@@ -128,12 +126,12 @@ class DeltaresNetworkDriver(BaseDriver):
     Documented limitations:
         - **Only the ``mesh1d`` discretisation is built.** The coarser ``network`` of
           branch endpoints and its branch geometry are not returned; results live on the
-          discretisation, which is what a :class:`Network1d` represents.
-        - **A :class:`Network1d` carries a topology and a CRS only.** The branch index,
+          discretisation, which is what a :class:`Mesh1d` represents.
+        - **A :class:`Mesh1d` carries a topology and a CRS only.** The branch index,
           the offset and the result variables are parsed and validated, but
-          :class:`Network1d` has nowhere to attach them, so the built network warns that
+          :class:`Mesh1d` has nowhere to attach them, so the built network warns that
           they are not in the result (see :class:`~pyramids_mesh._base.BaseDriver`).
-          Carrying them needs ``Network1d`` to grow a home for node data, which is
+          Carrying them needs ``Mesh1d`` to grow a home for node data, which is
           upstream work in ``pyramids-core`` (design section 10).
         - **Edge indices honour the file's ``start_index``.** A 1-based table is re-based
           to 0 and the base recorded for a writer.
@@ -147,9 +145,9 @@ class DeltaresNetworkDriver(BaseDriver):
         Read a Deltares 1D map file (shown, not run as a doctest -- it needs a real
         NetCDF file), reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import Network1d
+            from pyramids.netcdf.ugrid import Mesh1d
 
-            network = Network1d.read_file("FlowFM_map.nc")   # mesh1d discretisation
+            network = Mesh1d.read_file("FlowFM_map.nc")   # mesh1d discretisation
             print(network.n_node, network.n_edge)
     """
 

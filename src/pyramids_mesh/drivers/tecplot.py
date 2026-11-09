@@ -28,7 +28,6 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -386,7 +385,7 @@ class _TecplotReader:
         Raises:
             FileFormatNotSupportedError: On any header or truncation problem.
         """
-        with open(self.path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(self.path, encoding="utf-8-sig", errors="replace") as handle:
             cleaned = "\n".join(_strip_comment(line) for line in handle)
         tokens = _tokenize(cleaned)
         pos = self._read_preamble(tokens)

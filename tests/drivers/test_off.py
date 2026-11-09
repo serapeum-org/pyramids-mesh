@@ -12,9 +12,8 @@ import pyramids  # noqa: F401  # isort:skip
 from pathlib import Path
 
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.off import OffDriver
 
@@ -46,7 +45,7 @@ class TestOffSample:
         """The 8-vertex / 6-quad cube reads with its real counts."""
         dataset = OffDriver().read(str(_COMMENTS_OFF))
 
-        assert isinstance(dataset, UgridDataset)
+        assert isinstance(dataset, MeshDataset)
         assert dataset.mesh.n_node == 8
         assert dataset.mesh.n_face == 6
 

@@ -22,7 +22,6 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -68,9 +67,9 @@ class Flac3dDriver(BaseDriver):
         Read a FLAC3D grid (shown, not run as a doctest -- it reads a committed data
         file), reached through ``read_file``::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model.f3grid")
+            mesh = MeshDataset.read_file("model.f3grid")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 

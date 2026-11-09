@@ -10,12 +10,12 @@ node (`node_id x y z`) and one per cell (`cell_id material_id cell_type v1..vn`)
 | Suffixes | `.inp`, `.avs` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("mesh.avs")
+mesh = MeshDataset.read_file("mesh.avs")
 mesh.mesh.n_node, mesh.mesh.n_face
 ```
 

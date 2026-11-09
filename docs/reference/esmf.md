@@ -14,15 +14,15 @@ connectivity. Read through the vendored GDAL multidimensional API (no declared d
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 An ESMF mesh is not UGRID, so `read_file` reaches the driver through its NetCDF-suffix
 fallback:
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("ne4np4-esmf.nc")
+mesh = MeshDataset.read_file("ne4np4-esmf.nc")
 mesh.mesh.n_node          # the ESMF node list
 mesh.mesh.n_face          # the ESMF elements
 ```

@@ -13,9 +13,9 @@ already have rather than opened on its own.
 | Returns | the variables it read, merged onto the dataset by `attach_data` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-dataset = UgridDataset.read_file("domain.2dm")
+dataset = MeshDataset.read_file("domain.2dm")
 with_results = dataset.attach_data("depth.dat")
 ```
 

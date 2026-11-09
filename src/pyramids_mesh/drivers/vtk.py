@@ -25,7 +25,6 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -579,7 +578,7 @@ class _LegacyReader:
                 ``UNSTRUCTURED_GRID``, a missing POINTS/CELLS/CELL_TYPES block, or an
                 attribute kind this reader does not read.
         """
-        with open(self.path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(self.path, encoding="utf-8-sig", errors="replace") as handle:
             lines = handle.read().splitlines()
         # Line 1 is the magic and line 2 is a free-text title that may itself contain a
         # keyword word, so both are dropped by line before the rest is tokenised.

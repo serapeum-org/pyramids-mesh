@@ -14,9 +14,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
+
 from pyramids_mesh.drivers.triangle import TriangleDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "triangle"
@@ -88,8 +88,8 @@ def test_read_dispatches_from_either_file_of_the_pair():
     """read() reaches the same mesh whether pointed at the .node or the .ele file."""
     from_node = _read(_NODE)
     from_ele = _read(_ELE)
-    assert isinstance(from_node, UgridDataset)
-    assert isinstance(from_ele, UgridDataset)
+    assert isinstance(from_node, MeshDataset)
+    assert isinstance(from_ele, MeshDataset)
     assert from_node.mesh.n_node == from_ele.mesh.n_node == 89
     assert from_node.mesh.n_face == from_ele.mesh.n_face == 304
 

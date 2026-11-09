@@ -9,14 +9,14 @@ The DHI MIKE DFSU reader. DFSU is a proprietary binary container read through DH
 | Suffixes | `.dfsu` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | `dhi` (`pip install pyramids-mesh[dhi]`) |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 Without the `dhi` extra the driver is not registered at all — nothing here is reachable.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("results.dfsu")
+mesh = MeshDataset.read_file("results.dfsu")
 level = mesh.get("Surface elevation")   # face-located, over time
 ```
 

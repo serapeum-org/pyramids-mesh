@@ -7,7 +7,7 @@ is read with the standard library alone (a line-record walk, optionally through
 :mod:`gzip` for a ``.vol.gz`` file), so the driver declares no dependency and never
 imports a mesh library.
 
-Only the surface of the mesh is turned into a :class:`~pyramids.netcdf.ugrid.UgridDataset`:
+Only the surface of the mesh is turned into a :class:`~pyramids.netcdf.ugrid.MeshDataset`:
 the ``surfaceelements`` triangles become the fill-padded ``face_node_connectivity`` (the
 same "keep the surface" choice the VTK reader makes for a volumetric grid), their node
 coordinates come from the ``points`` section, and the ``volumeelements`` tetrahedra are
@@ -24,10 +24,9 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import gzip
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -65,7 +64,7 @@ class NetgenDriver(BaseDriver):
     """Reader for the Netgen ``.vol`` / ``.vol.gz`` mesh format.
 
     Reads the ``points`` node coordinates and the ``surfaceelements`` triangles of a
-    Netgen 3D mesh into a surface :class:`~pyramids.netcdf.ugrid.UgridDataset`. Node ids
+    Netgen 3D mesh into a surface :class:`~pyramids.netcdf.ugrid.MeshDataset`. Node ids
     are 1-based and contiguous, so the connectivity arrives 0-based with the base
     recorded for a writer. The node ``z`` column becomes a ``node_z`` variable, since the
     pyramids mesh model is planar and carries no per-node elevation coordinate.

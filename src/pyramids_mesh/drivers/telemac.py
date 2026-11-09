@@ -19,7 +19,6 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -210,7 +209,7 @@ class SelafinDriver(BaseDriver):
         ``precision="single"`` for the smaller, lossy ``float32`` layout.
 
         Args:
-            dataset: The :class:`~pyramids.netcdf.ugrid.UgridDataset` to write.
+            dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.slf`` path.
             **options: ``precision`` is ``"double"`` (default) or ``"single"``.
 

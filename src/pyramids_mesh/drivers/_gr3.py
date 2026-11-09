@@ -17,7 +17,6 @@ import pyramids  # noqa: F401  # isort:skip
 from typing import TextIO
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
 
@@ -37,7 +36,7 @@ def sniff_gr3(path: str, *, encoding: str = "latin-1") -> bool:
     Returns:
         bool: ``True`` when the header and first node line are grid-shaped.
     """
-    with open(path, "r", encoding=encoding) as handle:
+    with open(path, encoding=encoding) as handle:
         handle.readline()  # title
         counts = handle.readline().split()
         node = handle.readline().split()

@@ -16,18 +16,18 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
-
 from pyramids.netcdf.ugrid import (
     MESH_DRIVER_API_VERSION,
     Connectivity,
+    Mesh1d,
     Mesh2d,
+    MeshDataset,
     MeshVariable,
-    Network1d,
-    UgridDataset,
 )
 
 from pyramids_mesh._validate import validate_and_normalise
@@ -37,7 +37,7 @@ from pyramids_mesh._validate import validate_and_normalise
 _LOCATION_DIMENSION = {"node": "n_node", "face": "n_face", "edge": "n_edge"}
 
 
-def _dimensions_for(parsed_var: "ParsedVariable") -> tuple[str, ...]:
+def _dimensions_for(parsed_var: ParsedVariable) -> tuple[str, ...]:
     """Return the dimension names a variable's shape corresponds to.
 
     Shared with the active-mask sibling, which describes the same elements over the same
@@ -74,7 +74,7 @@ def _as_float_array(values: np.ndarray | None) -> np.ndarray | None:
     return np.asarray(values, dtype=np.float64)
 
 
-def _recorded_start_index(parsed: "ParsedMesh") -> int:
+def _recorded_start_index(parsed: ParsedMesh) -> int:
     """Return the connectivity base to record on ``Connectivity`` for a writer to emit.
 
     Args:
@@ -342,27 +342,27 @@ class BaseDriver:
 
     def read(
         self, path: str, *, mesh_name: str | None = None, lazy: bool = True
-    ) -> UgridDataset | Network1d:
+    ) -> MeshDataset | Mesh1d:
         """Read the file into a fully-built pyramids object.
 
         Template method: ``_parse`` turns the file into a :class:`ParsedMesh`,
         ``validate_and_normalise`` enforces pyramids' invariants, and the result is
-        constructed into a :class:`~pyramids.netcdf.ugrid.UgridDataset` -- or a
-        :class:`~pyramids.netcdf.ugrid.Network1d` when the topology is one-dimensional.
+        constructed into a :class:`~pyramids.netcdf.ugrid.MeshDataset` -- or a
+        :class:`~pyramids.netcdf.ugrid.Mesh1d` when the topology is one-dimensional.
         Do not override it; a driver that bypasses validation loses every invariant.
 
         Args:
             path: The file to read.
             mesh_name: Which topology to build. A format carrying both a surface mesh
                 and a 1D network names them separately -- see ``mesh_names`` -- and
-                this selects one. Note that ``Network1d`` has no name of its own, so
+                this selects one. Note that ``Mesh1d`` has no name of its own, so
                 on the 1D path the value only chooses the topology; it is not recorded
                 anywhere.
             lazy: Forwarded to ``_parse`` so a format with a real deferred loader can
                 honour it.
 
         Returns:
-            UgridDataset | Network1d: The built mesh, or a network for a 1D topology.
+            MeshDataset | Mesh1d: The built mesh, or a network for a 1D topology.
 
         Raises:
             ValueError: If ``mesh_name`` is not one of the topologies ``mesh_names``
@@ -527,7 +527,7 @@ class BaseDriver:
 
     def _construct(
         self, parsed: ParsedMesh, *, path: str, mesh_name: str | None
-    ) -> UgridDataset | Network1d:
+    ) -> MeshDataset | Mesh1d:
         """Build pyramids objects from a validated :class:`ParsedMesh`.
 
         Args:
@@ -536,7 +536,7 @@ class BaseDriver:
             mesh_name: The topology name to build under; defaults to the parsed name.
 
         Returns:
-            UgridDataset | Network1d: A network for a 1D topology, else a dataset.
+            MeshDataset | Mesh1d: A network for a 1D topology, else a dataset.
         """
         node_x = np.asarray(parsed.node_x, dtype=np.float64)
         node_y = np.asarray(parsed.node_y, dtype=np.float64)
@@ -565,7 +565,7 @@ class BaseDriver:
             path: The file being read, so the offered names can be listed.
 
         Returns:
-            bool: ``True`` to build a ``Network1d``.
+            bool: ``True`` to build a ``Mesh1d``.
 
         Raises:
             ValueError: If ``mesh_name`` is not one of the topologies this file offers.
@@ -598,20 +598,20 @@ class BaseDriver:
 
     def _construct_network(
         self, parsed: ParsedMesh, node_x: np.ndarray, node_y: np.ndarray
-    ) -> Network1d:
-        """Build a :class:`~pyramids.netcdf.ugrid.Network1d` from a 1D parse.
+    ) -> Mesh1d:
+        """Build a :class:`~pyramids.netcdf.ugrid.Mesh1d` from a 1D parse.
 
-        ``Network1d`` carries a topology and a CRS and nothing else -- it has no
+        ``Mesh1d`` carries a topology and a CRS and nothing else -- it has no
         parameter for data variables, node elevation or global attributes -- so anything
         the file carried beside the topology cannot come along. Rather than drop it
         silently, each omission is warned about by name. Carrying it properly needs
-        ``Network1d`` to grow somewhere to put it, which is upstream work in
+        ``Mesh1d`` to grow somewhere to put it, which is upstream work in
         ``pyramids-core``, not something to fake here.
 
         Raises:
             ValueError: If this read was routed to the 1D path but the parse holds no
                 edges for it -- a driver whose ``mesh_names`` offers a network its
-                ``_parse`` never produced. Returning an empty ``Network1d`` would make
+                ``_parse`` never produced. Returning an empty ``Mesh1d`` would make
                 that a silent answer to a question the file cannot answer.
         """
         edges = self._network_edges(parsed)
@@ -628,9 +628,7 @@ class BaseDriver:
             cf_role="edge_node_connectivity",
             original_start_index=_recorded_start_index(parsed),
         )
-        return Network1d(
-            node_x, node_y, edge_node_connectivity=edge_conn, crs=parsed.crs
-        )
+        return Mesh1d(node_x, node_y, edge_node_connectivity=edge_conn, crs=parsed.crs)
 
     def _construct_dataset(
         self,
@@ -640,8 +638,8 @@ class BaseDriver:
         *,
         name: str,
         path: str,
-    ) -> UgridDataset:
-        """Build a :class:`~pyramids.netcdf.ugrid.UgridDataset` from a 2D parse.
+    ) -> MeshDataset:
+        """Build a :class:`~pyramids.netcdf.ugrid.MeshDataset` from a 2D parse.
 
         When the file also holds a separate 1D topology, this result is only its surface
         half, so the other half is named rather than quietly left out. The warning
@@ -652,7 +650,7 @@ class BaseDriver:
             warnings.warn(
                 f"this file also holds a {self.network_mesh_name!r} topology, which is "
                 f"not in this result; read it with "
-                f"Network1d.read_file(path, mesh_name={self.network_mesh_name!r})",
+                f"Mesh1d.read_file(path, mesh_name={self.network_mesh_name!r})",
                 stacklevel=2,
             )
         face_conn = Connectivity(
@@ -680,7 +678,7 @@ class BaseDriver:
         )
         data_variables = self._build_variables(parsed, name)
         crs_wkt = parsed.crs if isinstance(parsed.crs, str) else None
-        return UgridDataset(
+        return MeshDataset(
             mesh=mesh,
             data_variables=data_variables,
             global_attributes=dict(parsed.global_attributes),
@@ -694,12 +692,12 @@ class BaseDriver:
 
         Two different losses, and the surface mesh is the one a reader most needs told:
         a file holding both topologies returns one of them, and the other half is not in
-        this result. Beyond that, ``Network1d`` carries a topology and a CRS only, so
+        this result. Beyond that, ``Mesh1d`` carries a topology and a CRS only, so
         node elevation, variables and global attributes have nowhere to go at all.
 
         Every warning in this package uses ``stacklevel=2``, which blames the frame that
         called into the driver. No constant can blame the user's own line: a direct
-        ``driver.read()`` and a dispatched ``UgridDataset.read_file()`` are different
+        ``driver.read()`` and a dispatched ``MeshDataset.read_file()`` are different
         depths, so a value tuned for one points inside the other.
 
         Args:
@@ -708,7 +706,7 @@ class BaseDriver:
         if parsed.faces is not None:
             warnings.warn(
                 f"this file also holds a {parsed.mesh_name!r} surface mesh, which is "
-                f"not in this result; read it with UgridDataset.read_file(path)",
+                f"not in this result; read it with MeshDataset.read_file(path)",
                 stacklevel=2,
             )
         dropped: list[str] = []
@@ -720,7 +718,7 @@ class BaseDriver:
         if not dropped:
             return
         warnings.warn(
-            f"Network1d carries a topology and a CRS only, so {', '.join(dropped)} "
+            f"Mesh1d carries a topology and a CRS only, so {', '.join(dropped)} "
             f"could not be attached to this 1D mesh and "
             f"{'is' if len(dropped) == 1 else 'are'} not in the result",
             stacklevel=2,

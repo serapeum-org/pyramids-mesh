@@ -10,7 +10,7 @@ through the NetCDF substrate the vendored GDAL already provides -- the same
 multidimensional route the other NetCDF drivers use, with no declared ``netCDF4`` or
 ``h5py``.
 
-3Di results use the ``.nc`` suffix. ``UgridDataset.read_file`` tries its built-in UGRID
+3Di results use the ``.nc`` suffix. ``MeshDataset.read_file`` tries its built-in UGRID
 reader first and, finding no UGRID topology, falls back to a driver claiming the suffix
 (``pyramids-core`` 0.69.0's dispatch), which is how this driver is reached. A successful
 UGRID read still pays nothing.
@@ -23,9 +23,7 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -56,7 +54,7 @@ class ThreeDiDriver(BaseDriver):
     3Di stores 2D cell *contours* -- each cell's corner coordinates -- rather than a node
     list and connectivity. The driver deduplicates the corners into a shared node table
     and builds face-node connectivity into it, so a 3Di result becomes an ordinary
-    :class:`~pyramids.netcdf.ugrid.UgridDataset`. Per-cell result arrays become
+    :class:`~pyramids.netcdf.ugrid.MeshDataset`. Per-cell result arrays become
     face-located variables over time.
 
     Documented limitations:
@@ -67,7 +65,7 @@ class ThreeDiDriver(BaseDriver):
         - **A coupled 1D network is reported, not represented.** A 3Di file with
           ``Mesh1D*`` arrays carries a 1D model coupled to the 2D mesh; pyramids has no
           coupling relation (design section 10), so the 2D mesh is returned and the 1D
-          part is announced in a warning naming ``Network1d`` rather than dropped
+          part is announced in a warning naming ``Mesh1d`` rather than dropped
           silently.
         - **Flow-line variables are not shipped.** A result on the ``nMesh2D_lines``
           dimension lives on flow links between cells, which the mesh model has no place
@@ -83,9 +81,9 @@ class ThreeDiDriver(BaseDriver):
         its ``.nc`` is not UGRID; shown rather than run as a doctest since it needs a real
         NetCDF file::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("results_3di.nc")   # cells -> shared nodes
+            mesh = MeshDataset.read_file("results_3di.nc")   # cells -> shared nodes
             water_level = mesh.get("Mesh2D_s1")               # face-located, over time
     """
 
@@ -285,7 +283,7 @@ class _ThreeDiReader:
         if any(name.startswith(_MESH1D_PREFIX) for name in names):
             warnings.warn(
                 f"{self.path!r} also carries a coupled 1D network (Mesh1D*), which "
-                f"pyramids cannot represent alongside the 2D mesh: there is no Network1d "
+                f"pyramids cannot represent alongside the 2D mesh: there is no Mesh1d "
                 f"coupling relation, so the 1D part is not in this result",
                 stacklevel=4,
             )

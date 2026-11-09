@@ -118,7 +118,7 @@ already puts your checkout on the path — there is no separate editable-install
 >>> import pyramids_mesh
 >>> pyramids_mesh.__version__
 '0.1.0'
->>> from pyramids.netcdf.ugrid import Mesh2d, UgridDataset   # the tier this extends
+>>> from pyramids.netcdf.ugrid import Mesh2d, MeshDataset   # the tier this extends
 ```
 
 ## Notes

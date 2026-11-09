@@ -13,10 +13,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
-from pyramids.netcdf.ugrid import _drivers
+from pyramids.netcdf.ugrid import MeshDataset, _drivers
+
 from pyramids_mesh.drivers.icon import IconDriver, _orient_faces
 
 _GRID = Path(__file__).parent.parent / "data" / "icon" / "icon_grid_R02B04_subset.nc"
@@ -156,7 +155,7 @@ def test_reached_through_read_file_netcdf_fallback():
     _drivers.clear_driver_cache()
     _drivers._CACHE = {"icon": IconDriver()}
     try:
-        dataset = UgridDataset.read_file(str(_GRID))
+        dataset = MeshDataset.read_file(str(_GRID))
     finally:
         _drivers.clear_driver_cache()
     assert dataset.mesh.n_node == 197

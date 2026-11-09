@@ -12,8 +12,7 @@ import warnings
 from pathlib import Path
 
 import pytest
-
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.abaqus import AbaqusDriver
 from pyramids_mesh.drivers.avsucd import AvsUcdDriver
@@ -98,8 +97,8 @@ def test_point_and_line_cells_are_dropped(tmp_path):
 
 
 def test_read_dispatches_to_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_AVSUCD), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_AVSUCD), MeshDataset)
 
 
 def test_can_open_accepts_avsucd_and_declines_others(tmp_path):
@@ -208,11 +207,7 @@ def test_unknown_cell_type_is_refused(tmp_path):
     """A cell naming a type that is neither face-forming nor dropped is refused."""
     mesh_file = tmp_path / "unknowncell.inp"
     mesh_file.write_text(
-        "3 1 0 0 0\n"
-        "1 0.0 0.0 0.0\n"
-        "2 1.0 0.0 0.0\n"
-        "3 0.0 1.0 0.0\n"
-        "1 1 banana 1 2 3\n",
+        "3 1 0 0 0\n1 0.0 0.0 0.0\n2 1.0 0.0 0.0\n3 0.0 1.0 0.0\n1 1 banana 1 2 3\n",
         encoding="utf-8",
     )
     from pyramids.base._errors import FileFormatNotSupportedError
@@ -235,11 +230,7 @@ def test_cell_referencing_an_undefined_node_is_refused(tmp_path):
     """A cell naming a node label no node row defines raises ``ValueError``."""
     mesh_file = tmp_path / "dangling.inp"
     mesh_file.write_text(
-        "3 1 0 0 0\n"
-        "1 0.0 0.0 0.0\n"
-        "2 1.0 0.0 0.0\n"
-        "3 0.0 1.0 0.0\n"
-        "1 1 tri 1 2 99\n",
+        "3 1 0 0 0\n1 0.0 0.0 0.0\n2 1.0 0.0 0.0\n3 0.0 1.0 0.0\n1 1 tri 1 2 99\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError):
@@ -250,11 +241,7 @@ def test_non_integer_cell_node_is_refused(tmp_path):
     """A non-integer node value in a cell row is refused."""
     mesh_file = tmp_path / "badcellnode.inp"
     mesh_file.write_text(
-        "3 1 0 0 0\n"
-        "1 0.0 0.0 0.0\n"
-        "2 1.0 0.0 0.0\n"
-        "3 0.0 1.0 0.0\n"
-        "1 1 tri 1 2 x\n",
+        "3 1 0 0 0\n1 0.0 0.0 0.0\n2 1.0 0.0 0.0\n3 0.0 1.0 0.0\n1 1 tri 1 2 x\n",
         encoding="utf-8",
     )
     from pyramids.base._errors import FileFormatNotSupportedError

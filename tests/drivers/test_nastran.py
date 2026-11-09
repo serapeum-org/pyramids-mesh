@@ -18,9 +18,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.nastran import NastranDriver, _parse_real
 
@@ -188,7 +187,7 @@ def test_large_field_deck_reads(tmp_path):
 
 def test_free_field_deck_reads(tmp_path):
     """A free-field (comma-separated) deck reads, with empty fields defaulting."""
-    text = "GRID,1,,0.,0.\n" "GRID,2,,1.,0.\n" "GRID,3,,0.,1.\n" "CTRIA3,10,0,1,2,3\n"
+    text = "GRID,1,,0.,0.\nGRID,2,,1.,0.\nGRID,3,,0.,1.\nCTRIA3,10,0,1,2,3\n"
     dataset = _read(_write(tmp_path, text, name="free.nas"))
     assert dataset.mesh.n_node == 3
     assert dataset.mesh.n_face == 1
@@ -395,8 +394,8 @@ def test_can_open_requires_both_a_grid_and_a_face_card(tmp_path):
 
 
 def test_read_yields_a_ugrid_dataset():
-    """The read path (parse -> validate -> construct) yields a ``UgridDataset``."""
-    assert isinstance(_read(_CYLINDER), UgridDataset)
+    """The read path (parse -> validate -> construct) yields a ``MeshDataset``."""
+    assert isinstance(_read(_CYLINDER), MeshDataset)
 
 
 def test_driver_identity_and_capabilities():

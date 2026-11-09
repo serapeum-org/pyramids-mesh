@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids.netcdf.ugrid import UgridDataset
 from pyramids_mesh.drivers.threedi import ThreeDiDriver
 
 _RESULTS = Path(__file__).parent.parent / "data" / "3di" / "results_3di.nc"
@@ -50,7 +50,7 @@ def test_node_order_is_deterministic():
 
 
 def test_mesh1d_presence_warns_naming_network1d():
-    """The coupled 1D network is announced in a warning naming Network1d, not dropped."""
+    """The coupled 1D network is announced in a warning naming Mesh1d, not dropped."""
     with pytest.warns(UserWarning, match="1D network"):
         dataset = ThreeDiDriver().read(str(_RESULTS))
     # the returned result is the 2D mesh
@@ -114,7 +114,7 @@ def test_reached_through_read_file_netcdf_fallback():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        dataset = UgridDataset.read_file(str(_RESULTS))
+        dataset = MeshDataset.read_file(str(_RESULTS))
     assert dataset.mesh.n_node == 25
 
 

@@ -14,8 +14,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasReader
 
 _DATA = Path(__file__).parent.parent / "data" / "hecras"

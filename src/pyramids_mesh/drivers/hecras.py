@@ -18,9 +18,7 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -81,9 +79,9 @@ class HecRasDriver(BaseDriver):
         Read a HEC-RAS 2D plan file (shown, not run as a doctest -- it needs a real HDF5
         file)::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("model.p01.hdf")
+            mesh = MeshDataset.read_file("model.p01.hdf")
             wse = mesh.get("Maximum Water Surface")   # face-located, per cell
     """
 

@@ -14,12 +14,12 @@ interchange format with elevation per vertex and no time axis.
 | Suffixes | `.off` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("surface.off")
+mesh = MeshDataset.read_file("surface.off")
 ```
 
 ## Documented limitations

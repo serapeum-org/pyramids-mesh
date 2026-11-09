@@ -3,14 +3,14 @@
 `pyramids-mesh` reads and writes the file formats of hydrodynamic and hydraulic
 mesh models — 2DM, Selafin, DFSU, XMDF, PLY and the rest of the hydrodynamic formats —
 as `pyramids.netcdf.ugrid` objects. `pyramids.netcdf.ugrid` owns the UGRID data
-model (`Mesh2d`, `Network1d`, `UgridDataset`), its NetCDF I/O, and every operation
+model (`Mesh2d`, `Mesh1d`, `MeshDataset`), its NetCDF I/O, and every operation
 that follows from a topology already in hand — connectivity and graph algorithms,
 regridding and sampling, gap filling, mesh-to-vector conversion, and construction
 from a raster or a polygon layer. What it cannot do is open other people's mesh
 files; that is this package's job, and its only job.
 
 Drivers are discovered by `pyramids-core` through the `pyramids.mesh_drivers`
-entry-point group, so `UgridDataset.read_file("model.slf")` resolves to a driver
+entry-point group, so `MeshDataset.read_file("model.slf")` resolves to a driver
 here once this package is installed. Dependency-backed drivers sit behind extras
 (`[dhi]`) and are skipped at discovery when their extra
 is absent. See ADR-0005 for the scope decision.
@@ -50,11 +50,14 @@ Examples:
 import pyramids  # noqa: F401
 
 try:
-    from importlib.metadata import PackageNotFoundError  # type: ignore
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 except ImportError:  # pragma: no cover
-    from importlib_metadata import PackageNotFoundError  # type: ignore
-    from importlib_metadata import version
+    # importlib_metadata is the pre-3.12 backport and ships no stubs here; the bare
+    # `# type: ignore` must stay on this `from ... import` statement line, where it
+    # suppresses the fallback branch's import-not-found (and no-redef) diagnostics.
+    # Keep it one line — a parenthesised split strands the comment on a member line
+    # and the suppression stops applying to the module-not-found on the `from` line.
+    from importlib_metadata import PackageNotFoundError, version  # type: ignore
 
 
 # The distribution name, not `__name__`: the import name is `pyramids_mesh` and

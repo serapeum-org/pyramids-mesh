@@ -14,12 +14,12 @@ binary (80-byte header, a `uint32` triangle count, then 50 bytes per triangle), 
 | Suffixes | `.stl` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("solid.stl")
+mesh = MeshDataset.read_file("solid.stl")
 ```
 
 ## Documented limitations

@@ -9,9 +9,9 @@ package is the whole integration: `pyramids` then dispatches a read of a format 
 itself to the driver that claims it.
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("domain.2dm")   # resolved to this package's 2dm driver
+mesh = MeshDataset.read_file("domain.2dm")   # resolved to this package's 2dm driver
 ```
 
 So the entry points below are the surface that matters, and each driver has its own page listing
@@ -35,7 +35,7 @@ its suffixes, capabilities and documented limitations:
 | `flo2d` | FLO-2D (directory of files) | [FLO-2D](flo2d.md) |
 | `hecras` | HEC-RAS 2D (HDF5 plan file) | [HEC-RAS 2D](hecras.md) |
 | `adcirc` | ADCIRC (`fort.14` + `fort.63.nc`) | [ADCIRC](adcirc.md) |
-| `deltares1d` | Deltares 1D network (NetCDF, `Network1d`) | [Deltares 1D (D-Flow FM)](deltares1d.md) |
+| `deltares1d` | Deltares 1D network (NetCDF, `Mesh1d`) | [Deltares 1D (D-Flow FM)](deltares1d.md) |
 | `schism` | SCHISM hgrid.gr3 (ASCII) | [SCHISM (.gr3)](schism.md) |
 | `gmsh` | Gmsh .msh (v2.2 + v4.1) | [Gmsh (.msh)](gmsh.md) |
 | `vtk` | VTK / VTU unstructured grid | [VTK / VTU](vtk.md) |
@@ -73,7 +73,7 @@ the import contract that activates the vendored osgeo bindings. Driver classes a
 module path — `pyramids_mesh.drivers.sms.TwoDmDriver` — which is also how their entry points name
 them, though normal use goes through `pyramids` rather than importing them at all.
 
-For the mesh data model itself — `Mesh2d`, `Network1d`, `UgridDataset`, connectivity, graph
+For the mesh data model itself — `Mesh2d`, `Mesh1d`, `MeshDataset`, connectivity, graph
 algorithms, regridding, mesh ↔ vector — see the
 [pyramids UGRID reference](https://serapeum-org.github.io/pyramids/latest/). The split between the
 two is [ADR-0005](../adr/0005-file-format-drivers.md), which supersedes ADR-0003 in full.

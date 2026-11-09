@@ -21,7 +21,6 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
@@ -80,9 +79,9 @@ class AbaqusDriver(BaseDriver):
         Read an Abaqus deck (shown, not run as a doctest -- it needs a real ``.inp``
         file), reached through ``read_file``::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("part.inp")
+            mesh = MeshDataset.read_file("part.inp")
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 
@@ -147,7 +146,7 @@ def _first_significant_line(path: str, *, comment: str) -> str | None:
     Returns:
         str | None: The stripped line, or ``None`` at end of file.
     """
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as handle:
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
         for raw in handle:
             stripped = raw.strip()
             if not stripped or stripped.startswith(comment):
@@ -205,7 +204,7 @@ class _AbaqusReader:
             ValueError: If an element references an undefined node label, or two nodes
                 share a label.
         """
-        with open(self.path, "r", encoding="utf-8-sig", errors="replace") as handle:
+        with open(self.path, encoding="utf-8-sig", errors="replace") as handle:
             for raw in handle:
                 self._consume(raw.strip())
         self._flush_element()

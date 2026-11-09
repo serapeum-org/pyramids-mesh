@@ -9,20 +9,19 @@ triangles, 5 timesteps, with a node scalar ``phi``, a node vector ``u`` and a ce
 import pyramids  # noqa: F401  # isort:skip
 
 import warnings
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
 import pytest
-
-import xml.etree.ElementTree as ET
-
 from pyramids.base._errors import FileFormatNotSupportedError
+
 from pyramids_mesh.drivers.xdmf import (
     XdmfDriver,
-    _XdmfReader,
     _read_md_array,
     _reshape_by_dimensions,
     _resolve_reference,
+    _XdmfReader,
 )
 
 _XDMF = Path(__file__).parent.parent / "data" / "xdmf" / "out.xdmf"

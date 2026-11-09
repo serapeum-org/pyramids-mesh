@@ -9,12 +9,12 @@ interchange format with elevation per vertex and no time axis.
 | Suffixes | `.ply` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
-| Returns | `UgridDataset` |
+| Returns | `MeshDataset` |
 
 ```python
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("surface.ply")
+mesh = MeshDataset.read_file("surface.ply")
 ```
 
 ## Documented limitations

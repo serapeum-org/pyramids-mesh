@@ -23,7 +23,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.medit import MeditDriver
@@ -312,21 +311,14 @@ def test_medit_unsupported_dimension_is_refused(tmp_path):
 
 def test_medit_missing_dimension_is_refused(tmp_path):
     """A file that never declares a dimension is refused."""
-    text = "MeshVersionFormatted 1\n" "Triangles\n" "1\n" "1 2 3 0\n" "End\n"
+    text = "MeshVersionFormatted 1\nTriangles\n1\n1 2 3 0\nEnd\n"
     with pytest.raises(FileFormatNotSupportedError, match="declares no Dimension"):
         MeditDriver().read(_write(tmp_path, text))
 
 
 def test_medit_truncated_count_is_refused(tmp_path):
     """A count that outruns the file's rows is refused, naming what is missing."""
-    text = (
-        "MeshVersionFormatted 1\n"
-        "Dimension 2\n"
-        "Vertices\n"
-        "4\n"
-        "0 0 1\n"
-        "1 0 1\n"
-    )
+    text = "MeshVersionFormatted 1\nDimension 2\nVertices\n4\n0 0 1\n1 0 1\n"
     with pytest.raises(FileFormatNotSupportedError, match="ends before"):
         MeditDriver().read(_write(tmp_path, text))
 
@@ -354,14 +346,14 @@ def test_medit_can_open_skips_leading_blank_lines(tmp_path):
 
 def test_medit_missing_vertices_block_is_refused(tmp_path):
     """A file that declares a dimension but no ``Vertices`` block is refused."""
-    text = "MeshVersionFormatted 1\n" "Dimension 2\n" "End\n"
+    text = "MeshVersionFormatted 1\nDimension 2\nEnd\n"
     with pytest.raises(FileFormatNotSupportedError, match="declares no Vertices"):
         MeditDriver().read(_write(tmp_path, text))
 
 
 def test_medit_vertices_before_dimension_is_refused(tmp_path):
     """A ``Vertices`` block before ``Dimension`` is refused: the row width is unknown."""
-    text = "MeshVersionFormatted 1\n" "Vertices\n" "2\n" "0 0 1\n" "1 1 1\n"
+    text = "MeshVersionFormatted 1\nVertices\n2\n0 0 1\n1 1 1\n"
     with pytest.raises(FileFormatNotSupportedError, match="before its Dimension"):
         MeditDriver().read(_write(tmp_path, text))
 

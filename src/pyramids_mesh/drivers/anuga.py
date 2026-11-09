@@ -7,7 +7,7 @@ GDAL already provides -- the same multidimensional route the HDF5 drivers use, a
 by ``import pyramids``, with no declared ``netCDF4`` or ``h5py``.
 
 ``.sww`` is not one of pyramids' NetCDF suffixes (``.nc`` and the rest), so a plain
-``UgridDataset.read_file("model.sww")`` reaches this driver through the registry. A SWW
+``MeshDataset.read_file("model.sww")`` reaches this driver through the registry. A SWW
 file that happened to be named ``.nc`` would not -- that is the upstream dispatch
 limitation tracked for the 3Di and TUFLOW FV drivers, not a concern for ``.sww``.
 """
@@ -19,9 +19,7 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 
 import numpy as np
-
 from osgeo import gdal, osr
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 

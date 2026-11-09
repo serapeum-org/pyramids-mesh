@@ -12,9 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import Network1d, UgridDataset
+from pyramids.netcdf.ugrid import Mesh1d, MeshDataset
 
 from pyramids_mesh.drivers import sms
 from pyramids_mesh.drivers.sms import TwoDmDriver, build_minimal_fixture
@@ -167,7 +166,7 @@ def test_2dm_reads_nodes_and_triangles(tmp_path):
     """Nodes and triangular faces arrive with the right counts and coordinates."""
     dataset = TwoDmDriver().read(_write(tmp_path, _UNIT_SQUARE))
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
     np.testing.assert_allclose(dataset.mesh.node_x, [0.0, 1.0, 1.0, 0.0])
@@ -309,7 +308,7 @@ E2L 2 2 3 1
 """
     result = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert isinstance(result, Network1d)
+    assert isinstance(result, Mesh1d)
     assert result.n_node == 3
     assert result.n_edge == 2
     np.testing.assert_array_equal(result.edge_node_connectivity.data, [[0, 1], [1, 2]])
@@ -353,7 +352,7 @@ def test_2dm_mixed_file_1d_elements_are_reachable(tmp_path):
 
     network = TwoDmDriver().read(path, mesh_name="network1d")
 
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     assert network.n_edge == 2
     np.testing.assert_array_equal(network.edge_node_connectivity.data, [[0, 1], [1, 2]])
 
@@ -370,17 +369,17 @@ def test_2dm_1d_read_of_a_mixed_file_reports_the_dropped_surface_mesh(tmp_path):
     with pytest.warns(UserWarning, match="surface mesh") as record:
         network = TwoDmDriver().read(path, mesh_name="network1d")
 
-    assert isinstance(network, Network1d)
-    assert any("UgridDataset.read_file" in str(w.message) for w in record)
+    assert isinstance(network, Mesh1d)
+    assert any("MeshDataset.read_file" in str(w.message) for w in record)
 
 
 def test_2dm_mixed_file_1d_elements_reachable_through_network_read_file(tmp_path):
-    """The documented route works: Network1d.read_file with the network's name."""
+    """The documented route works: Mesh1d.read_file with the network's name."""
     path = _write(tmp_path, _MIXED)
 
-    network = Network1d.read_file(path, mesh_name="network1d")
+    network = Mesh1d.read_file(path, mesh_name="network1d")
 
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     assert network.n_edge == 2
 
 
@@ -393,10 +392,10 @@ def test_2dm_e2l_elements_never_become_the_surface_edges(tmp_path):
     would then be indexed by the wrong topology. The mixed-file tests asserted the face
     count and the warning, but nothing asserted the mislabelling had not happened.
     """
-    with pytest.warns(UserWarning, match="Network1d"):
+    with pytest.warns(UserWarning, match="Mesh1d"):
         dataset = TwoDmDriver().read(_write(tmp_path, _MIXED))
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_face == 2
     assert dataset.mesh.edge_node_connectivity is None
 
@@ -408,7 +407,7 @@ def test_2dm_network_records_the_file_base_for_a_writer(tmp_path):
     was pinned to 1 while the network half -- built through a different code path -- was
     not checked at all.
     """
-    with pytest.warns(UserWarning, match="Network1d carries a topology"):
+    with pytest.warns(UserWarning, match="Mesh1d carries a topology"):
         network = TwoDmDriver().read(_write(tmp_path, _MIXED), mesh_name="network1d")
 
     connectivity = network.edge_node_connectivity
@@ -425,13 +424,13 @@ def test_2dm_requesting_a_network_from_a_faces_only_file_raises(tmp_path):
 
 
 def test_2dm_e2l_with_faces_warns(tmp_path):
-    """A mixed-dimension file returns the faces and warns, naming Network1d."""
+    """A mixed-dimension file returns the faces and warns, naming Mesh1d."""
     text = _UNIT_SQUARE + "E2L 3 1 2 1\n"
 
-    with pytest.warns(UserWarning, match="Network1d"):
+    with pytest.warns(UserWarning, match="Mesh1d"):
         dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_face == 2
 
 
@@ -450,7 +449,7 @@ E2L 2 2 3 1
     with pytest.warns(UserWarning, match="node_z"):
         network = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     assert network.n_node == 3
 
 
@@ -881,7 +880,7 @@ def test_2dm_mesh_names_folds_lower_case_element_keywords(tmp_path):
     with pytest.warns(UserWarning, match="node_z"):
         network = driver.read(path, mesh_name="network1d")
 
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     np.testing.assert_array_equal(network.edge_node_connectivity.data, [[0, 1]])
 
 
@@ -946,22 +945,22 @@ def test_2dm_mesh_names_is_a_single_entry(tmp_path):
 
 def test_2dm_is_reachable_through_read_file(tmp_path):
     """The registered entry point dispatches a .2dm path to this driver."""
-    dataset = UgridDataset.read_file(_write(tmp_path, _UNIT_SQUARE))
+    dataset = MeshDataset.read_file(_write(tmp_path, _UNIT_SQUARE))
 
-    assert isinstance(dataset, UgridDataset)
+    assert isinstance(dataset, MeshDataset)
     assert dataset.mesh.n_face == 2
 
 
 def test_2dm_network_is_reachable_through_network_read_file(tmp_path):
-    """An E2L-only file is read through ``Network1d.read_file``."""
+    """An E2L-only file is read through ``Mesh1d.read_file``."""
     text = """MESH2D
 ND 1 0.0 0.0 0.0
 ND 2 1.0 0.0 0.0
 E2L 1 1 2 1
 """
-    network = Network1d.read_file(_write(tmp_path, text))
+    network = Mesh1d.read_file(_write(tmp_path, text))
 
-    assert isinstance(network, Network1d)
+    assert isinstance(network, Mesh1d)
     assert network.n_edge == 1
 
 
@@ -1060,11 +1059,11 @@ E3T 1 1 2 3 1
         assert {"write_mesh", "write_data"} <= caps
 
     def test_e2l_only_file_reads_as_a_network_not_a_mesh(self, tmp_path):
-        """An E2L-only (1D link) file reads as a Network1d, which has no faces to write."""
+        """An E2L-only (1D link) file reads as a Mesh1d, which has no faces to write."""
         text = "MESH2D\nND 1 0.0 0.0 0.0\nND 2 1.0 0.0 0.0\nE2L 1 1 2 1\n"
         src = _write(tmp_path, text, "net.2dm")
         result = TwoDmDriver().read(src)
-        assert isinstance(result, Network1d)
+        assert isinstance(result, Mesh1d)
 
     @pytest.mark.parametrize(
         "connectivity",

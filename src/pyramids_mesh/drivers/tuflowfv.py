@@ -17,14 +17,12 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import numpy as np
-
 from osgeo import gdal
-
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
-from pyramids_mesh.drivers.threedi import _ThreeDiLoader  # reopen-per-read lazy loader
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
+from pyramids_mesh.drivers.threedi import _ThreeDiLoader  # reopen-per-read lazy loader
 
 _NODE_X = "node_X"
 _NODE_Y = "node_Y"
@@ -90,9 +88,9 @@ class TuflowFvDriver(BaseDriver):
         Read a TUFLOW FV result (shown, not run as a doctest -- it needs a real NetCDF
         file), reached through ``read_file``'s NetCDF fallback::
 
-            from pyramids.netcdf.ugrid import UgridDataset
+            from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = UgridDataset.read_file("results.nc")
+            mesh = MeshDataset.read_file("results.nc")
             depth = mesh.get("D")          # face-located, over time
             wet = mesh.get("stat")         # per-step wet/dry status
     """
