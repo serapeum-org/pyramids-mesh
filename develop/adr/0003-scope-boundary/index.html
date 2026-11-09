@@ -2642,7 +2642,7 @@ Decision section.</p>
 </blockquote>
 <h2 id="context"><a class="toclink" href="#context">Context</a><a class="headerlink" href="#context" title="Permanent link">#</a></h2>
 <p><code>pyramids-core</code> already ships UGRID support in <code>pyramids.netcdf.ugrid</code>: the data model (<code>Mesh2d</code>,
-<code>Network1d</code>, <code>UgridDataset</code>, <code>Connectivity</code>), UGRID-compliant NetCDF I/O, connectivity derivation
+<code>Mesh1d</code>, <code>MeshDataset</code>, <code>Connectivity</code>), UGRID-compliant NetCDF I/O, connectivity derivation
 and graph algorithms, sampling and mesh-to-mesh regridding, construction by flattening a raster grid
 or a polygon layer, mesh-to-vector conversion, gap filling, spatial indexing, and rendering through
 cleopatra. This repository exists because three things are missing from that list, not because the
@@ -2663,7 +2663,7 @@ NetCDF I/O here, which gives the stack two mesh types that drift apart.</p>
 </ul>
 </li>
 <li>Public functions take and return <code>pyramids.netcdf.ugrid</code> types, so a result can go straight back
-  into a <code>UgridDataset</code> and be written as UGRID NetCDF without a conversion step.</li>
+  into a <code>MeshDataset</code> and be written as UGRID NetCDF without a conversion step.</li>
 <li>A gap or bug on the pyramids side of the boundary is reported and fixed upstream. A local
   workaround, if one is unavoidable, carries a comment naming the upstream issue and is removed when
   that lands.</li>

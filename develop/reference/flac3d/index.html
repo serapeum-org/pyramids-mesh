@@ -2767,13 +2767,13 @@ gridpoints and zones: <code>G &lt;id&gt; &lt;x&gt; &lt;y&gt; &lt;z&gt;</code> ro
 </tr>
 <tr>
 <td>Returns</td>
-<td><code>UgridDataset</code></td>
+<td><code>MeshDataset</code></td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeshDataset</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"model.f3grid"</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">MeshDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"model.f3grid"</span><span class="p">)</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">mesh</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_node</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span>
 </code></pre></div>
 <h2 id="element-handling"><a class="toclink" href="#element-handling">Element handling</a><a class="headerlink" href="#element-handling" title="Permanent link">#</a></h2>
@@ -2840,9 +2840,9 @@ to the widest with <code>-1</code>.</p>
   <summary>Example</summary>
   <p>Read a FLAC3D grid (shown, not run as a doctest -- it reads a committed data
 file), reached through <code>read_file</code>::</p>
-<div class="highlight"><pre><span></span><code>from pyramids.netcdf.ugrid import UgridDataset
+<div class="highlight"><pre><span></span><code>from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = UgridDataset.read_file("model.f3grid")
+mesh = MeshDataset.read_file("model.f3grid")
 mesh.mesh.n_node, mesh.mesh.n_face
 </code></pre></div>
 </details>
@@ -2969,9 +2969,9 @@ mesh.mesh.n_node, mesh.mesh.n_face
 <a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">        Read a FLAC3D grid (shown, not run as a doctest -- it reads a committed data</span>
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        file), reached through ``read_file``::</span>
 <a id="__codelineno-0-70" name="__codelineno-0-70"></a>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
 <a id="__codelineno-0-72" name="__codelineno-0-72"></a>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">            mesh = UgridDataset.read_file("model.f3grid")</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">            mesh = MeshDataset.read_file("model.f3grid")</span>
 <a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">            mesh.mesh.n_node, mesh.mesh.n_face</span>
 <a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    """</span>
 <a id="__codelineno-0-76" name="__codelineno-0-76"></a>
@@ -3531,8 +3531,8 @@ TinyDriver().mesh_names("anything.tiny")
         <p>Read the file into a fully-built pyramids object.</p>
 <p>Template method: <code>_parse</code> turns the file into a :class:<code>ParsedMesh</code>,
 <code>validate_and_normalise</code> enforces pyramids' invariants, and the result is
-constructed into a :class:<code>~pyramids.netcdf.ugrid.UgridDataset</code> -- or a
-:class:<code>~pyramids.netcdf.ugrid.Network1d</code> when the topology is one-dimensional.
+constructed into a :class:<code>~pyramids.netcdf.ugrid.MeshDataset</code> -- or a
+:class:<code>~pyramids.netcdf.ugrid.Mesh1d</code> when the topology is one-dimensional.
 Do not override it; a driver that bypasses validation loses every invariant.</p>
 
 
@@ -3574,7 +3574,7 @@ Do not override it; a driver that bypasses validation loses every invariant.</p>
               <div class="doc-md-description">
                 <p>Which topology to build. A format carrying both a surface mesh
 and a 1D network names them separately -- see <code>mesh_names</code> -- and
-this selects one. Note that <code>Network1d</code> has no name of its own, so
+this selects one. Note that <code>Mesh1d</code> has no name of its own, so
 on the 1D path the value only chooses the topology; it is not recorded
 anywhere.</p>
               </div>
@@ -3615,11 +3615,11 @@ honour it.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="pyramids.netcdf.ugrid.UgridDataset">UgridDataset</span> | <span title="pyramids.netcdf.ugrid.Network1d">Network1d</span></code>
+                  <code><span title="pyramids.netcdf.ugrid.MeshDataset">MeshDataset</span> | <span title="pyramids.netcdf.ugrid.Mesh1d">Mesh1d</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>UgridDataset | Network1d: The built mesh, or a network for a 1D topology.</p>
+                <p>MeshDataset | Mesh1d: The built mesh, or a network for a 1D topology.</p>
               </div>
             </td>
           </tr>
@@ -3947,27 +3947,27 @@ surfaceonly does not offer a 'network1d' topology in 'flat.tiny'</p>
 <span class="normal"><a href="#__codelineno-0-484">484</a></span>
 <span class="normal"><a href="#__codelineno-0-485">485</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
 <a id="__codelineno-0-344" name="__codelineno-0-344"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span> <span class="o">|</span> <span class="n">Network1d</span><span class="p">:</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span> <span class="o">|</span> <span class="n">Mesh1d</span><span class="p">:</span>
 <a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="w">    </span><span class="sd">"""Read the file into a fully-built pyramids object.</span>
 <a id="__codelineno-0-347" name="__codelineno-0-347"></a>
 <a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">    Template method: ``_parse`` turns the file into a :class:`ParsedMesh`,</span>
 <a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">    ``validate_and_normalise`` enforces pyramids' invariants, and the result is</span>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">    constructed into a :class:`~pyramids.netcdf.ugrid.UgridDataset` -- or a</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">    :class:`~pyramids.netcdf.ugrid.Network1d` when the topology is one-dimensional.</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">    constructed into a :class:`~pyramids.netcdf.ugrid.MeshDataset` -- or a</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">    :class:`~pyramids.netcdf.ugrid.Mesh1d` when the topology is one-dimensional.</span>
 <a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">    Do not override it; a driver that bypasses validation loses every invariant.</span>
 <a id="__codelineno-0-353" name="__codelineno-0-353"></a>
 <a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">        path: The file to read.</span>
 <a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">        mesh_name: Which topology to build. A format carrying both a surface mesh</span>
 <a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">            and a 1D network names them separately -- see ``mesh_names`` -- and</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">            this selects one. Note that ``Network1d`` has no name of its own, so</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">            this selects one. Note that ``Mesh1d`` has no name of its own, so</span>
 <a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">            on the 1D path the value only chooses the topology; it is not recorded</span>
 <a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">            anywhere.</span>
 <a id="__codelineno-0-361" name="__codelineno-0-361"></a><span class="sd">        lazy: Forwarded to ``_parse`` so a format with a real deferred loader can</span>
 <a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="sd">            honour it.</span>
 <a id="__codelineno-0-363" name="__codelineno-0-363"></a>
 <a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="sd">        UgridDataset | Network1d: The built mesh, or a network for a 1D topology.</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="sd">        MeshDataset | Mesh1d: The built mesh, or a network for a 1D topology.</span>
 <a id="__codelineno-0-366" name="__codelineno-0-366"></a>
 <a id="__codelineno-0-367" name="__codelineno-0-367"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="sd">        ValueError: If ``mesh_name`` is not one of the topologies ``mesh_names``</span>

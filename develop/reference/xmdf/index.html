@@ -2793,9 +2793,9 @@ topology, so it attaches to a mesh you already have.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeshDataset</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">UgridDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">MeshDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"domain.2dm"</span><span class="p">)</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">with_results</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">attach_data</span><span class="p">(</span><span class="s2">"results.xmdf"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="structure"><a class="toclink" href="#structure">Structure</a><a class="headerlink" href="#structure" title="Permanent link">#</a></h2>
@@ -2846,7 +2846,7 @@ layout.</p>
         <p>Reader for the XMDF HDF5 results format.</p>
 <p>XMDF carries values and no topology, so the driver declares <code>needs_mesh</code> and
 implements <code>read_data</code> rather than <code>read</code>; the values attach to a mesh the caller
-already holds, through <code>UgridDataset.read_file("domain.2dm").attach_data("r.xmdf")</code>.</p>
+already holds, through <code>MeshDataset.read_file("domain.2dm").attach_data("r.xmdf")</code>.</p>
 <p>The file is an HDF5 tree. Each dataset is a group carrying a <code>Grouptype</code> attribute
 beginning <code>DATASET</code>, with <code>Values</code> shaped <code>(n_time, n_element)</code>, a <code>Times</code>
 coordinate, an <code>Active</code> wet/dry mask and precomputed <code>Mins</code>/<code>Maxs</code>. The tree is
@@ -2885,9 +2885,9 @@ walked recursively, so the driver is not tied to one container layout.</p>
   <p>Attach an XMDF results file to the mesh it belongs to. The example is shown
 rather than executed as a doctest because XMDF needs a real HDF5 file, which
 cannot be built inline::</p>
-<div class="highlight"><pre><span></span><code>from pyramids.netcdf.ugrid import UgridDataset
+<div class="highlight"><pre><span></span><code>from pyramids.netcdf.ugrid import MeshDataset
 
-dataset = UgridDataset.read_file("domain.2dm")
+dataset = MeshDataset.read_file("domain.2dm")
 attached = dataset.attach_data("results.xmdf")
 depth = attached.get("Minimum dt")       # node-located, (n_time, n_node)
 depth.attributes["time_values"]           # the Times coordinate
@@ -3041,7 +3041,7 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <a id="__codelineno-0-54" name="__codelineno-0-54"></a>
 <a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    XMDF carries values and no topology, so the driver declares ``needs_mesh`` and</span>
 <a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    implements ``read_data`` rather than ``read``; the values attach to a mesh the caller</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    already holds, through ``UgridDataset.read_file("domain.2dm").attach_data("r.xmdf")``.</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    already holds, through ``MeshDataset.read_file("domain.2dm").attach_data("r.xmdf")``.</span>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    The file is an HDF5 tree. Each dataset is a group carrying a ``Grouptype`` attribute</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    beginning ``DATASET``, with ``Values`` shaped ``(n_time, n_element)``, a ``Times``</span>
@@ -3076,9 +3076,9 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        rather than executed as a doctest because XMDF needs a real HDF5 file, which</span>
 <a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        cannot be built inline::</span>
 <a id="__codelineno-0-91" name="__codelineno-0-91"></a>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            from pyramids.netcdf.ugrid import UgridDataset</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
 <a id="__codelineno-0-93" name="__codelineno-0-93"></a>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            dataset = UgridDataset.read_file("domain.2dm")</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            dataset = MeshDataset.read_file("domain.2dm")</span>
 <a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            attached = dataset.attach_data("results.xmdf")</span>
 <a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            depth = attached.get("Minimum dt")       # node-located, (n_time, n_node)</span>
 <a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            depth.attributes["time_values"]           # the Times coordinate</span>
@@ -3124,7 +3124,7 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <a id="__codelineno-0-137" name="__codelineno-0-137"></a>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
 <a id="__codelineno-0-139" name="__codelineno-0-139"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
 <a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="w">        </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
 <a id="__codelineno-0-142" name="__codelineno-0-142"></a>
 <a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        Args:</span>
@@ -3133,7 +3133,7 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">            lazy: Unused.</span>
 <a id="__codelineno-0-147" name="__codelineno-0-147"></a>
 <a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">            UgridDataset: Never -- the signature matches the driver protocol so the</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">            MeshDataset: Never -- the signature matches the driver protocol so the</span>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">                refusal is a clear message rather than a ``TypeError``.</span>
 <a id="__codelineno-0-151" name="__codelineno-0-151"></a>
 <a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">        Raises:</span>
@@ -3142,11 +3142,11 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <a id="__codelineno-0-155" name="__codelineno-0-155"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 <a id="__codelineno-0-156" name="__codelineno-0-156"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a>            <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>            <span class="sa">f</span><span class="s2">"UgridDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>            <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
 <a id="__codelineno-0-159" name="__codelineno-0-159"></a>        <span class="p">)</span>
 <a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 <a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">UgridDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <a id="__codelineno-0-163" name="__codelineno-0-163"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
 <a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="w">        </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a>
@@ -3742,8 +3742,8 @@ TinyDriver().mesh_names("anything.tiny")
       </thead>
       <tbody>
           <tr class="doc-section-item">
-<td><code>UgridDataset</code></td>            <td>
-                  <code><span title="pyramids.netcdf.ugrid.UgridDataset">UgridDataset</span></code>
+<td><code>MeshDataset</code></td>            <td>
+                  <code><span title="pyramids.netcdf.ugrid.MeshDataset">MeshDataset</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3804,7 +3804,7 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
 <span class="normal"><a href="#__codelineno-0-158">158</a></span>
 <span class="normal"><a href="#__codelineno-0-159">159</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
 <a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UgridDataset</span><span class="p">:</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
 <a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="w">    </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
 <a id="__codelineno-0-142" name="__codelineno-0-142"></a>
 <a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    Args:</span>
@@ -3813,7 +3813,7 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">        lazy: Unused.</span>
 <a id="__codelineno-0-147" name="__codelineno-0-147"></a>
 <a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        UgridDataset: Never -- the signature matches the driver protocol so the</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        MeshDataset: Never -- the signature matches the driver protocol so the</span>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">            refusal is a clear message rather than a ``TypeError``.</span>
 <a id="__codelineno-0-151" name="__codelineno-0-151"></a>
 <a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Raises:</span>
@@ -3822,7 +3822,7 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
 <a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
 <a id="__codelineno-0-156" name="__codelineno-0-156"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>        <span class="sa">f</span><span class="s2">"UgridDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>        <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
 <a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -3876,7 +3876,7 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
                 <code>dataset</code>
             </td>
             <td>
-                  <code><span title="pyramids.netcdf.ugrid.UgridDataset">UgridDataset</span></code>
+                  <code><span title="pyramids.netcdf.ugrid.MeshDataset">MeshDataset</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3993,7 +3993,7 @@ face count of <code>dataset</code>.</p>
 <span class="normal"><a href="#__codelineno-0-183">183</a></span>
 <span class="normal"><a href="#__codelineno-0-184">184</a></span>
 <span class="normal"><a href="#__codelineno-0-185">185</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">UgridDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
 <a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="w">    </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a>
