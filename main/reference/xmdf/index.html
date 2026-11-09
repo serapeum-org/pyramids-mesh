@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2903,7 +2903,9 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/xmdf.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-52"> 52</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-50"> 50</a></span>
+<span class="normal"><a href="#__codelineno-0-51"> 51</a></span>
+<span class="normal"><a href="#__codelineno-0-52"> 52</a></span>
 <span class="normal"><a href="#__codelineno-0-53"> 53</a></span>
 <span class="normal"><a href="#__codelineno-0-54"> 54</a></span>
 <span class="normal"><a href="#__codelineno-0-55"> 55</a></span>
@@ -3034,142 +3036,140 @@ attached.get("Minimum dt_active")         # per-face wet/dry mask sibling
 <span class="normal"><a href="#__codelineno-0-180">180</a></span>
 <span class="normal"><a href="#__codelineno-0-181">181</a></span>
 <span class="normal"><a href="#__codelineno-0-182">182</a></span>
-<span class="normal"><a href="#__codelineno-0-183">183</a></span>
-<span class="normal"><a href="#__codelineno-0-184">184</a></span>
-<span class="normal"><a href="#__codelineno-0-185">185</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="k">class</span><span class="w"> </span><span class="nc">XmdfDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="w">    </span><span class="sd">"""Reader for the XMDF HDF5 results format.</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    XMDF carries values and no topology, so the driver declares ``needs_mesh`` and</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">    implements ``read_data`` rather than ``read``; the values attach to a mesh the caller</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    already holds, through ``MeshDataset.read_file("domain.2dm").attach_data("r.xmdf")``.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    The file is an HDF5 tree. Each dataset is a group carrying a ``Grouptype`` attribute</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    beginning ``DATASET``, with ``Values`` shaped ``(n_time, n_element)``, a ``Times``</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">    coordinate, an ``Active`` wet/dry mask and precomputed ``Mins``/``Maxs``. The tree is</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">    walked recursively, so the driver is not tied to one container layout.</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">        - **The element-count check is the only thing tying the results to the mesh.** A</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">          dataset's ``Values`` second axis is matched against the mesh's node or face</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">          count to place it; a count matching neither is refused, because nothing in the</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">          file identifies the mesh it belongs to.</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">        - **Summary datasets are skipped, not read as timesteps.** A dataset nested under</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">          a ``Final``/``Maximums`` container is a single-step snapshot; reading it as a</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">          time level would fabricate data, so it is dropped.</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        - **The active mask is a standalone face-located variable** ``&lt;name&gt;_active``,</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">          never folded into the values as NaN (design section 21.2). It is not carried</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">          through ``ParsedVariable.active``: the mask counts faces while a node-located</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">          dataset counts nodes, so the sibling cannot take the parent's location or shape.</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">          It is attached only when its width matches the mesh's face count.</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        - **Values are lazy.** The loader reopens the file per read and seeks to the</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">          dataset's array, so it closes over a path, never an open handle (design section</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">          7); the shape is read from the header without loading the values.</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">        - ``Mins``/``Maxs`` are carried as per-timestep ``minimum``/``maximum`` attributes.</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        - **A layered 3D dataset is refused.** A ``Values`` array with more than two axes</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">          is a 3D result whose ragged vertical levels this package does not model yet</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">          (design section 21.1); it is refused rather than flattened.</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        - A vector dataset (``Grouptype`` containing ``VECTOR``) is refused for now --</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">          the 2D scalar case ships first.</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        Attach an XMDF results file to the mesh it belongs to. The example is shown</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        rather than executed as a doctest because XMDF needs a real HDF5 file, which</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        cannot be built inline::</span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="k">class</span><span class="w"> </span><span class="nc">XmdfDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="w">    </span><span class="sd">"""Reader for the XMDF HDF5 results format.</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    XMDF carries values and no topology, so the driver declares ``needs_mesh`` and</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    implements ``read_data`` rather than ``read``; the values attach to a mesh the caller</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    already holds, through ``MeshDataset.read_file("domain.2dm").attach_data("r.xmdf")``.</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    The file is an HDF5 tree. Each dataset is a group carrying a ``Grouptype`` attribute</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">    beginning ``DATASET``, with ``Values`` shaped ``(n_time, n_element)``, a ``Times``</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    coordinate, an ``Active`` wet/dry mask and precomputed ``Mins``/``Maxs``. The tree is</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    walked recursively, so the driver is not tied to one container layout.</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="sd">        - **The element-count check is the only thing tying the results to the mesh.** A</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="sd">          dataset's ``Values`` second axis is matched against the mesh's node or face</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="sd">          count to place it; a count matching neither is refused, because nothing in the</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="sd">          file identifies the mesh it belongs to.</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">        - **Summary datasets are skipped, not read as timesteps.** A dataset nested under</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">          a ``Final``/``Maximums`` container is a single-step snapshot; reading it as a</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">          time level would fabricate data, so it is dropped.</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        - **The active mask is a standalone face-located variable** ``&lt;name&gt;_active``,</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">          never folded into the values as NaN (design section 21.2). It is not carried</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">          through ``ParsedVariable.active``: the mask counts faces while a node-located</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">          dataset counts nodes, so the sibling cannot take the parent's location or shape.</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">          It is attached only when its width matches the mesh's face count.</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">        - **Values are lazy.** The loader reopens the file per read and seeks to the</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">          dataset's array, so it closes over a path, never an open handle (design section</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">          7); the shape is read from the header without loading the values.</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">        - ``Mins``/``Maxs`` are carried as per-timestep ``minimum``/``maximum`` attributes.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">        - **A layered 3D dataset is refused.** A ``Values`` array with more than two axes</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">          is a 3D result whose ragged vertical levels this package does not model yet</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">          (design section 21.1); it is refused rather than flattened.</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">        - A vector dataset (``Grouptype`` containing ``VECTOR``) is refused for now --</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">          the 2D scalar case ships first.</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">        Attach an XMDF results file to the mesh it belongs to. The example is shown</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        rather than executed as a doctest because XMDF needs a real HDF5 file, which</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        cannot be built inline::</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
 <a id="__codelineno-0-91" name="__codelineno-0-91"></a>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            dataset = MeshDataset.read_file("domain.2dm")</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            attached = dataset.attach_data("results.xmdf")</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            depth = attached.get("Minimum dt")       # node-located, (n_time, n_node)</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            depth.attributes["time_values"]           # the Times coordinate</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">            attached.get("Minimum dt_active")         # per-face wet/dry mask sibling</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">    """</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"xmdf"</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"XMDF HDF5 results"</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".xmdf"</span><span class="p">,</span> <span class="s2">".h5"</span><span class="p">)</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"needs_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="w">        </span><span class="sd">"""Report whether the file is XMDF: HDF5 magic plus a ``File Type`` of ``Xmdf``.</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        The magic is checked first and cheaply; only then is the file opened to read the</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        root ``File Type`` array, so a non-HDF5 file never reaches GDAL. ``.h5`` is a</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        generic HDF5 suffix shared with other formats, which is why the ``File Type``</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        value -- not just the suffix -- decides.</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">            bool: ``True`` when the magic matches and ``File Type`` reads ``Xmdf``.</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        """</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>            <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_HDF5_MAGIC</span><span class="p">))</span> <span class="o">!=</span> <span class="n">_HDF5_MAGIC</span><span class="p">:</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">)</span>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a>                <span class="n">root</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a>                <span class="k">if</span> <span class="n">_FILE_TYPE</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">GetMDArrayNames</span><span class="p">():</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>                    <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>                <span class="n">value</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">OpenMDArray</span><span class="p">(</span><span class="n">_FILE_TYPE</span><span class="p">)</span><span class="o">.</span><span class="n">Read</span><span class="p">()</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>            <span class="k">finally</span><span class="p">:</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="n">_FILE_TYPE_VALUE</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="w">        </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">            path: The results file, named in the message.</span>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">            mesh_name: Unused.</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">            lazy: Unused.</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">            MeshDataset: Never -- the signature matches the driver protocol so the</span>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">                refusal is a clear message rather than a ``TypeError``.</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">            ValueError: Always. XMDF carries values and no topology.</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">        """</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>            <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>            <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>        <span class="p">)</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="w">        </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
-<a id="__codelineno-0-165" name="__codelineno-0-165"></a>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">            path: The XMDF file to read.</span>
-<a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">            dataset: The mesh the values attach to, for the element-count check.</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">            lazy: When ``True``, leave each dataset's values behind a loader.</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170"></a>
-<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-172" name="__codelineno-0-172"></a><span class="sd">            dict[str, MeshVariable]: One variable per dataset, plus a face-located</span>
-<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">                ``&lt;name&gt;_active`` sibling for each dataset carrying an active mask.</span>
-<a id="__codelineno-0-174" name="__codelineno-0-174"></a>
-<a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">            FileFormatNotSupportedError: If a dataset is 3D or vector, or no dataset's</span>
-<a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="sd">                element count matches the mesh.</span>
-<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">            ValueError: If a dataset's element count matches neither the node nor the</span>
-<a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">                face count of ``dataset``.</span>
-<a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">        """</span>
-<a id="__codelineno-0-181" name="__codelineno-0-181"></a>        <span class="n">n_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_node</span><span class="p">)</span>
-<a id="__codelineno-0-182" name="__codelineno-0-182"></a>        <span class="n">n_face</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">)</span>
-<a id="__codelineno-0-183" name="__codelineno-0-183"></a>        <span class="n">reader</span> <span class="o">=</span> <span class="n">_XmdfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">n_node</span><span class="o">=</span><span class="n">n_node</span><span class="p">,</span> <span class="n">n_face</span><span class="o">=</span><span class="n">n_face</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span>
-<a id="__codelineno-0-184" name="__codelineno-0-184"></a>        <span class="n">parsed</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-0-185" name="__codelineno-0-185"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_data_variables</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">)</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">            dataset = MeshDataset.read_file("domain.2dm")</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">            attached = dataset.attach_data("results.xmdf")</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            depth = attached.get("Minimum dt")       # node-located, (n_time, n_node)</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            depth.attributes["time_values"]           # the Times coordinate</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            attached.get("Minimum dt_active")         # per-face wet/dry mask sibling</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">    """</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"xmdf"</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"XMDF HDF5 results"</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".xmdf"</span><span class="p">,</span> <span class="s2">".h5"</span><span class="p">)</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"needs_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="w">        </span><span class="sd">"""Report whether the file is XMDF: HDF5 magic plus a ``File Type`` of ``Xmdf``.</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        The magic is checked first and cheaply; only then is the file opened to read the</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        root ``File Type`` array, so a non-HDF5 file never reaches GDAL. ``.h5`` is a</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        generic HDF5 suffix shared with other formats, which is why the ``File Type``</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        value -- not just the suffix -- decides.</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">            bool: ``True`` when the magic matches and ``File Type`` reads ``Xmdf``.</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        """</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>            <span class="k">if</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_HDF5_MAGIC</span><span class="p">))</span> <span class="o">!=</span> <span class="n">_HDF5_MAGIC</span><span class="p">:</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">)</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>                <span class="n">root</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>                <span class="k">if</span> <span class="n">_FILE_TYPE</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">GetMDArrayNames</span><span class="p">():</span>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a>                    <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a>                <span class="n">value</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">OpenMDArray</span><span class="p">(</span><span class="n">_FILE_TYPE</span><span class="p">)</span><span class="o">.</span><span class="n">Read</span><span class="p">()</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a>            <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="n">_FILE_TYPE_VALUE</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="w">        </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">            path: The results file, named in the message.</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">            mesh_name: Unused.</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">            lazy: Unused.</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">            MeshDataset: Never -- the signature matches the driver protocol so the</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">                refusal is a clear message rather than a ``TypeError``.</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">            ValueError: Always. XMDF carries values and no topology.</span>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">        """</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>            <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>            <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="p">)</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="w">        </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">            path: The XMDF file to read.</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">            dataset: The mesh the values attach to, for the element-count check.</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">            lazy: When ``True``, leave each dataset's values behind a loader.</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">            dict[str, MeshVariable]: One variable per dataset, plus a face-located</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">                ``&lt;name&gt;_active`` sibling for each dataset carrying an active mask.</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="sd">            FileFormatNotSupportedError: If a dataset is 3D or vector, or no dataset's</span>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">                element count matches the mesh.</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">            ValueError: If a dataset's element count matches neither the node nor the</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="sd">                face count of ``dataset``.</span>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">        """</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a>        <span class="n">n_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_node</span><span class="p">)</span>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a>        <span class="n">n_face</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">)</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a>        <span class="n">reader</span> <span class="o">=</span> <span class="n">_XmdfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">n_node</span><span class="o">=</span><span class="n">n_node</span><span class="p">,</span> <span class="n">n_face</span><span class="o">=</span><span class="n">n_face</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>        <span class="n">parsed</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_data_variables</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3781,7 +3781,9 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids_mesh/drivers/xmdf.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-138">138</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
 <span class="normal"><a href="#__codelineno-0-139">139</a></span>
 <span class="normal"><a href="#__codelineno-0-140">140</a></span>
 <span class="normal"><a href="#__codelineno-0-141">141</a></span>
@@ -3800,30 +3802,28 @@ refusal is a clear message rather than a <code>TypeError</code>.</p>
 <span class="normal"><a href="#__codelineno-0-154">154</a></span>
 <span class="normal"><a href="#__codelineno-0-155">155</a></span>
 <span class="normal"><a href="#__codelineno-0-156">156</a></span>
-<span class="normal"><a href="#__codelineno-0-157">157</a></span>
-<span class="normal"><a href="#__codelineno-0-158">158</a></span>
-<span class="normal"><a href="#__codelineno-0-159">159</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="w">    </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        path: The results file, named in the message.</span>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">        mesh_name: Unused.</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">        lazy: Unused.</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        MeshDataset: Never -- the signature matches the driver protocol so the</span>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">            refusal is a clear message rather than a ``TypeError``.</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">        ValueError: Always. XMDF carries values and no topology.</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">    """</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>        <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshDataset</span><span class="p">:</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="w">    </span><span class="sd">"""Refuse the mesh-reading entry point, naming the one to use instead.</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">        path: The results file, named in the message.</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        mesh_name: Unused.</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        lazy: Unused.</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        MeshDataset: Never -- the signature matches the driver protocol so the</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">            refusal is a clear message rather than a ``TypeError``.</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        ValueError: Always. XMDF carries values and no topology.</span>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    """</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> carries values but no mesh, so it has no read(); attach it to "</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>        <span class="sa">f</span><span class="s2">"a mesh you already have with "</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>        <span class="sa">f</span><span class="s2">"MeshDataset.read_file(mesh_path).attach_data(</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2">)"</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3968,7 +3968,9 @@ face count of <code>dataset</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids_mesh/drivers/xmdf.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-161">161</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
 <span class="normal"><a href="#__codelineno-0-162">162</a></span>
 <span class="normal"><a href="#__codelineno-0-163">163</a></span>
 <span class="normal"><a href="#__codelineno-0-164">164</a></span>
@@ -3990,33 +3992,31 @@ face count of <code>dataset</code>.</p>
 <span class="normal"><a href="#__codelineno-0-180">180</a></span>
 <span class="normal"><a href="#__codelineno-0-181">181</a></span>
 <span class="normal"><a href="#__codelineno-0-182">182</a></span>
-<span class="normal"><a href="#__codelineno-0-183">183</a></span>
-<span class="normal"><a href="#__codelineno-0-184">184</a></span>
-<span class="normal"><a href="#__codelineno-0-185">185</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="w">    </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
-<a id="__codelineno-0-165" name="__codelineno-0-165"></a>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        path: The XMDF file to read.</span>
-<a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">        dataset: The mesh the values attach to, for the element-count check.</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        lazy: When ``True``, leave each dataset's values behind a loader.</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170"></a>
-<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-172" name="__codelineno-0-172"></a><span class="sd">        dict[str, MeshVariable]: One variable per dataset, plus a face-located</span>
-<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">            ``&lt;name&gt;_active`` sibling for each dataset carrying an active mask.</span>
-<a id="__codelineno-0-174" name="__codelineno-0-174"></a>
-<a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">        FileFormatNotSupportedError: If a dataset is 3D or vector, or no dataset's</span>
-<a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="sd">            element count matches the mesh.</span>
-<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">        ValueError: If a dataset's element count matches neither the node nor the</span>
-<a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">            face count of ``dataset``.</span>
-<a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">    """</span>
-<a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">n_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_node</span><span class="p">)</span>
-<a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="n">n_face</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">)</span>
-<a id="__codelineno-0-183" name="__codelineno-0-183"></a>    <span class="n">reader</span> <span class="o">=</span> <span class="n">_XmdfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">n_node</span><span class="o">=</span><span class="n">n_node</span><span class="p">,</span> <span class="n">n_face</span><span class="o">=</span><span class="n">n_face</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span>
-<a id="__codelineno-0-184" name="__codelineno-0-184"></a>    <span class="n">parsed</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_data_variables</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_data</span><span class="p">(</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a>    <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]:</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="w">    </span><span class="sd">"""Read an XMDF file's datasets as variables for a mesh the caller supplies.</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">        path: The XMDF file to read.</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">        dataset: The mesh the values attach to, for the element-count check.</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        lazy: When ``True``, leave each dataset's values behind a loader.</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">        dict[str, MeshVariable]: One variable per dataset, plus a face-located</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a><span class="sd">            ``&lt;name&gt;_active`` sibling for each dataset carrying an active mask.</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="sd">        FileFormatNotSupportedError: If a dataset is 3D or vector, or no dataset's</span>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">            element count matches the mesh.</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">        ValueError: If a dataset's element count matches neither the node nor the</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="sd">            face count of ``dataset``.</span>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">    """</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a>    <span class="n">n_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_node</span><span class="p">)</span>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="n">n_face</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">)</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">reader</span> <span class="o">=</span> <span class="n">_XmdfReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">n_node</span><span class="o">=</span><span class="n">n_node</span><span class="p">,</span> <span class="n">n_face</span><span class="o">=</span><span class="n">n_face</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="n">parsed</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_data_variables</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

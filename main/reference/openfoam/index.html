@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2844,7 +2844,8 @@ elevation = mesh.get("node_z")
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/openfoam.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-205">205</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-204">204</a></span>
+<span class="normal"><a href="#__codelineno-0-205">205</a></span>
 <span class="normal"><a href="#__codelineno-0-206">206</a></span>
 <span class="normal"><a href="#__codelineno-0-207">207</a></span>
 <span class="normal"><a href="#__codelineno-0-208">208</a></span>
@@ -2966,131 +2967,130 @@ elevation = mesh.get("node_z")
 <span class="normal"><a href="#__codelineno-0-324">324</a></span>
 <span class="normal"><a href="#__codelineno-0-325">325</a></span>
 <span class="normal"><a href="#__codelineno-0-326">326</a></span>
-<span class="normal"><a href="#__codelineno-0-327">327</a></span>
-<span class="normal"><a href="#__codelineno-0-328">328</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="k">class</span><span class="w"> </span><span class="nc">OpenFoamDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="w">    </span><span class="sd">"""Reader for the OpenFOAM ``polyMesh`` directory format.</span>
-<a id="__codelineno-0-207" name="__codelineno-0-207"></a>
-<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">    An OpenFOAM mesh is a ``polyMesh`` directory of plain-text component files. This</span>
-<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    driver reads the nodes and the boundary-patch faces, compacts the referenced</span>
-<a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    points, and returns the 2D surface the patches describe -- the interior volume</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    connectivity is dropped (ADR-0005). Coordinates are CFD local coordinates, so</span>
-<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">    ``crs`` is ``None`` and the third coordinate becomes a ``node_z`` variable.</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">        - **The input is a directory.** ``read_file`` cannot dispatch a bare directory,</span>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">          and the component files are extensionless, so there is no suffix to claim.</span>
-<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">          Pass the ``polyMesh`` directory with ``driver="openfoam"``; ``can_open`` also</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">          accepts a path to the ``points`` component inside it.</span>
-<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        - **Only the boundary surface is read.** The ``nInternalFaces`` interior faces,</span>
-<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">          and ``owner``/``neighbour``, describe the 3D volume and are not represented;</span>
-<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">          the mesh is the union of the boundary patches' faces.</span>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">        - **ASCII only.** A component whose ``FoamFile`` header declares</span>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">          ``format binary`` is refused.</span>
-<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        - **Point indices are already 0-based**, as OpenFOAM writes them.</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        - Every face may be a triangle, a quad or a larger polygon; the connectivity is</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">          fill-padded to the widest face.</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        Read an OpenFOAM mesh by its ``polyMesh`` directory path (shown, not run as a</span>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">        doctest -- it needs a real polyMesh directory)::</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            mesh = MeshDataset.read_file("case/constant/polyMesh", driver="openfoam")</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">            elevation = mesh.get("node_z")</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">    """</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"openfoam"</span>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"OpenFOAM polyMesh"</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="c1"># A polyMesh is a directory of extensionless component files. The recognised *file* is</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="c1"># the ParaView case marker ``&lt;case&gt;.foam``, which points at the case directory;</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="c1"># ``can_open`` additionally accepts a ``polyMesh`` directory or its ``points`` component</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="c1"># directly, and dispatch also works through ``driver="openfoam"``.</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".foam"</span><span class="p">,)</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="w">        </span><span class="sd">"""Report whether ``path`` is a polyMesh directory or its ``points`` component.</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">        Overrides the base check, which declines every directory and only ever sniffs a</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">        file: an OpenFOAM mesh is a directory, reached either directly or through its</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">        ``points`` component file. Never raises -- a sniff error is warned and declined.</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">            path: The filesystem path to test.</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">            bool: ``True`` for a polyMesh directory, or a ``points`` file whose</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">                directory is one.</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">        """</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>            <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="c1"># never-raise contract.</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="p">)</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>            <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># pragma: no cover</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>    <span class="nd">@staticmethod</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="w">        </span><span class="sd">"""Resolve the polyMesh directory from a directory, ``points`` file, or ``.foam``.</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        A directory is taken as the polyMesh itself; a ``points`` file resolves to its</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        directory; a ``&lt;case&gt;.foam`` ParaView marker resolves to the case's</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">        ``constant/polyMesh`` (or ``polyMesh``, or the case directory) when one exists.</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">        """</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>            <span class="k">return</span> <span class="n">path</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>            <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="s2">"points"</span><span class="p">:</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>            <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">".foam"</span><span class="p">):</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="n">case</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="p">(</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">"constant"</span><span class="p">,</span> <span class="s2">"polyMesh"</span><span class="p">),</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">"polyMesh"</span><span class="p">),</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>                    <span class="n">case</span><span class="p">,</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>                <span class="p">):</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">candidate</span><span class="p">):</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>                        <span class="k">return</span> <span class="n">candidate</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a>        <span class="k">return</span> <span class="kc">None</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="w">        </span><span class="sd">"""Report whether the directory holds the required polyMesh components."""</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="n">present</span> <span class="o">=</span> <span class="p">{</span><span class="n">entry</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">component</span> <span class="ow">in</span> <span class="n">present</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">_REQUIRED</span><span class="p">)</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="w">        </span><span class="sd">"""Read a polyMesh into a :class:`ParsedMesh`, from its directory or ``points``.</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">            path: The polyMesh directory, or its ``points`` component file.</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">            lazy: Unused -- a polyMesh surface is read whole.</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">            ParsedMesh: The boundary surface, with the third coordinate as ``node_z``.</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">            FileFormatNotSupportedError: If the path is not a polyMesh or a required</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">                component is missing or malformed.</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">        """</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> is not an OpenFOAM polyMesh directory or a 'points' file "</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>                <span class="sa">f</span><span class="s2">"inside one"</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>            <span class="p">)</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="k">return</span> <span class="n">_OpenFoamReader</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<span class="normal"><a href="#__codelineno-0-327">327</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="k">class</span><span class="w"> </span><span class="nc">OpenFoamDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="w">    </span><span class="sd">"""Reader for the OpenFOAM ``polyMesh`` directory format.</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a>
+<a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">    An OpenFOAM mesh is a ``polyMesh`` directory of plain-text component files. This</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">    driver reads the nodes and the boundary-patch faces, compacts the referenced</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    points, and returns the 2D surface the patches describe -- the interior volume</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    connectivity is dropped (ADR-0005). Coordinates are CFD local coordinates, so</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    ``crs`` is ``None`` and the third coordinate becomes a ``node_z`` variable.</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">        - **The input is a directory.** ``read_file`` cannot dispatch a bare directory,</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">          and the component files are extensionless, so there is no suffix to claim.</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">          Pass the ``polyMesh`` directory with ``driver="openfoam"``; ``can_open`` also</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">          accepts a path to the ``points`` component inside it.</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">        - **Only the boundary surface is read.** The ``nInternalFaces`` interior faces,</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">          and ``owner``/``neighbour``, describe the 3D volume and are not represented;</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">          the mesh is the union of the boundary patches' faces.</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        - **ASCII only.** A component whose ``FoamFile`` header declares</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">          ``format binary`` is refused.</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        - **Point indices are already 0-based**, as OpenFOAM writes them.</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        - Every face may be a triangle, a quad or a larger polygon; the connectivity is</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">          fill-padded to the widest face.</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        Read an OpenFOAM mesh by its ``polyMesh`` directory path (shown, not run as a</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        doctest -- it needs a real polyMesh directory)::</span>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">            mesh = MeshDataset.read_file("case/constant/polyMesh", driver="openfoam")</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            elevation = mesh.get("node_z")</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">    """</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"openfoam"</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"OpenFOAM polyMesh"</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="c1"># A polyMesh is a directory of extensionless component files. The recognised *file* is</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="c1"># the ParaView case marker ``&lt;case&gt;.foam``, which points at the case directory;</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="c1"># ``can_open`` additionally accepts a ``polyMesh`` directory or its ``points`` component</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="c1"># directly, and dispatch also works through ``driver="openfoam"``.</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".foam"</span><span class="p">,)</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="w">        </span><span class="sd">"""Report whether ``path`` is a polyMesh directory or its ``points`` component.</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">        Overrides the base check, which declines every directory and only ever sniffs a</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">        file: an OpenFOAM mesh is a directory, reached either directly or through its</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">        ``points`` component file. Never raises -- a sniff error is warned and declined.</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">            path: The filesystem path to test.</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">            bool: ``True`` for a polyMesh directory, or a ``points`` file whose</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">                directory is one.</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        """</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>            <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="c1"># never-raise contract.</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>            <span class="p">)</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>            <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># pragma: no cover</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="nd">@staticmethod</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="w">        </span><span class="sd">"""Resolve the polyMesh directory from a directory, ``points`` file, or ``.foam``.</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        A directory is taken as the polyMesh itself; a ``points`` file resolves to its</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        directory; a ``&lt;case&gt;.foam`` ParaView marker resolves to the case's</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        ``constant/polyMesh`` (or ``polyMesh``, or the case directory) when one exists.</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">        """</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>            <span class="k">return</span> <span class="n">path</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>            <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="s2">"points"</span><span class="p">:</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>                <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>            <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">".foam"</span><span class="p">):</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                <span class="n">case</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="p">(</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">"constant"</span><span class="p">,</span> <span class="s2">"polyMesh"</span><span class="p">),</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">"polyMesh"</span><span class="p">),</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>                    <span class="n">case</span><span class="p">,</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>                <span class="p">):</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">candidate</span><span class="p">):</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>                        <span class="k">return</span> <span class="n">candidate</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>        <span class="k">return</span> <span class="kc">None</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="w">        </span><span class="sd">"""Report whether the directory holds the required polyMesh components."""</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">present</span> <span class="o">=</span> <span class="p">{</span><span class="n">entry</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">component</span> <span class="ow">in</span> <span class="n">present</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">_REQUIRED</span><span class="p">)</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="w">        </span><span class="sd">"""Read a polyMesh into a :class:`ParsedMesh`, from its directory or ``points``.</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">            path: The polyMesh directory, or its ``points`` component file.</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">            lazy: Unused -- a polyMesh surface is read whole.</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">            ParsedMesh: The boundary surface, with the third coordinate as ``node_z``.</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">            FileFormatNotSupportedError: If the path is not a polyMesh or a required</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">                component is missing or malformed.</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        """</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>            <span class="k">raise</span> <span class="n">FileFormatNotSupportedError</span><span class="p">(</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> is not an OpenFOAM polyMesh directory or a 'points' file "</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>                <span class="sa">f</span><span class="s2">"inside one"</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>            <span class="p">)</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="k">return</span> <span class="n">_OpenFoamReader</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3181,7 +3181,8 @@ directory is one.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids_mesh/drivers/openfoam.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-248">248</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-247">247</a></span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
 <span class="normal"><a href="#__codelineno-0-249">249</a></span>
 <span class="normal"><a href="#__codelineno-0-250">250</a></span>
 <span class="normal"><a href="#__codelineno-0-251">251</a></span>
@@ -3208,36 +3209,35 @@ directory is one.</p>
 <span class="normal"><a href="#__codelineno-0-272">272</a></span>
 <span class="normal"><a href="#__codelineno-0-273">273</a></span>
 <span class="normal"><a href="#__codelineno-0-274">274</a></span>
-<span class="normal"><a href="#__codelineno-0-275">275</a></span>
-<span class="normal"><a href="#__codelineno-0-276">276</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="w">    </span><span class="sd">"""Report whether ``path`` is a polyMesh directory or its ``points`` component.</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    Overrides the base check, which declines every directory and only ever sniffs a</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    file: an OpenFOAM mesh is a directory, reached either directly or through its</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    ``points`` component file. Never raises -- a sniff error is warned and declined.</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">        path: The filesystem path to test.</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">        bool: ``True`` for a polyMesh directory, or a ``points`` file whose</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">            directory is one.</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">    """</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>    <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="c1"># never-raise contract.</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="p">)</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># pragma: no cover</span>
+<span class="normal"><a href="#__codelineno-0-275">275</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="w">    </span><span class="sd">"""Report whether ``path`` is a polyMesh directory or its ``points`` component.</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">    Overrides the base check, which declines every directory and only ever sniffs a</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    file: an OpenFOAM mesh is a directory, reached either directly or through its</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    ``points`` component file. Never raises -- a sniff error is warned and declined.</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">        path: The filesystem path to test.</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        bool: ``True`` for a polyMesh directory, or a ``points`` file whose</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">            directory is one.</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">    """</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="n">poly_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poly_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>    <span class="k">if</span> <span class="n">poly_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sniff</span><span class="p">(</span><span class="n">poly_dir</span><span class="p">)</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001  # pragma: no cover</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="c1"># Unreachable: _poly_dir only returns an existing directory, so os.listdir</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="c1"># in _sniff cannot raise; the guard just mirrors the base class's</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="c1"># never-raise contract.</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>  <span class="c1"># pragma: no cover</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to sniff </span><span class="si">{</span><span class="n">path</span><span class="si">!r}</span><span class="s2"> and is treated as declining it: "</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="p">)</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># pragma: no cover</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

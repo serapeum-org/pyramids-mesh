@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2855,7 +2855,8 @@ dataset.mesh.n_node, dataset.mesh.n_face
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/tecplot.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-268">268</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-267">267</a></span>
+<span class="normal"><a href="#__codelineno-0-268">268</a></span>
 <span class="normal"><a href="#__codelineno-0-269">269</a></span>
 <span class="normal"><a href="#__codelineno-0-270">270</a></span>
 <span class="normal"><a href="#__codelineno-0-271">271</a></span>
@@ -2952,106 +2953,105 @@ dataset.mesh.n_node, dataset.mesh.n_face
 <span class="normal"><a href="#__codelineno-0-362">362</a></span>
 <span class="normal"><a href="#__codelineno-0-363">363</a></span>
 <span class="normal"><a href="#__codelineno-0-364">364</a></span>
-<span class="normal"><a href="#__codelineno-0-365">365</a></span>
-<span class="normal"><a href="#__codelineno-0-366">366</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="k">class</span><span class="w"> </span><span class="nc">TecplotDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="w">    </span><span class="sd">"""Reader for the Tecplot finite-element ASCII mesh format.</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">    The mesh is built from the ``X``/``Y`` coordinate variables and the ``ZONE``</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    connectivity; a ``Z`` variable, when it carries any non-zero value, becomes a</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    ``node_z`` node variable. Both data packings (``POINT`` and ``BLOCK``/``FEBLOCK``) and</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    both keyword generations (modern ``ZONETYPE``/``DATAPACKING`` and legacy</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    ``ET``/``F``) are accepted. The 1-based connectivity drops to 0-based and the base is</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    recorded for a writer.</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    Because ``.dat`` is a generic suffix other formats also use, ``can_open`` requires a</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    Tecplot signature (a ``TITLE``/``VARIABLES``/``ZONE`` keyword near the top), so it</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">    never steals an SMS DAT or an FVCOM ``.dat``.</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        - **It is a geometry reader.** Only ``X``/``Y`` (and ``Z``) are read; every other</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">          variable, and every cell-centred variable, is skipped. ``VARLOCATION`` is parsed</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">          only so a cell-centred variable's block length (``E`` rather than ``N``) is read</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">          correctly and the connectivity stays aligned.</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">        - **A volumetric element becomes one face.** ``FETETRAHEDRON`` (4 nodes) and</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">          ``FEBRICK`` (8 nodes) are read as a single face of that many nodes rather than</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">          expanded into bounding faces -- a 3D mesh is not modelled yet (design §21.1) --</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">          so winding is judged in the ``xy`` plane like any other face, matching the</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">          Exodus reader's precedent.</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">        - **The first finite-element zone is read.** A file carrying more than one zone</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">          yields only the first; the rest are ignored.</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">        - **Connectivity is 1-based**, resolved to 0-based with the ``1`` base recorded for</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">          a writer. A single-element-type zone needs no fill padding.</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        - **An ordered (structured I/J/K) zone is refused** -- this reader builds</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">          finite-element meshes only.</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">        - There is no CRS in the format, so ``crs`` is ``None``; it is never guessed from</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">          the coordinate magnitudes.</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        Read a Tecplot FE mesh (shown, not run as a doctest -- it needs a real ``.tec``</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">        file), reached through ``read_file`` or the driver directly::</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">            from pyramids_mesh.drivers.tecplot import TecplotDriver</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">            dataset = TecplotDriver().read("mesh.tec")</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">            dataset.mesh.n_node, dataset.mesh.n_face</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    """</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"tecplot"</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Tecplot finite-element ASCII"</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".dat"</span><span class="p">,</span> <span class="s2">".tec"</span><span class="p">)</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="w">        </span><span class="sd">"""Report whether a Tecplot keyword leads one of the file's first lines.</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        A bounded prefix is read and decoded leniently -- a binary or empty file answers</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">        ``False`` rather than raising -- and the first ``_SNIFF_LINES`` significant</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        (non-blank, comment-stripped) lines are scanned. The file is Tecplot when one of</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">        them begins with ``TITLE``, ``VARIABLES`` or ``ZONE``. The SMS DAT</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">        (``DATASET``/``BEGSCL``/...) and the FVCOM grid (``Node Number``/``Cell Number``)</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        carry none of these, so both are declined even though they share the ``.dat``</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        suffix. Never raises.</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">            bool: ``True`` when a leading Tecplot keyword is found.</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">        """</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">_SNIFF_LIMIT</span><span class="p">)</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="n">seen</span> <span class="o">=</span> <span class="mi">0</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">_strip_comment</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span><span class="p">:</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_SIGNATURE</span><span class="p">:</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a>                <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>            <span class="n">seen</span> <span class="o">+=</span> <span class="mi">1</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a>            <span class="k">if</span> <span class="n">seen</span> <span class="o">&gt;=</span> <span class="n">_SNIFF_LINES</span><span class="p">:</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a>                <span class="k">break</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a>        <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="w">        </span><span class="sd">"""Read a Tecplot FE ASCII file into a :class:`ParsedMesh`.</span>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">            path: The ``.dat``/``.tec`` file to read.</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="sd">            lazy: Unused -- a Tecplot ASCII file is plain text and read whole; accepted to</span>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">                match the driver protocol.</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">            ParsedMesh: Nodes, the 1-based face connectivity and ``node_z`` for a file</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">                carrying a non-zero ``Z`` variable.</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a><span class="sd">            FileFormatNotSupportedError: If the file carries no ``ZONE`` header, declares</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="sd">                no supported element type, is an ordered (structured) zone, omits ``N`` or</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a><span class="sd">                ``E``, lacks ``X``/``Y`` variables, or is truncated against the counts its</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">                header promises.</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="sd">        """</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="k">return</span> <span class="n">_TecplotReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<span class="normal"><a href="#__codelineno-0-365">365</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="k">class</span><span class="w"> </span><span class="nc">TecplotDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="w">    </span><span class="sd">"""Reader for the Tecplot finite-element ASCII mesh format.</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">    The mesh is built from the ``X``/``Y`` coordinate variables and the ``ZONE``</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">    connectivity; a ``Z`` variable, when it carries any non-zero value, becomes a</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    ``node_z`` node variable. Both data packings (``POINT`` and ``BLOCK``/``FEBLOCK``) and</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    both keyword generations (modern ``ZONETYPE``/``DATAPACKING`` and legacy</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    ``ET``/``F``) are accepted. The 1-based connectivity drops to 0-based and the base is</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    recorded for a writer.</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    Because ``.dat`` is a generic suffix other formats also use, ``can_open`` requires a</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    Tecplot signature (a ``TITLE``/``VARIABLES``/``ZONE`` keyword near the top), so it</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    never steals an SMS DAT or an FVCOM ``.dat``.</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        - **It is a geometry reader.** Only ``X``/``Y`` (and ``Z``) are read; every other</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">          variable, and every cell-centred variable, is skipped. ``VARLOCATION`` is parsed</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">          only so a cell-centred variable's block length (``E`` rather than ``N``) is read</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">          correctly and the connectivity stays aligned.</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        - **A volumetric element becomes one face.** ``FETETRAHEDRON`` (4 nodes) and</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">          ``FEBRICK`` (8 nodes) are read as a single face of that many nodes rather than</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">          expanded into bounding faces -- a 3D mesh is not modelled yet (design §21.1) --</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">          so winding is judged in the ``xy`` plane like any other face, matching the</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">          Exodus reader's precedent.</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">        - **The first finite-element zone is read.** A file carrying more than one zone</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">          yields only the first; the rest are ignored.</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">        - **Connectivity is 1-based**, resolved to 0-based with the ``1`` base recorded for</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">          a writer. A single-element-type zone needs no fill padding.</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">        - **An ordered (structured I/J/K) zone is refused** -- this reader builds</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">          finite-element meshes only.</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">        - There is no CRS in the format, so ``crs`` is ``None``; it is never guessed from</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">          the coordinate magnitudes.</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        Read a Tecplot FE mesh (shown, not run as a doctest -- it needs a real ``.tec``</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        file), reached through ``read_file`` or the driver directly::</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            from pyramids_mesh.drivers.tecplot import TecplotDriver</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">            dataset = TecplotDriver().read("mesh.tec")</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">            dataset.mesh.n_node, dataset.mesh.n_face</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">    """</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"tecplot"</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"Tecplot finite-element ASCII"</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".dat"</span><span class="p">,</span> <span class="s2">".tec"</span><span class="p">)</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">})</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="w">        </span><span class="sd">"""Report whether a Tecplot keyword leads one of the file's first lines.</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">        A bounded prefix is read and decoded leniently -- a binary or empty file answers</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        ``False`` rather than raising -- and the first ``_SNIFF_LINES`` significant</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">        (non-blank, comment-stripped) lines are scanned. The file is Tecplot when one of</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        them begins with ``TITLE``, ``VARIABLES`` or ``ZONE``. The SMS DAT</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">        (``DATASET``/``BEGSCL``/...) and the FVCOM grid (``Node Number``/``Cell Number``)</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">        carry none of these, so both are declined even though they share the ``.dat``</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        suffix. Never raises.</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">            bool: ``True`` when a leading Tecplot keyword is found.</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        """</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a>            <span class="n">prefix</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">_SNIFF_LIMIT</span><span class="p">)</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="n">seen</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">prefix</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8-sig"</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"replace"</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a>            <span class="n">stripped</span> <span class="o">=</span> <span class="n">_strip_comment</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span><span class="p">:</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a>            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_SIGNATURE</span><span class="p">:</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a>                <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a>            <span class="n">seen</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a>            <span class="k">if</span> <span class="n">seen</span> <span class="o">&gt;=</span> <span class="n">_SNIFF_LINES</span><span class="p">:</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a>                <span class="k">break</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a>        <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="w">        </span><span class="sd">"""Read a Tecplot FE ASCII file into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">            path: The ``.dat``/``.tec`` file to read.</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">            lazy: Unused -- a Tecplot ASCII file is plain text and read whole; accepted to</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="sd">                match the driver protocol.</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">            ParsedMesh: Nodes, the 1-based face connectivity and ``node_z`` for a file</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">                carrying a non-zero ``Z`` variable.</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">            FileFormatNotSupportedError: If the file carries no ``ZONE`` header, declares</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a><span class="sd">                no supported element type, is an ordered (structured) zone, omits ``N`` or</span>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="sd">                ``E``, lacks ``X``/``Y`` variables, or is truncated against the counts its</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a><span class="sd">                header promises.</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">        """</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="k">return</span> <span class="n">_TecplotReader</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

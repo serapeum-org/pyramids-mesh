@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -2835,7 +2835,9 @@ wet = mesh.get("stat")         # per-step wet/dry status
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids_mesh/drivers/tuflowfv.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-66"> 66</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-64"> 64</a></span>
+<span class="normal"><a href="#__codelineno-0-65"> 65</a></span>
+<span class="normal"><a href="#__codelineno-0-66"> 66</a></span>
 <span class="normal"><a href="#__codelineno-0-67"> 67</a></span>
 <span class="normal"><a href="#__codelineno-0-68"> 68</a></span>
 <span class="normal"><a href="#__codelineno-0-69"> 69</a></span>
@@ -2910,86 +2912,84 @@ wet = mesh.get("stat")         # per-step wet/dry status
 <span class="normal"><a href="#__codelineno-0-138">138</a></span>
 <span class="normal"><a href="#__codelineno-0-139">139</a></span>
 <span class="normal"><a href="#__codelineno-0-140">140</a></span>
-<span class="normal"><a href="#__codelineno-0-141">141</a></span>
-<span class="normal"><a href="#__codelineno-0-142">142</a></span>
-<span class="normal"><a href="#__codelineno-0-143">143</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="k">class</span><span class="w"> </span><span class="nc">TuflowFvDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="w">    </span><span class="sd">"""Reader for TUFLOW FV results -- the 2D slice.</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    The surface mesh comes from ``node_X``/``node_Y`` and the 1-based ``cell_node``</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">    connectivity (triangles padded with ``0`` in a quad-width table); ``node_Zb`` becomes</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">    a ``node_z`` variable and ``cell_X``/``cell_Y`` the face centres. Each per-cell result</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">    array becomes a face-located variable over the ``ResTime`` axis, and the ``stat``</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">    wet/dry status is one such face variable, carried rather than folded into the values.</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    Documented limitations:</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">        - **A layered 3D file is refused.** When the file has more 3D cells than 2D cells</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">          (``NumCells3D`` &gt; ``NumCells2D``), its variables are stacked over vertical</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">          levels this package does not model yet (design section 21.1); it is refused</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">          rather than flattened. A single-layer file (``NumCells3D`` == ``NumCells2D``) is</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">          a 2D mesh and reads normally, its ``NumCells3D`` variables mapped to faces.</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">        - **``cell_node`` is 1-based with ``0`` padding.** A ``0`` entry marks a triangle</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">          in the quad-width table and becomes ``-1`` fill; the base is recorded for a</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">          writer.</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        - **``stat`` is carried as a face-located variable**, not folded into the values</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">          as NaN (design section 21.2): the per-step wet/dry status stays inspectable.</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">        - Values are lazy: the loader reopens the file per read, closing over a path.</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        - There is no CRS in the format read here, so ``crs`` is ``None``.</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        Read a TUFLOW FV result (shown, not run as a doctest -- it needs a real NetCDF</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        file), reached through ``read_file``'s NetCDF fallback::</span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">class</span><span class="w"> </span><span class="nc">TuflowFvDriver</span><span class="p">(</span><span class="n">BaseDriver</span><span class="p">):</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="w">    </span><span class="sd">"""Reader for TUFLOW FV results -- the 2D slice.</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="sd">    The surface mesh comes from ``node_X``/``node_Y`` and the 1-based ``cell_node``</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">    connectivity (triangles padded with ``0`` in a quad-width table); ``node_Zb`` becomes</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    a ``node_z`` variable and ``cell_X``/``cell_Y`` the face centres. Each per-cell result</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">    array becomes a face-located variable over the ``ResTime`` axis, and the ``stat``</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">    wet/dry status is one such face variable, carried rather than folded into the values.</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">    Documented limitations:</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">        - **A layered 3D file is refused.** When the file has more 3D cells than 2D cells</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">          (``NumCells3D`` &gt; ``NumCells2D``), its variables are stacked over vertical</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">          levels this package does not model yet (design section 21.1); it is refused</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">          rather than flattened. A single-layer file (``NumCells3D`` == ``NumCells2D``) is</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">          a 2D mesh and reads normally, its ``NumCells3D`` variables mapped to faces.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">        - **``cell_node`` is 1-based with ``0`` padding.** A ``0`` entry marks a triangle</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">          in the quad-width table and becomes ``-1`` fill; the base is recorded for a</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">          writer.</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">        - **``stat`` is carried as a face-located variable**, not folded into the values</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">          as NaN (design section 21.2): the per-step wet/dry status stays inspectable.</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">        - Values are lazy: the loader reopens the file per read, closing over a path.</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">        - There is no CRS in the format read here, so ``crs`` is ``None``.</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">        Read a TUFLOW FV result (shown, not run as a doctest -- it needs a real NetCDF</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">        file), reached through ``read_file``'s NetCDF fallback::</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
 <a id="__codelineno-0-92" name="__codelineno-0-92"></a>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">            from pyramids.netcdf.ugrid import MeshDataset</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            mesh = MeshDataset.read_file("results.nc")</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            depth = mesh.get("D")          # face-located, over time</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            wet = mesh.get("stat")         # per-step wet/dry status</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">    """</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"tuflowfv"</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"TUFLOW FV results (2D)"</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".nc"</span><span class="p">,)</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="w">        </span><span class="sd">"""Report whether the file is TUFLOW FV, by its node list plus cell connectivity.</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        Keyed on ``cell_node`` with ``node_X`` so a plain NetCDF or another model's</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        ``.nc`` -- including 3Di, which has no ``cell_node`` -- is not claimed.</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            path: The file to inspect.</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">            bool: ``True`` when the defining arrays are present.</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">        """</span>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">)</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>            <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>                <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span><span class="o">.</span><span class="n">GetMDArrayNames</span><span class="p">())</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>            <span class="k">finally</span><span class="p">:</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a>        <span class="k">return</span> <span class="p">{</span><span class="n">_CELL_NODE</span><span class="p">,</span> <span class="n">_NODE_X</span><span class="p">,</span> <span class="n">_NODE_Y</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="n">names</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="w">        </span><span class="sd">"""Read a TUFLOW FV file's 2D slice into a :class:`ParsedMesh`.</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">            path: The TUFLOW FV ``.nc`` file.</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">            lazy: When ``True``, leave each variable behind a loader.</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` and the per-cell variables.</span>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">            FileFormatNotSupportedError: If the file is missing a defining array or is a</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">                layered 3D file.</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">        """</span>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a>        <span class="k">return</span> <span class="n">_TuflowFvReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">            mesh = MeshDataset.read_file("results.nc")</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            depth = mesh.get("D")          # face-located, over time</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            wet = mesh.get("stat")         # per-step wet/dry status</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">    """</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">"tuflowfv"</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>    <span class="n">long_name</span> <span class="o">=</span> <span class="s2">"TUFLOW FV results (2D)"</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="n">suffixes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".nc"</span><span class="p">,)</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="n">api_version</span> <span class="o">=</span> <span class="n">MESH_DRIVER_API_VERSION</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read_mesh"</span><span class="p">,</span> <span class="s2">"read_data"</span><span class="p">,</span> <span class="s2">"lazy_data"</span><span class="p">})</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_sniff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="w">        </span><span class="sd">"""Report whether the file is TUFLOW FV, by its node list plus cell connectivity.</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        Keyed on ``cell_node`` with ``node_X`` so a plain NetCDF or another model's</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">        ``.nc`` -- including 3Di, which has no ``cell_node`` -- is not claimed.</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            path: The file to inspect.</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            bool: ``True`` when the defining arrays are present.</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        """</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="k">with</span> <span class="n">gdal</span><span class="o">.</span><span class="n">ExceptionMgr</span><span class="p">(</span><span class="n">useExceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>                <span class="n">dataset</span> <span class="o">=</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OpenEx</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_MULTIDIM_RASTER</span> <span class="o">|</span> <span class="n">gdal</span><span class="o">.</span><span class="n">OF_READONLY</span><span class="p">)</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a>                <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">GetRootGroup</span><span class="p">()</span><span class="o">.</span><span class="n">GetMDArrayNames</span><span class="p">())</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>            <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>                <span class="n">dataset</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a>        <span class="k">return</span> <span class="p">{</span><span class="n">_CELL_NODE</span><span class="p">,</span> <span class="n">_NODE_X</span><span class="p">,</span> <span class="n">_NODE_Y</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="n">names</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lazy</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedMesh</span><span class="p">:</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="w">        </span><span class="sd">"""Read a TUFLOW FV file's 2D slice into a :class:`ParsedMesh`.</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">            path: The TUFLOW FV ``.nc`` file.</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">            lazy: When ``True``, leave each variable behind a loader.</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">            ParsedMesh: The surface mesh, ``node_z`` and the per-cell variables.</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">            FileFormatNotSupportedError: If the file is missing a defining array or is a</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">                layered 3D file.</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">        """</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a>        <span class="k">return</span> <span class="n">_TuflowFvReader</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="n">lazy</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
