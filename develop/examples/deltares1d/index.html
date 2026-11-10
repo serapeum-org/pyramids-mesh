@@ -3319,7 +3319,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2-imports">2. Imports<a class="anchor-link" href="#2-imports">¶</a></h2><p>The import below is all the setup this adds: <code>MeshDataset</code> is the object every driver hands back (a <code>Mesh2d</code> or <code>Mesh1d</code> wrapper). Importing from <code>pyramids</code> also puts its vendored GDAL/PROJ data in place for you, so nothing about it is order-sensitive in a notebook -- just import the names you use.</p>
+<h2 id="2-imports">2. Imports<a class="anchor-link" href="#2-imports">¶</a></h2><p>We import <code>Mesh1d</code> and <code>MeshDataset</code>. The split matters here: a 2D driver hands back a <code>MeshDataset</code> (which wraps a <code>Mesh2d</code>), but a 1D network is read with <code>Mesh1d.read_file</code> and comes back as a bare <code>Mesh1d</code> — which is exactly what this notebook does. Importing from <code>pyramids</code> also puts its vendored GDAL/PROJ data in place for you, so nothing about it is order-sensitive in a notebook — just import the names you use.</p>
 </div>
 </div>
 </div>
