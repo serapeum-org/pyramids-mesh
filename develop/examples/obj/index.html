@@ -3432,7 +3432,6 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="n">DATA</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"../../examples/data"</span><span class="p">)</span>
 <span class="n">MESH</span> <span class="o">=</span> <span class="n">DATA</span> <span class="o">/</span> <span class="s2">"obj"</span> <span class="o">/</span> <span class="s2">"elephav.obj"</span>
 <span class="n">MESH</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">MESH</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cleopatra.basemap.tiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_tiles</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">from pathlib import Path
@@ -3443,7 +3442,6 @@ from pyramids.netcdf.ugrid import MeshDataset
 DATA = Path("../../examples/data")
 MESH = DATA / "obj" / "elephav.obj"
 MESH.name, MESH.exists()
-import matplotlib.pyplot as plt
 from cleopatra.basemap.tiles import add_tiles
 </div>
 </div>
