@@ -32,11 +32,12 @@ requires-python = ">= 3.11, <4"
 # or pins a separate GDAL.
 dependencies = [
     # `pyramids-gis` was renamed to `pyramids-core` in 0.70.0; the import stays
-    # `pyramids`. The floor is 0.75.0: that release renamed the mesh data model
-    # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`), and this package now
-    # imports the new names. The old aliases are deprecated and removed in a
-    # future pyramids release, so the floor must stay >= 0.75.0.
-    "pyramids-core >=0.75.0",
+    # `pyramids`. The floor is 0.76.0: 0.75.0 renamed the mesh data model
+    # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`, which this package now
+    # imports), and 0.76.0 consolidated the netcdf selection surface (one sel/isel
+    # surface plus the `*_names` accessors). The example notebooks are built and
+    # validated against 0.76.0, so the floor stays >= 0.76.0.
+    "pyramids-core >=0.76.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
@@ -118,7 +119,7 @@ notebook = [
     # pulls no plotting stack (ADR-0005), so the notebook runtime adds it here rather than
     # the package declaring a plotting dependency. This replaces the standalone
     # `xyzservices` pin — `cleopatra[tiles]` already carries it.
-    "pyramids-core[viz]>=0.75.0",
+    "pyramids-core[viz]>=0.76.0",
 ]
 
 
