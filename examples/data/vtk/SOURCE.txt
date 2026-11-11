@@ -1,0 +1,5 @@
+VTK / VTU unstructured-grid samples.
+  gh-935.vtk (classic v3.0, 2 triangles) + 06_unstructured.vtk (VTK 5.1 OFFSETS/CONNECTIVITY) --
+    MIT, meshio (tests/meshes/vtk/), via the Git-LFS media endpoint. https://github.com/nschloe/meshio
+  tetra.vtu (XML VTU) -- Apache-2.0, Kitware vtk-examples.
+    https://gitlab.kitware.com/vtk/vtk-examples (src/Testing/Data/tetra.vtu)

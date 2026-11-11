@@ -1,0 +1,3 @@
+Gmsh .msh (v2.2 and v4.1) -- MIT, meshio test data (genuine Gmsh 4.2.2 output from insulated.geo;
+111 triangles + 21 boundary lines).
+  https://github.com/nschloe/meshio (tests/meshes/msh/) -- fetched via the Git-LFS media endpoint.

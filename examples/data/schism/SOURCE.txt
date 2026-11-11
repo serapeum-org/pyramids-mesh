@@ -1,0 +1,3 @@
+SCHISM hgrid.gr3 -- Apache-2.0, CADWRDeltaModeling/HelloSCHISM (California DWR teaching repo).
+  https://github.com/CADWRDeltaModeling/HelloSCHISM (modules/m6_boundaries/hgrid.gr3)
+2639 nodes / 4636 triangles + open/land boundary sections. Same ASCII layout as ADCIRC fort.14.

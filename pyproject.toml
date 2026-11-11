@@ -32,11 +32,14 @@ requires-python = ">= 3.11, <4"
 # or pins a separate GDAL.
 dependencies = [
     # `pyramids-gis` was renamed to `pyramids-core` in 0.70.0; the import stays
-    # `pyramids`. The floor is 0.75.0: that release renamed the mesh data model
-    # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`), and this package now
-    # imports the new names. The old aliases are deprecated and removed in a
-    # future pyramids release, so the floor must stay >= 0.75.0.
-    "pyramids-core >=0.75.0",
+    # `pyramids`. The floor is 0.77.0: 0.75.0 renamed the mesh data model
+    # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`, which this package now
+    # imports), 0.76.0 consolidated the netcdf selection surface (one sel/isel surface
+    # plus the `*_names` accessors), and 0.77.0 renamed more netcdf members (e.g.
+    # `MeshDataset.get_data` -> subscription `mesh[name]`, which the notebooks now use)
+    # and fixed the xarray-interop install hint. The example notebooks are built and
+    # validated against 0.77.0, so the floor stays >= 0.77.0.
+    "pyramids-core >=0.77.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
@@ -89,7 +92,7 @@ dev = [
     # ruff is not configured for docstring-style (D) rules, so it covers a distinct
     # concern and is not a duplicate of anything ruff does.
     "ruff==0.15.22",
-    "pydocstyle==6.3.0"
+    "pydocstyle==6.3.0",
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -111,7 +114,14 @@ notebook = [
     # enables `dev` (which already carries pip/jupyterlab/notebook/jupyter), so the only
     # thing the notebook runtime must add is the kernel. Re-listing the jupyter entries
     # here would just duplicate `dev` — exactly the kind of duplication this group avoids.
-    "ipykernel"
+    "ipykernel",
+    # The example notebooks render through cleopatra, which pyramids-core 0.75.0 moved
+    # behind its `viz` extra (`cleopatra[tiles]>=0.44.0`, which pulls matplotlib and the
+    # xyzservices / pyproj / Pillow basemap-tile stack). A bare `pyramids-mesh` install
+    # pulls no plotting stack (ADR-0005), so the notebook runtime adds it here rather than
+    # the package declaring a plotting dependency. This replaces the standalone
+    # `xyzservices` pin — `cleopatra[tiles]` already carries it.
+    "pyramids-core[viz]>=0.77.0",
 ]
 
 
@@ -317,11 +327,21 @@ pyramids-mesh = { path = ".", editable = true }
 # vendor-sample tests, whose files are fetched rather than committed.
 main = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv -m 'not vendor_data' --cov-report=xml", description = "Run the main test suite" }
 test-all = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv --cov-report=xml --cov-report=term-missing", description = "Run the whole test suite" }
-notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples", description = "check notebooks" }
+# dfsu.ipynb is ignored here: it can only read a DFSU file with mikeio, which lives only
+# in the `dhi` environment. The `dhi` feature overrides this task (below) to run the full
+# set including dfsu; the mikeio-less matrix envs (py311-py314, dev) run everything else.
+notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples --ignore=docs/examples/dfsu.ipynb", description = "check notebooks (excludes dfsu; see the dhi override)" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 cz-changelog = { cmd = "cz changelog", description = "Generate the changelog with commitizen" }
 cz-bump = { cmd = "cz bump", description = "Bump the version with commitizen" }
+
+[tool.pixi.feature.dhi.tasks]
+# The `dhi` environment is the only one carrying mikeio, so it is the only one that can
+# execute `dfsu.ipynb`. Override `notebooks` here to run the full example set (including
+# dfsu); the default `notebooks` task (above) ignores dfsu for the mikeio-less matrix
+# environments. CI runs `pixi run -e dhi notebooks`, which resolves to this override.
+notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples", description = "check notebooks (full set incl. DFSU, needs mikeio)" }
 
 [tool.pixi.environments]
 # The `notebook` feature (the PEP 735 `notebook` dependency-group: ipykernel + jupyter)
@@ -338,14 +358,17 @@ py312 = { features = ["py312", "dev", "notebook"], solve-group = "py312" }
 py313 = { features = ["py313", "dev", "notebook"], solve-group = "py313" }
 py314 = { features = ["py314", "dev", "notebook"], solve-group = "py314" }
 # The `dhi` feature listed here is the PEP 621 `[project.optional-dependencies].dhi`
-# extra (mikeio), which pixi exposes as a feature of the same name automatically —
-# there is no `[tool.pixi.feature.dhi]` table; the floor lives only at that extra.
+# extra (mikeio), which pixi exposes as a feature of the same name automatically; the
+# dependency floor lives at that extra. The only `[tool.pixi.feature.dhi]` config is the
+# `notebooks` task override above (so the dhi env runs the full example set incl. dfsu).
 # Wired into its own environment now that the DFSU driver has landed. mikeio needs
 # Python >= 3.12, so it cannot join the shared `dev` feature (the matrix includes
 # py311); it gets a dedicated py314 environment with its own solve-group, so the heavy
 # mikeio stack (mikecore, matplotlib, scipy, pandas) never perturbs the other
 # environments' locks. CI adds `dhi` to the test matrix so the DFSU driver is exercised.
-dhi = { features = ["py314", "dev", "dhi"], solve-group = "dhi" }
+# It also carries the `notebook` feature: `dfsu.ipynb` can only read a DFSU file with
+# mikeio installed, so this is the one environment that can execute that example.
+dhi = { features = ["py314", "dev", "notebook", "dhi"], solve-group = "dhi" }
 
 
 # Interpreter pins, one feature per environment in the matrix. `default`, `dev`

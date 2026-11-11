@@ -5,14 +5,14 @@ repos:
     hooks:
       - id: end-of-file-fixer
         name: "[py -  check] validate yaml"
-        # Committed sample files under tests/data are byte-faithful real data (an
-        # Esri TIN's prj.adf is text and would otherwise gain a trailing newline);
-        # never rewrite them.
-        exclude: ^tests/data/
+        # Committed sample files under tests/data and examples/data are byte-faithful
+        # real data (an Esri TIN's prj.adf is text and would otherwise gain a trailing
+        # newline; MODFLOW .grb is binary); never rewrite them.
+        exclude: ^(tests|examples)/data/
       - id: trailing-whitespace
         name: "[file - format] trim trailing whitespace"
         args: [ --markdown-linebreak-ext=md ]
-        exclude: ^tests/data/
+        exclude: ^(tests|examples)/data/
       - id: check-added-large-files
         name: "[file -  check] large file"
         args: [ --maxkb=5000 ]
@@ -34,12 +34,16 @@ repos:
       - id: mixed-line-ending
         name: "[file - format] mixed line ending"
         args: [ --fix=auto ]
-        exclude: ^tests/data/
+        exclude: ^(tests|examples)/data/
       - id: pretty-format-json
         name: "[json - format] pretty json"
         args: [ --autofix,
                 --indent=4,
                 --no-sort-keys ]
+        # Jupyter notebooks are JSON but their on-disk format is owned by
+        # nbformat/jupyter (indent=1); never let the JSON pretty-printer reindent
+        # them. check-json still validates them.
+        exclude: \.ipynb$
       - id: requirements-txt-fixer
         name: "[reqs - format] fix requirements.txt"
       - id: check-yaml
@@ -66,14 +70,22 @@ repos:
   # `rev` in step with the `ruff==` pin in pyproject.toml's dev group. Rule selection,
   # ignores and per-file-ignores live in [tool.ruff.lint]; the `# isort:skip` guards on
   # the `import pyramids` lines are honoured, so the import-order contract is preserved.
+  #
+  # The example notebooks under docs/examples/ are excluded from both ruff hooks: they are
+  # hand-authored teaching material, not shipped src, and flake8 historically excluded
+  # example code from linting (see [tool.ruff.lint.per-file-ignores]). ruff discovers
+  # .ipynb only when pre-commit passes the paths, so this keeps the lint/format surface on
+  # src/ and lets the notebooks keep their pedagogical import order and cell layout.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.22
     hooks:
       - id: ruff-check
         name: "[py   -   lint] ruff"
         args: [--fix]
+        exclude: ^docs/examples/.*\.ipynb$
       - id: ruff-format
         name: "[py   - format] ruff-format"
+        exclude: ^docs/examples/.*\.ipynb$
 
   - repo: https://github.com/lovesegfault/beautysh
     rev: v6.2.1

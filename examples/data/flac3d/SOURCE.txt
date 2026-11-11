@@ -1,0 +1,3 @@
+FLAC3D .f3grid (Itasca geomechanics).
+flac3d_mesh_ex.f3grid -- meshio test data, MIT. 160 G (gridpoints) / 108 Z (zones).
+  https://github.com/nschloe/meshio (tests/meshes/flac3d/) -- via Git-LFS media endpoint

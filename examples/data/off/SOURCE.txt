@@ -1,0 +1,5 @@
+OFF (Object File Format) surface mesh.
+comments.off -- mikedh/trimesh, MIT. A cube: 8 vertices / 6 quad faces (OFF `8 6 12` header),
+carrying inline `#` comments and optional per-face RGBA colour (both valid OFF; the reader
+skips comments and ignores trailing colour). No georeferencing -> crs=None.
+  https://github.com/mikedh/trimesh (models/comments.off)

@@ -1,0 +1,6 @@
+ICON grid -- Apache-2.0 (UXarray mirror of the DWD/MPI R02B04 global grid).
+icon_grid_R02B04_subset.nc is a 15.8 KB SUBSET produced for this fixture: the first 320 cells of
+icon_grid_0010_R02B04_G.nc plus their 197 vertices, reindexed 1-based (clon/clat/vlon/vlat/
+cell_area/vertex_of_cell). Source of the full grid:
+  https://github.com/UXARRAY/uxarray (test/meshfiles/icon/R02B04/icon_grid_0010_R02B04_G.nc)
+Subset recipe: scratchpad/subset_icon.py.

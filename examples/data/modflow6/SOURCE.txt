@@ -1,0 +1,4 @@
+MODFLOW 6 DISV (triangular vertex grid) -- CC0 / public domain (USGS), FloPy test003_gwftri_disv.
+200 cells/layer x 4 layers, 121 vertices. tri_model_cnst.disv = ASCII grid (the reader target);
+tri_model.disv.grb = the binary grid; name files included as provenance.
+  https://github.com/modflowpy/flopy (examples/data/mf6/test003_gwftri_disv/)

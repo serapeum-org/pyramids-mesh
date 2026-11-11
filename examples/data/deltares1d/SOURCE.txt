@@ -1,0 +1,10 @@
+Deltares 1D network (Delft3D FM / D-HYDRO) UGRID NetCDF samples.
+Topology (no results):
+  korte-woerden FlowFM_net.nc -- MIT, Deltares HYDROLIB-core (pure 1D: network+mesh1d).
+    https://github.com/Deltares/HYDROLIB-core (tests/data/input/e02/c11_korte-woerden-1d)
+  UGrid_1D2D_net.nc / 1D2D_net.nc -- LGPL-2.1, Deltares/UGrid (tiny 1D2D with 1D-2D contacts).
+    https://github.com/Deltares/UGrid
+Results: Haskoning_example_map.nc -- GPL-3.0, RoyalHaskoningDHV D-HyMOD_Link; genuine pure-1D
+  D-Flow FM output, 97 steps, mesh1d_s1/waterdepth/u1/q1.
+    https://github.com/RoyalHaskoningDHV/D-HyMOD_Link
+Two naming conventions exist (network+mesh1d / network1d+mesh1d); detect by cf_role.

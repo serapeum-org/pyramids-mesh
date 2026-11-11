@@ -1,0 +1,3 @@
+Tecplot FE ASCII.
+quad_zone_space.tec -- meshio test data, MIT. FEBLOCK quad zone (ET=QUADRILATERAL, N=4/E=1).
+  https://github.com/nschloe/meshio (tests/meshes/tecplot/) -- via Git-LFS media endpoint

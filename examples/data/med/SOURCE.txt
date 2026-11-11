@@ -1,0 +1,4 @@
+MED-file (Salome / code_aster), HDF5-based.
+cylinder.med -- meshio test data, MIT. tri+quad surface mesh (Salome 9.2.2).
+Read through the vendored GDAL HDF5 multidim driver.
+  https://github.com/nschloe/meshio (tests/meshes/med/) -- via Git-LFS media endpoint

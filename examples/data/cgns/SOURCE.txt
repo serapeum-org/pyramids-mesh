@@ -1,0 +1,4 @@
+CGNS/HDF5 (CFD General Notation System).
+cgnslib_vers-4400.cgns -- official CGNS/CGNS repo, src/tests/data/. zlib licence.
+Plain HDF5 container (SIDS tree); read through the vendored GDAL HDF5 multidim driver.
+  https://github.com/CGNS/CGNS (src/tests/data/)

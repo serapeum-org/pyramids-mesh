@@ -1,0 +1,3 @@
+STL binary surface mesh (no georeferencing).
+Cube.stl -- wolph/numpy-stl, BSD-3-Clause. 12-triangle binary STL.
+  https://github.com/wolph/numpy-stl (tests/stl_binary/)

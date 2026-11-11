@@ -1,0 +1,7 @@
+GiD ASCII mesh (CIMNE format) -- the mesh format the Iber 2D model exports (Iber is built on
+GiD). Layout: `MESH [name] dimension D ElemType T Nnode N`, then `Coordinates`/`node_id x y [z]`/
+`end coordinates`, then `Elements`/`el_id n1..nN [mat]`/`end elements`; `#` comments; 1-based.
+tube_2D_spline.GiD.msh -- getfem/getfem, LGPL-3.0-or-later (GetFEM). 2D, ElemType Triangle,
+Nnode 6 (quadratic triangles -> the reader keeps the 3 corner nodes). No EPSG -> crs=None.
+Spec: https://gidsimulation.atlassian.net/wiki/spaces/GCM/pages/2385543666/
+  https://github.com/getfem/getfem (interface/tests/meshes/tube_2D_spline.GiD.msh)

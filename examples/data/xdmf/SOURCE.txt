@@ -1,0 +1,6 @@
+out.xdmf + out.h5 — a genuine meshio XdmfTimeSeriesWriter output.
+Hosted in the PyVista vtk-data repository (Apache-2.0); produced by meshio (MIT).
+  https://raw.githubusercontent.com/pyvista/vtk-data/master/Data/meshio/out.xdmf
+  https://raw.githubusercontent.com/pyvista/vtk-data/master/Data/meshio/out.h5
+XDMF 3.0 temporal collection: 4 nodes, 2 triangles, 5 timesteps; HDF5 /data0 node XY,
+/data1 triangle connectivity, per-step phi/u/a.

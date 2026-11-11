@@ -1,0 +1,3 @@
+Wavefront OBJ surface mesh (no georeferencing).
+elephav.obj -- meshio test data, MIT. 623 v / 1148 f.
+  https://github.com/nschloe/meshio (tests/meshes/obj/) -- via Git-LFS media endpoint

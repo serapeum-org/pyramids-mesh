@@ -1,0 +1,3 @@
+FVCOM native grid trio -- MIT, estuarine-utokyo/xfvcom. chn_grd.dat (871 nodes / 1620 triangles),
+chn_dep.dat (per-node bathymetry), chn_obc.dat (open-boundary nodes).
+  https://github.com/estuarine-utokyo/xfvcom (examples/input/)

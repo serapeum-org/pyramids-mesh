@@ -1,0 +1,4 @@
+GEOS native cubed-sphere NetCDF-4.
+test-c12.native.nc4 -- C12 GEOS cubed-sphere, Apache-2.0, UXarray test data.
+corner_lons/corner_lats (6, 13, 13); connectivity reconstructed by index arithmetic.
+  https://github.com/UXARRAY/uxarray (test/meshfiles/geos-cs/c12/)
