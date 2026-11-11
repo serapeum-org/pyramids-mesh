@@ -60,7 +60,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3899,12 +3899,12 @@ if ds.epsg:
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">"node_z"</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"node_z"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">1e30</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
 <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">with_variable</span><span class="p">(</span><span class="s2">"elevation"</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"node"</span><span class="p">)</span>
 <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">z</span><span class="p">)),</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-9">z = np.asarray(ds.get_data("node_z").data)
+<div class="clipboard-copy-txt" id="cell-9">z = np.asarray(ds["node_z"].data)
 z = np.where(z &lt; -1e30, np.nan, z)
 ds = ds.with_variable("elevation", z, location="node")
 float(np.nanmin(z)), float(np.nanmax(z))</div>
@@ -4197,7 +4197,7 @@ ax.plot(xs, ys, color="red", lw=2)</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[13]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>[&lt;matplotlib.lines.Line2D at 0x17d87826e40&gt;]</pre>
+<pre>[&lt;matplotlib.lines.Line2D at 0x20775a6b0e0&gt;]</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
