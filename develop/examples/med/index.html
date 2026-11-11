@@ -60,7 +60,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3520,13 +3520,7 @@ ds</div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
 <pre>C:\python-environments\pixi\envs\pyramids-mesh-4081970794675243037\envs\dev\Lib\site-packages\pyramids\netcdf\ugrid\_drivers.py:538: RuntimeWarning: Mesh driver 'dfsu' (pyramids_mesh.drivers.dhi:DfsuDriver) could not be loaded and was skipped: ModuleNotFoundError("No module named 'mikeio'")
   driver = _instantiate(entry_point)
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_mesh\_base.py:484: UserWarning: 7 clockwise face(s) were reversed to counter-clockwise; a writer will emit the corrected order
+C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_mesh\_base.py:484: UserWarning: 7 clockwise face(s) were reversed to counter-clockwise; a writer will emit the corrected order
   parsed = validate_and_normalise(parsed)
 C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_mesh\_base.py:484: UserWarning: 8 degenerate face(s) have no winding and were left unchanged
   parsed = validate_and_normalise(parsed)
@@ -4490,7 +4484,7 @@ print("wrote:", out.name, "| exists:", out.exists())</div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p><strong>Note — xarray interop.</strong> pyramids-core exposes a <code>to_xarray()</code> bridge to the xarray ecosystem, but these notebooks deliberately stay within pyramids-core's own GDAL-based UGRID I/O and do not use xarray. Its optional-dependency install hint is also currently broken upstream — tracked at <a href="https://github.com/serapeum-org/pyramids-core/issues/1512">serapeum-org/pyramids-core#1512</a>.</p>
+<p><strong>Note — xarray interop.</strong> pyramids-core exposes a <code>to_xarray()</code> bridge to the xarray ecosystem, but these notebooks deliberately stay within pyramids-core's own GDAL-based UGRID I/O and do not use xarray.</p>
 </blockquote>
 </div>
 </div>
