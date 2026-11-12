@@ -456,32 +456,80 @@ def fix_winding(
             face row [0, -1, 1, 2] pads between real vertices
     """
     out = np.asarray(faces).copy()
-    reversed_count = 0
-    degenerate_count = 0
-    for row in out:
-        vertices = row[row != fill_value]
-        # Row shape before winding: both of these are properties of the row itself, so
-        # they are checked for every row rather than only for rows wide enough to wind.
-        pad_positions = np.flatnonzero(row == fill_value)
-        if pad_positions.size and int(pad_positions.min()) < vertices.size:
+    if out.shape[0] == 0:
+        return out, 0, 0
+
+    real = out != fill_value  # (n_face, width): True where a real vertex sits
+    real_count = real.sum(axis=1)  # the ``k`` real vertices of each row
+
+    # Row-shape validation, vectorised but with the *same precedence* the per-row loop
+    # had: the first offending row in row order raises, and on that row an interior pad
+    # is reported ahead of a short row. ``interior_pad`` marks a real vertex following a
+    # pad cell -- the vectorised twin of "a fill position before the real count".
+    interior_pad = np.any(real[:, 1:] & ~real[:, :-1], axis=1)
+    too_short = real_count < 3
+    bad = interior_pad | too_short
+    if np.any(bad):
+        index = int(np.argmax(bad))
+        row = out[index]
+        if interior_pad[index]:
             raise ValueError(
                 f"face row {row.tolist()} pads between real vertices; UGRID pads only "
                 f"the tail of a row, and reversing this one would move the padding"
             )
-        if vertices.size < 3:
-            raise ValueError(
-                f"face row {row.tolist()} holds {vertices.size} real node(s); a face "
-                f"needs at least three, so this is a driver bug -- a 1D topology "
-                f"belongs in edges or network_edges, not in faces"
-            )
-        xs, ys = node_x[vertices], node_y[vertices]
-        area2 = _signed_area_2(xs, ys)
-        if abs(area2) <= _area_tolerance(xs, ys):
-            degenerate_count += 1
-        elif area2 < 0:
-            row[: vertices.size] = vertices[::-1]
-            reversed_count += 1
-    return out, reversed_count, degenerate_count
+        raise ValueError(
+            f"face row {row.tolist()} holds {int(real_count[index])} real node(s); a "
+            f"face needs at least three, so this is a driver bug -- a 1D topology "
+            f"belongs in edges or network_edges, not in faces"
+        )
+
+    # Signed area of every row at once, the batched form of ``_signed_area_2``. Each row
+    # is translated to its first vertex (always real -- padding is a trailing run) so the
+    # shoelace products stay element-sized; pad cells are masked to zero. With the
+    # leading vertex at the origin the wrap term of the last real vertex is zero whether
+    # it wraps to vertex 0 or to the first pad cell, so a plain roll over the full width
+    # reproduces the per-face sum exactly.
+    safe = np.where(real, out, 0)
+    xs = node_x[safe]
+    ys = node_y[safe]
+    local_x = np.where(real, xs - xs[:, :1], 0.0)
+    local_y = np.where(real, ys - ys[:, :1], 0.0)
+    area2 = np.sum(
+        local_x * np.roll(local_y, -1, axis=1) - local_y * np.roll(local_x, -1, axis=1),
+        axis=1,
+    )
+
+    # Per-row degeneracy threshold, the batched form of ``_area_tolerance``: span and
+    # magnitude over the real vertices only, with pad cells masked to NaN so the
+    # nan-aware reductions ignore them. Every row has >= 3 real vertices here (the short
+    # rows raised above), so no row is all-NaN.
+    xr = np.where(real, xs, np.nan)
+    yr = np.where(real, ys, np.nan)
+    span = np.maximum(
+        np.nanmax(xr, axis=1) - np.nanmin(xr, axis=1),
+        np.nanmax(yr, axis=1) - np.nanmin(yr, axis=1),
+    )
+    magnitude = np.maximum(np.nanmax(np.abs(xr), axis=1), np.nanmax(np.abs(yr), axis=1))
+    tolerance = (
+        8.0 * float(np.finfo(np.float64).eps) * span * np.maximum(span, magnitude)
+    )
+
+    degenerate = np.abs(area2) <= tolerance
+    clockwise = (~degenerate) & (area2 < 0)
+
+    # Reverse the real prefix of each clockwise row, leaving any trailing pad in place:
+    # column ``j`` maps to ``k - 1 - j`` while ``j < k`` and to itself in a pad cell, so
+    # the gather reverses ``row[:k]`` exactly as ``vertices[::-1]`` did.
+    columns = np.arange(out.shape[1])
+    reflect = np.where(
+        columns[None, :] < real_count[:, None],
+        real_count[:, None] - 1 - columns[None, :],
+        columns[None, :],
+    )
+    reflected = np.take_along_axis(out, reflect, axis=1)
+    out = np.where(clockwise[:, None], reflected, out)
+
+    return out, int(clockwise.sum()), int(degenerate.sum())
 
 
 def _area_tolerance(xs: np.ndarray, ys: np.ndarray) -> float:

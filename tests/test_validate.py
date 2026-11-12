@@ -14,6 +14,8 @@ import pytest
 
 from pyramids_mesh._base import ParsedMesh, ParsedVariable
 from pyramids_mesh._validate import (
+    _area_tolerance,
+    _signed_area_2,
     check_shapes,
     fix_winding,
     repad,
@@ -794,3 +796,96 @@ def test_the_active_mask_of_a_temporal_variable_is_sized_over_time_too():
 
     with pytest.raises(ValueError, match=r"expected \(3, 1\)"):
         check_shapes(parsed)
+
+
+# -- fix_winding: vectorised form is behaviour-preserving and fast (issue #93) ------
+
+
+def _fix_winding_reference(faces, node_x, node_y, fill_value):
+    """The pre-vectorisation per-face implementation, kept here as the oracle.
+
+    A literal transcription of the original loop so the vectorised ``fix_winding`` can
+    be proved identical to it on a large, mixed mesh.
+    """
+    out = np.asarray(faces).copy()
+    reversed_count = 0
+    degenerate_count = 0
+    for row in out:
+        vertices = row[row != fill_value]
+        pad = np.flatnonzero(row == fill_value)
+        if pad.size and int(pad.min()) < vertices.size:
+            raise ValueError("pads between real vertices")
+        if vertices.size < 3:
+            raise ValueError("fewer than three real nodes")
+        xs, ys = node_x[vertices], node_y[vertices]
+        area2 = _signed_area_2(xs, ys)
+        if abs(area2) <= _area_tolerance(xs, ys):
+            degenerate_count += 1
+        elif area2 < 0:
+            row[: vertices.size] = vertices[::-1]
+            reversed_count += 1
+    return out, reversed_count, degenerate_count
+
+
+def _random_faces(rng, n_faces, n_nodes, width):
+    """A mixed-width, fill-padded face array (3 or 4 real nodes per row)."""
+    faces = np.full((n_faces, width), -1, dtype=np.int64)
+    for index in range(n_faces):
+        k = int(rng.integers(3, width + 1))
+        faces[index, :k] = rng.choice(n_nodes, size=k, replace=False)
+    return faces
+
+
+def test_fix_winding_vectorised_matches_the_per_face_reference():
+    """The vectorised ``fix_winding`` equals the per-face oracle on a random mesh.
+
+    The mesh mixes triangles and quads, trailing padding, clockwise and
+    counter-clockwise faces, plus one deliberately collinear (degenerate) face, so a
+    divergence in any branch -- shape check, area sign, degeneracy, prefix reversal --
+    would surface as an array or count mismatch.
+    """
+    rng = np.random.default_rng(0)
+    n_nodes = 400
+    node_x = rng.random(n_nodes)
+    node_y = rng.random(n_nodes)
+    # Force nodes 0,1,2 collinear and point face 0 at them, to exercise the degenerate
+    # branch in the comparison (random coordinates are never within tolerance).
+    node_x[0], node_x[1], node_x[2] = 0.1, 0.2, 0.3
+    node_y[0] = node_y[1] = node_y[2] = 0.5
+    faces = _random_faces(rng, 2000, n_nodes, 4)
+    faces[0] = [0, 1, 2, -1]
+
+    got_faces, got_reversed, got_degenerate = fix_winding(faces, node_x, node_y, -1)
+    ref_faces, ref_reversed, ref_degenerate = _fix_winding_reference(
+        faces, node_x, node_y, -1
+    )
+
+    np.testing.assert_array_equal(got_faces, ref_faces)
+    assert (got_reversed, got_degenerate) == (ref_reversed, ref_degenerate)
+    # The fixture genuinely contains both cases, so the comparison is not vacuous.
+    assert got_reversed > 0
+    assert got_degenerate >= 1
+
+
+@pytest.mark.slow
+def test_fix_winding_is_vectorised_not_per_face():
+    """``fix_winding`` stays fast on a half-million-face mesh (issue #93).
+
+    The read timeout in issue #93 was dominated by ``fix_winding`` running a Python
+    loop per face; a per-face loop over this many faces takes many seconds, while the
+    vectorised form is well under a second. The generous bound is a regression guard
+    against a reintroduced per-row loop, not a micro-benchmark.
+    """
+    import time
+
+    rng = np.random.default_rng(1)
+    n_nodes = 50_000
+    node_x = rng.random(n_nodes)
+    node_y = rng.random(n_nodes)
+    faces = rng.integers(0, n_nodes, size=(500_000, 3)).astype(np.int64)
+
+    start = time.perf_counter()
+    fix_winding(faces, node_x, node_y, -1)
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 2.0, f"fix_winding took {elapsed:.2f}s on 500k faces"
