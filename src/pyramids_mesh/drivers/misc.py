@@ -431,11 +431,14 @@ def _is_float(value: str) -> bool:
 def _looks_like_node_record(tokens: list[str]) -> bool:
     """Report whether a line has the shape of a node record rather than a header.
 
-    A node record is ``id x y z boundary_code`` -- an integer id, three floating-point
-    coordinates and an integer boundary code. A header never takes that shape (its
-    projection is a name, a WKT string or a single code), so a first line that looks like
-    a node record means the file opened without a header, and a second line of that shape
-    is what tells ``_sniff`` a real Mike21 frame follows the header.
+    A node record is ``id x y z boundary_code``. The shape tested is exactly what
+    :meth:`_Mike21Scan._read_nodes` requires -- an integer id, three floating-point
+    coordinates and a fifth field present for width -- and no more: the boundary code is
+    not kept, so it is not constrained here either, keeping the sniff from declining a
+    file ``read`` would accept. A header never takes this shape (its projection is a
+    name, a WKT string or a single code), so a first line that looks like a node record
+    means the file opened without a header, and a second line of that shape is what tells
+    ``_sniff`` a real Mike21 frame follows the header.
     """
     return (
         len(tokens) >= _NODE_FIELDS
@@ -443,7 +446,6 @@ def _looks_like_node_record(tokens: list[str]) -> bool:
         and _is_float(tokens[1])
         and _is_float(tokens[2])
         and _is_float(tokens[3])
-        and _is_int(tokens[4])
     )
 
 

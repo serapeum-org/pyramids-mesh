@@ -594,6 +594,24 @@ def test_mike21_headerless_node_file_is_refused_at_the_header(tmp_path):
         Mike21Driver().read(_write(tmp_path, text))
 
 
+def test_mike21_can_open_matches_read_on_noninteger_boundary(tmp_path):
+    """Sniff accepts a non-integer boundary column, because ``read`` does not validate it.
+
+    ``_read_nodes`` reads the id and the three coordinates and ignores the boundary code,
+    so the sniff must not decline a file over a boundary token ``read`` never checks.
+    """
+    text = (
+        "4 UTM-33\n"
+        "1 0.0 0.0 0.0 open\n2 1.0 0.0 0.0 open\n"
+        "3 1.0 1.0 0.0 open\n4 0.0 1.0 0.0 open\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+    path = _write(tmp_path, text)
+
+    assert Mike21Driver().can_open(path) is True
+    assert Mike21Driver().read(path).mesh.n_node == 4
+
+
 class TestIsInt:
     """Tests for the ``_is_int`` header-field predicate."""
 
