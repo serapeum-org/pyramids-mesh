@@ -12,9 +12,12 @@ Points become ``node_x``/``node_y`` (and ``node_z`` for a 3D file); surface elem
 the boundary markers are recorded as metadata (their tags and element counts) rather than
 as a separate topology.
 
-This reader targets surface meshes. A volume element type (VTK tetra 10, hexa 12, and the
-rest of the 3D cell table) is refused rather than silently flattened, because there is no
-committed 3D sample to validate such a read against.
+This reader targets **2-D surface meshes** (``NDIME= 2``, and the rare ``NDIME= 3``
+surface mesh of triangles/quadrilaterals). A **3-D volume mesh** -- whose ``NELEM`` table
+holds tetrahedra (10), hexahedra (12), prisms (13) or pyramids (14), as most real SU2
+meshes do -- is refused up front with an explicit "3-D volume mesh" message naming the
+cell type, rather than silently flattened or reported as an unknown code. Extracting the
+boundary surface of such a mesh is a possible future enhancement; it is not done here.
 """
 
 from __future__ import annotations
@@ -46,12 +49,16 @@ _MARKER_ELEMS = "MARKER_ELEMS"
 # The cards whose presence marks a file as SU2, used by the header sniff.
 _HEADER_CARDS = frozenset({_NDIME, _NELEM, _NPOIN})
 
-# VTK cell codes -> node count, for the element types SU2 writes. Only the number of
-# node columns is taken from this; which codes become faces is decided separately.
-_VTK_NODE_COUNT = {3: 2, 5: 3, 9: 4, 10: 4, 12: 8}
+# The 2D surface element codes this reader turns into faces: VTK triangle and
+# quadrilateral, each mapped to its node-column count. These are the only codes the
+# NELEM table may carry; everything else is refused.
+_SURFACE_NODE_COUNT = {5: 3, 9: 4}
 
-# The surface (2D) element codes that become mesh faces: VTK triangle and quadrilateral.
-_SURFACE_CODES = frozenset({5, 9})
+# The 3D volume cells SU2 writes when ``NDIME= 3`` (VTK tetra 10, hexa 12, prism 13,
+# pyramid 14), mapped to their names. SU2 *does* write 13 and 14 -- they are volume
+# cells this surface reader does not support, not unknown codes -- so a file holding any
+# of them is refused with an explicit "3-D volume mesh" message naming the cell.
+_VOLUME_CELLS = {10: "tetrahedron", 12: "hexahedron", 13: "prism", 14: "pyramid"}
 
 # How many bytes of the head the sniff decodes looking for a section card.
 _SNIFF_LIMIT = 64 * 1024
@@ -67,9 +74,12 @@ class Su2Driver(BaseDriver):
     and ``node_z`` for a 3D (``NDIME= 3``) file.
 
     Documented limitations:
-        - **Surface meshes only.** A volume element type (VTK tetra 10, hexa 12, or any
-          other 3D cell) in the ``NELEM`` table is refused rather than flattened to a
-          face; there is no committed 3D sample to validate such a read against.
+        - **2-D surface meshes only; 3-D volume meshes are refused.** A ``NELEM`` table
+          holding a 3-D volume cell -- tetrahedron (10), hexahedron (12), prism (13) or
+          pyramid (14) -- raises :class:`FileFormatNotSupportedError` with an explicit
+          "3-D volume mesh" message naming the cell, rather than flattening it to a face
+          or calling it an unknown code. Reading such a mesh by extracting its boundary
+          surface is a possible future enhancement, not done here.
         - **0-based, no id map.** SU2 element rows index the node table directly, so the
           connectivity is already 0-based: ``start_index`` and ``original_start_index``
           are both ``0`` and the validator subtracts nothing. The optional trailing
@@ -139,8 +149,9 @@ class Su2Driver(BaseDriver):
 
         Raises:
             FileFormatNotSupportedError: If the file carries no section card, declares no
-                ``NDIME``/``NPOIN``/``NELEM``, uses an unknown or volume element type, or
-                a row is short of the fields its element type requires.
+                ``NDIME``/``NPOIN``/``NELEM``, holds a 3-D volume cell (tetrahedron,
+                hexahedron, prism or pyramid) or any other unsupported element code, or a
+                row is short of the fields its element type requires.
         """
         scan = _Scan(path)
         scan.run()
@@ -182,8 +193,8 @@ class _Scan:
         """Stream the file, dispatching each section card onto its reader.
 
         Raises:
-            FileFormatNotSupportedError: On an unknown/volume element type, a short row,
-                or a non-numeric field.
+            FileFormatNotSupportedError: On a 3-D volume cell or any other unsupported
+                element code, a short row, or a non-numeric field.
         """
         records = iter_records(self.path, comment=_COMMENT)
         for keyword, fields in records:
@@ -207,16 +218,20 @@ class _Scan:
         for _ in range(count):
             tokens = _next_row(records, self.path, _NELEM)
             code = _as_int(self.path, _NELEM, tokens[0])
-            node_count = _VTK_NODE_COUNT.get(code)
+            if code in _VOLUME_CELLS:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} is a 3-D volume mesh: its NELEM table holds "
+                    f"{_VOLUME_CELLS[code]} cells (VTK code {code}). This reader reads "
+                    f"2-D surface meshes only -- triangles (VTK 5) and quadrilaterals "
+                    f"(VTK 9); 3-D volume meshes (tetrahedron 10, hexahedron 12, prism "
+                    f"13, pyramid 14) are not supported."
+                )
+            node_count = _SURFACE_NODE_COUNT.get(code)
             if node_count is None:
                 raise FileFormatNotSupportedError(
-                    f"{self.path!r} uses the VTK element code {code}, which this reader "
-                    f"does not know; SU2 writes codes 3, 5, 9, 10 and 12"
-                )
-            if code not in _SURFACE_CODES:
-                raise FileFormatNotSupportedError(
-                    f"{self.path!r} uses the volume/line element code {code}; this "
-                    f"reader builds surface meshes from triangles (5) and quads (9) only"
+                    f"{self.path!r} uses the unsupported element code {code} in its "
+                    f"NELEM table; this reader reads triangle (VTK 5) and quadrilateral "
+                    f"(VTK 9) surface elements only"
                 )
             if len(tokens) < 1 + node_count:
                 raise FileFormatNotSupportedError(
