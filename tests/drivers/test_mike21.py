@@ -495,6 +495,21 @@ def test_mike21_eum_header_with_non_integer_count_is_refused(tmp_path):
         Mike21Driver().read(_write(tmp_path, text))
 
 
+def test_mike21_unicode_digit_count_is_declined_not_crashed(tmp_path):
+    """A header count written with a Unicode digit is declined, never raised through.
+
+    ``str.isdigit`` accepts superscript and other-script digits that ``int`` rejects, so
+    the header check must agree with ``int``: the sniff returns False and the read raises
+    the documented ``FileFormatNotSupportedError`` rather than leaking a ``ValueError``.
+    """
+    path = tmp_path / "unicode.mesh"
+    path.write_text("100079 1000 ² LONG/LAT\n1 0.0 0.0 0.0 1\n", encoding="utf-8")
+
+    assert Mike21Driver().can_open(str(path)) is False
+    with pytest.raises(FileFormatNotSupportedError):
+        Mike21Driver().read(str(path))
+
+
 def test_mike21_zero_node_count_header_is_refused(tmp_path):
     """A header declaring zero nodes is refused rather than read as an empty mesh."""
     with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):

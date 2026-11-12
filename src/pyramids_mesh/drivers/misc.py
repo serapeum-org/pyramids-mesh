@@ -399,14 +399,17 @@ def _projection_to_crs(projection: str) -> str | int | None:
 
 
 def _is_int(value: str) -> bool:
-    """Report whether a header field is unsigned base-10 integer text.
+    """Report whether a field is unsigned ASCII base-10 integer text (``int``-safe).
 
-    Uses ``str.isdigit`` rather than ``int`` so the grouped (``"1_000"``) and signed
-    (``"+4"``, ``"-5"``) forms that ``int`` accepts are rejected: a Mike21 node count or
-    EUM code is always a run of plain digits, and accepting ``"1_000"`` as ``1000`` would
-    silently misread a corrupt field.
+    ``str.isdigit`` alone is both looser and stricter than ``int``: it accepts
+    superscript and other-script digit characters (``"²"``, ``"②"``) that ``int``
+    rejects, and rejects the grouped (``"1_000"``) and signed (``"+4"``, ``"-5"``) forms
+    ``int`` accepts. Pairing it with ``str.isascii`` pins the predicate to plain ASCII
+    digit runs, so ``True`` here guarantees ``int(value)`` succeeds -- callers convert
+    with a bare ``int`` and must not be handed a value that then raises -- while the
+    non-ASCII and non-digit forms decline cleanly rather than crashing a count field.
     """
-    return value.isdigit()
+    return value.isdigit() and value.isascii()
 
 
 def _is_float(value: str) -> bool:
