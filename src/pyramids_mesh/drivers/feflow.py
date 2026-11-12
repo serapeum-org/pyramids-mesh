@@ -25,7 +25,9 @@ The geometry lives in four sections:
 The ``.fem`` suffix is **shared** with the Nastran bulk-data format, so ``can_open``
 requires the FEFLOW signature -- the first two non-blank statements being ``PROBLEM:`` then
 ``CLASS`` -- and declines a Nastran deck (which opens on ``$`` comment lines and
-``BEGIN BULK``). See ``docs/reference/feflow.md``.
+``BEGIN BULK``). This reader builds the mesh only from the **classic ASCII** ``.fem``
+layout; a FEFLOW v6/v7 deck that stores its mesh in a ``BINARY`` block is detected and
+declined with an explicit message rather than mis-parsed. See ``docs/reference/feflow.md``.
 """
 
 from __future__ import annotations
@@ -49,6 +51,11 @@ _DIMENS = "DIMENS"
 _SCALE = "SCALE"
 _NODE = "NODE"
 _COOR = "COOR"
+
+# A FEFLOW v6/v7 deck may store its mesh in a BINARY block (marked by a ``BINARY`` section
+# header and carrying NUL bytes) instead of the ASCII NODE/COOR sections. This reader parses
+# only the ASCII layout, so a binary deck is detected and declined with a clear message.
+_BINARY = "BINARY"
 
 # 1-based node ids never take 0, so 0 is a safe pad for a short element row (a mixed
 # triangle/quad deck); pyramids rewrites it to -1 during normalisation. A single-valence
@@ -84,6 +91,12 @@ class FeflowDriver(BaseDriver):
         - **``.fem`` is shared with Nastran.** ``can_open`` keys on the ``PROBLEM:`` /
           ``CLASS`` signature so a Nastran deck sharing the suffix is declined rather than
           mis-parsed.
+        - **Classic ASCII only.** A FEFLOW deck may store its mesh in a ``BINARY`` block
+          instead of ASCII ``NODE`` / ``COOR`` sections. ``can_open`` still accepts it on
+          the ASCII ``PROBLEM:`` / ``CLASS`` header (it is a FEFLOW file), but the reader
+          then rejects it with an explicit ``FileFormatNotSupportedError`` rather than
+          mis-reading it as a missing ``NODE`` section, since this reader parses only the
+          ASCII layout.
 
     Example:
         Read a FEFLOW mesh by its ``.fem`` file (shown, not run as a doctest -- it needs a
@@ -146,9 +159,10 @@ class FeflowDriver(BaseDriver):
                 ``node_z`` when the deck is 3D.
 
         Raises:
-            FileFormatNotSupportedError: If the path is not a file, or the ``DIMENS`` /
-                ``SCALE`` / ``NODE`` / ``COOR`` sections are missing, malformed, or
-                disagree with the declared dimensions.
+            FileFormatNotSupportedError: If the path is not a file, the file is a binary
+                FEFLOW ``.fem`` (its mesh in a ``BINARY`` block rather than ASCII sections),
+                or the ``DIMENS`` / ``SCALE`` / ``NODE`` / ``COOR`` sections are missing,
+                malformed, or disagree with the declared dimensions.
         """
         if not os.path.isfile(path):
             raise FileFormatNotSupportedError(f"{path!r} is not a FEFLOW .fem file")
@@ -201,27 +215,33 @@ class _FeflowReader:
     def _read_sections(self) -> dict[str, list[str]]:
         """Group the data lines by the keyword section they sit in.
 
-        A line whose first character is a letter or underscore opens a section (its first
-        token, upper-cased and with a trailing colon stripped, is the key); any other
-        non-blank line is a data row of the current section. The first occurrence of each
-        keyword wins, so a header seen twice extends the same section.
+        The file is read as bytes so a binary FEFLOW ``.fem`` -- one whose mesh lives in a
+        ``BINARY`` block (with NUL bytes) rather than ASCII ``NODE`` / ``COOR`` sections --
+        is rejected up front with an explicit message, instead of decoding to mojibake and
+        failing later as a missing ``NODE`` section. Otherwise a line whose first character
+        is a letter or underscore opens a section (its first token, upper-cased and with a
+        trailing colon stripped, is the key); any other non-blank line is a data row of the
+        current section. The first occurrence of each keyword wins, so a header seen twice
+        extends the same section.
 
         Returns:
             dict[str, list[str]]: The data rows of each section, keyed by upper-case name.
 
         Raises:
-            FileFormatNotSupportedError: If the file cannot be read.
+            FileFormatNotSupportedError: If the file cannot be read, or it is a binary
+                FEFLOW ``.fem`` rather than the classic ASCII format.
         """
         try:
-            with open(self.path, encoding="latin-1") as handle:
-                raw_lines = handle.readlines()
+            with open(self.path, "rb") as handle:
+                raw_bytes = handle.read()
         except OSError as error:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} could not be read as a FEFLOW .fem file: {error}"
             ) from error
+        self._reject_binary(raw_bytes)
         sections: dict[str, list[str]] = {}
         current: str | None = None
-        for raw in raw_lines:
+        for raw in raw_bytes.decode("latin-1").splitlines():
             line = raw.strip()
             if not line:
                 continue
@@ -231,6 +251,65 @@ class _FeflowReader:
             elif current is not None:
                 sections[current].append(line)
         return sections
+
+    def _reject_binary(self, raw_bytes: bytes) -> None:
+        """Refuse a binary FEFLOW ``.fem`` with an explicit, accurate message.
+
+        A FEFLOW v6/v7 deck may store its mesh in a ``BINARY`` block -- marked by a
+        ``BINARY`` section header and carrying NUL bytes -- instead of the ASCII ``NODE`` /
+        ``COOR`` sections this reader parses. The ASCII ``PROBLEM:`` / ``CLASS`` header
+        still passes :meth:`FeflowDriver._sniff`, so without this guard dispatch would pick
+        the driver and then fail misleadingly as a missing ``NODE`` section; detecting the
+        NUL bytes (or the ``BINARY`` marker) lets the reader say what is actually wrong.
+
+        Args:
+            raw_bytes: The whole file as read, before decoding.
+
+        Raises:
+            FileFormatNotSupportedError: If the file is a binary FEFLOW ``.fem``.
+        """
+        if b"\x00" not in raw_bytes and not self._has_binary_section(raw_bytes):
+            return
+        raise FileFormatNotSupportedError(
+            f"{self.path!r} is a binary FEFLOW .fem: its mesh is stored in a BINARY block "
+            f"(with NUL bytes), not the ASCII NODE/COOR sections this reader parses; only "
+            f"the classic ASCII .fem format is supported"
+        )
+
+    @staticmethod
+    def _has_binary_section(raw_bytes: bytes) -> bool:
+        r"""Report whether a ``BINARY`` section header opens anywhere in the deck.
+
+        The scan runs on bytes, before decoding, so it is safe on a file full of NUL bytes.
+        A section header is a line whose first token (upper-cased, trailing colon stripped)
+        is ``BINARY``.
+
+        Args:
+            raw_bytes: The whole file as read, before decoding.
+
+        Returns:
+            bool: ``True`` if a ``BINARY`` section header is present.
+
+        Examples:
+            - A ``BINARY`` section header is detected before any decoding:
+
+                >>> _FeflowReader._has_binary_section(b"DIMENS\nBINARY FEM 1.0\n")
+                True
+
+            - A keyword that merely starts with ``BINARY`` is not a match:
+
+                >>> _FeflowReader._has_binary_section(b"DIMENS\nBINARYLABEL x\n")
+                False
+        """
+        binary_token = _BINARY.encode("ascii")
+        for byte_line in raw_bytes.splitlines():
+            stripped = byte_line.strip()
+            if not stripped:
+                continue
+            if stripped[:1].isalpha() or stripped[:1] == b"_":
+                if stripped.split()[0].rstrip(b":").upper() == binary_token:
+                    return True
+        return False
 
     def _parse_dimens(self, lines: list[str]) -> tuple[int, int, int]:
         """Read the ``DIMENS`` row into ``(n_nodes, n_elements, nodes_per_element)``.
