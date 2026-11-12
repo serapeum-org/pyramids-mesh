@@ -1,3 +1,38 @@
-Kratos Multiphysics .mdpa (ASCII).
+Kratos Multiphysics .mdpa (ASCII) test fixtures.
+
 small_cube.mdpa -- KratosMultiphysics/Kratos, BSD-3-Clause. 8 Nodes / 6 Element3D4N.
   https://github.com/KratosMultiphysics/Kratos (kratos/tests/auxiliar_files_for_python_unittest/mdpa_files/)
+
+Minimal driver-coverage fixtures
+--------------------------------
+Each is the smallest mesh that isolates ONE distinct driver behaviour, authored in
+small_cube's clean-integer-coordinate style but carrying the real GiD/Kratos element-type
+names and the verbatim .mdpa format quirks observed across ~300 KratosMultiphysics/Examples
+files (grouped, un-committed, under examples/data/real-data/kratos/). No redundancy: the
+behaviour each one anchors is listed below.
+
+Valid meshes (parse):
+  small_cube.mdpa                     3D tetra  (Element3D4N, 4-node faces, node_z present)
+  hexahedra_3d8n.mdpa                 3D hex    (SmallDisplacementElement3D8N, widest 8-node face)
+  mixed_width_blocks_gapped_ids.mdpa  two blocks (Element2D4N quad + Element2D3N tri): short-row
+                                          padding to the widest block with -1, multiple blocks,
+                                          2D faces (z=0 -> no node_z), and gapped/out-of-order node
+                                          ids (id 10) resolved through native_id_map.
+  comment_after_element_name.mdpa     inline "//" comment glued to the element-block name
+                                          ("Begin Elements Element2D3N// GUI group ..."): GiD writes
+                                          these group comments routinely (issue that this was filed
+                                          for). The comment is stripped; parses as a 2-triangle mesh.
+  element_name_without_node_count.mdpa element type with no trailing <count>N ("VMS3D"): the node
+                                          count is taken from the first row's width (4 -> a tetra).
+  conditions_only_no_elements.mdpa    connectivity only in Begin Conditions (SurfaceCondition3D3N),
+                                          no Begin Elements -- the IGA / shape-opt shape; the mesh
+                                          is built from the conditions.
+
+Refused (raise FileFormatNotSupportedError):
+  model_part_data_only_no_mesh.mdpa   ModelPartData-only auxiliary file, no Begin Nodes -> "no Nodes".
+  (point elements -- one node per row, DEM SphericParticle3D -- are refused as a point cloud; the
+   real corpus covers that case, no tiny fixture is committed for it.)
+
+The real-world meshes these are modelled on (per element type, geometry and quirk) live, grouped and
+git-ignored, under examples/data/real-data/kratos/; filenames there encode class/dim/geometry/element-
+type/size. Re-download/catalog: planning/test-datasets.md.

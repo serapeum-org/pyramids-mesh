@@ -308,6 +308,26 @@ def test_iter_records_honours_a_custom_comment_marker(tmp_path):
     assert list(iter_records(str(path), comment="!")) == [("KEY", ["value"])]
 
 
+def test_iter_records_strips_an_inline_comment(tmp_path):
+    """An inline comment is dropped before the line is split, marker glued or spaced.
+
+    Kratos ``.mdpa`` (comment ``//``) is read through this helper, and GiD writes
+    ``Begin Elements Element2D3N// GUI group ...`` -- the marker glued onto the token.
+    Without inline stripping ``Element2D3N//`` would read as a field of its own.
+    """
+    path = tmp_path / "inline.mdpa"
+    path.write_text(
+        "Begin Elements Element2D3N// GUI group identifier: Fluid\n"
+        "1 1 1 2 3  // first triangle\n",
+        encoding="utf-8",
+    )
+
+    assert list(iter_records(str(path), comment="//")) == [
+        ("Begin", ["Elements", "Element2D3N"]),
+        ("1", ["1", "1", "2", "3"]),
+    ]
+
+
 def test_native_id_map_handles_gaps_and_reordering():
     """Native ids map to contiguous indices by order of appearance, gaps and all."""
     assert native_id_map([10, 5, 7]) == {10: 0, 5: 1, 7: 2}

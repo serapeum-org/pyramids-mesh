@@ -1,0 +1,15 @@
+Begin ModelPartData
+End ModelPartData
+
+Begin Properties 1
+End Properties
+
+Begin Nodes
+    1    0.0    0.0    0.0
+    2    1.0    0.0    0.0
+    3    0.0    1.0    0.0
+End Nodes
+
+Begin Conditions SurfaceCondition3D3N// GUI group identifier: Imposed
+    1    1    1    2    3
+End Conditions
