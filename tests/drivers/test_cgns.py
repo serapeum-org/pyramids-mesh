@@ -407,7 +407,9 @@ def test_cgns_example_notebook_commits_no_machine_specific_path():
         "notebook output embeds a drive-letter absolute path"
     )
     for needle in ("worktrees", "python-environments", "site-packages"):
-        assert needle not in output, f"notebook output leaks a machine path token: {needle!r}"
+        assert needle not in output, (
+            f"notebook output leaks a machine path token: {needle!r}"
+        )
 
 
 class TestDropOrphanNodes:
@@ -425,7 +427,9 @@ class TestDropOrphanNodes:
         node_y = np.array([0.0, 0.0, 1.0, 1.0, 9.0, 9.0])
         node_z = np.array([0.0, 0.0, 0.0, 0.0, 5.0, 5.0])
         faces = np.array([[1, 2, 3, 4]], dtype=np.int64)
-        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(node_x, node_y, node_z, faces)
+        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(
+            node_x, node_y, node_z, faces
+        )
         assert out_x.tolist() == [0.0, 1.0, 1.0, 0.0], f"x not subset: {out_x}"
         assert out_y.tolist() == [0.0, 0.0, 1.0, 1.0], f"y not subset: {out_y}"
         assert out_z.tolist() == [0.0, 0.0, 0.0, 0.0], f"z not subset: {out_z}"
@@ -457,7 +461,9 @@ class TestDropOrphanNodes:
         node_y = np.arange(4.0)
         node_z = np.arange(4.0)
         faces = np.array([[1, 2, 3, 4]], dtype=np.int64)
-        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(node_x, node_y, node_z, faces)
+        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(
+            node_x, node_y, node_z, faces
+        )
         assert out_x is node_x, "x array should be returned unchanged"
         assert out_y is node_y, "y array should be returned unchanged"
         assert out_z is node_z, "z array should be returned unchanged"
