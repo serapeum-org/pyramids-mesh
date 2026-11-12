@@ -594,6 +594,21 @@ def test_mike21_headerless_node_file_is_refused_at_the_header(tmp_path):
         Mike21Driver().read(_write(tmp_path, text))
 
 
+def test_mike21_can_open_skips_a_blank_line_before_the_first_node(tmp_path):
+    """The sniff skips a blank line between the header and the first node record.
+
+    It collects the first two *non-blank* lines, so a blank separator after the header
+    does not make it miss the node record and wrongly decline the file.
+    """
+    text = (
+        "4 UTM-33\n\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+
+    assert Mike21Driver().can_open(_write(tmp_path, text)) is True
+
+
 def test_mike21_can_open_matches_read_on_noninteger_boundary(tmp_path):
     """Sniff accepts a non-integer boundary column, because ``read`` does not validate it.
 
