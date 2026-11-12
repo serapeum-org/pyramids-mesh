@@ -366,3 +366,47 @@ def test_an_ascii_deck_with_a_binary_lookalike_header_still_reads(tmp_path):
     )
     parsed = _FeflowReader(str(fem_path)).build()
     assert parsed.faces.shape == (1, 3)
+
+
+def test_the_nul_only_message_names_nul_bytes_not_a_block(tmp_path):
+    """A NUL-only deck is reported via its NUL bytes, not a (non-existent) BINARY block."""
+    fem_path = tmp_path / "nul_only_msg.fem"
+    fem_path.write_bytes(
+        b"PROBLEM:\nCLASS (v.7.0)\n   2    1\nDIMENS\n  3   1   3\n"
+        b"NODE\n  1 2 3\x00\x00\x00\nEND\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError) as excinfo:
+        _FeflowReader(str(fem_path)).build()
+    message = str(excinfo.value)
+    assert "NUL bytes" in message, message
+    assert "block" not in message, message
+
+
+def test_the_binary_header_message_does_not_claim_nul_bytes(tmp_path):
+    """A BINARY-header deck with no NUL bytes is reported via the section, not NUL bytes."""
+    fem_path = tmp_path / "binary_header_msg.fem"
+    fem_path.write_text(
+        f"{_HEADER}DIMENS\n  3   1   3\nBINARY FEM 1.0\n some ascii payload\nEND\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError) as excinfo:
+        _FeflowReader(str(fem_path)).build()
+    message = str(excinfo.value)
+    assert "BINARY section" in message, message
+    assert "NUL" not in message, message
+
+
+def test_a_control_byte_in_a_data_row_does_not_split_the_row(tmp_path):
+    """A stray form-feed inside a NODE row stays one row (universal-newline splitting).
+
+    `str.splitlines()` would split on `\\x0c`, turning one NODE row into two and tripping the
+    element-count check; the reader must match the old universal-newline `readlines()` and
+    keep it a single row.
+    """
+    fem_path = tmp_path / "formfeed.fem"
+    fem_path.write_text(
+        f"{_HEADER}DIMENS\n  3   1   3\nSCALE\n 1,0,1,0,1,0\n"
+        "NODE\n  1 2\x0c3\nCOOR\n 0.0, 1.0, 0.0, 0.0, 0.0, 1.0\nEND\n"
+    )
+    parsed = _FeflowReader(str(fem_path)).build()
+    assert parsed.faces.shape == (1, 3)
+    assert set(parsed.faces[0].tolist()) == {1, 2, 3}

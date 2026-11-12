@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import pyramids  # noqa: F401  # isort:skip
 
+import io
 import os
 
 import numpy as np
@@ -215,21 +216,25 @@ class _FeflowReader:
     def _read_sections(self) -> dict[str, list[str]]:
         """Group the data lines by the keyword section they sit in.
 
-        The file is read as bytes so a binary FEFLOW ``.fem`` -- one whose mesh lives in a
-        ``BINARY`` block (with NUL bytes) rather than ASCII ``NODE`` / ``COOR`` sections --
-        is rejected up front with an explicit message, instead of decoding to mojibake and
-        failing later as a missing ``NODE`` section. Otherwise a line whose first character
-        is a letter or underscore opens a section (its first token, upper-cased and with a
-        trailing colon stripped, is the key); any other non-blank line is a data row of the
-        current section. The first occurrence of each keyword wins, so a header seen twice
-        extends the same section.
+        The file is read as bytes and a binary FEFLOW ``.fem`` -- one whose mesh lives in a
+        binary block rather than ASCII ``NODE`` / ``COOR`` sections -- is declined with an
+        explicit message instead of being mis-read as a missing ``NODE`` section. There are
+        two tells, both cheap: NUL bytes anywhere (a single scan of the raw bytes), and a
+        ``BINARY`` section header, which is caught in the very pass that groups the sections
+        -- no separate full scan. Otherwise a line whose first character is a letter or
+        underscore opens a section (its first token, upper-cased and with a trailing colon
+        stripped, is the key); any other non-blank line is a data row of the current
+        section. The first occurrence of each keyword wins, so a header seen twice extends
+        the same section. Lines are split on universal newlines only (as the old text-mode
+        read was), so a stray control byte inside a data row does not break the row apart.
 
         Returns:
             dict[str, list[str]]: The data rows of each section, keyed by upper-case name.
 
         Raises:
             FileFormatNotSupportedError: If the file cannot be read, or it is a binary
-                FEFLOW ``.fem`` rather than the classic ASCII format.
+                FEFLOW ``.fem`` (NUL bytes, or a ``BINARY`` section) rather than the classic
+                ASCII format.
         """
         try:
             with open(self.path, "rb") as handle:
@@ -238,78 +243,34 @@ class _FeflowReader:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} could not be read as a FEFLOW .fem file: {error}"
             ) from error
-        self._reject_binary(raw_bytes)
+        if b"\x00" in raw_bytes:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} contains NUL bytes, so it is a binary FEFLOW .fem "
+                f"rather than the classic ASCII NODE/COOR format this reader parses; "
+                f"only the classic ASCII .fem format is supported"
+            )
         sections: dict[str, list[str]] = {}
         current: str | None = None
-        for raw in raw_bytes.decode("latin-1").splitlines():
-            line = raw.strip()
-            if not line:
-                continue
-            if line[0].isalpha() or line[0] == "_":
-                current = line.split()[0].upper().rstrip(":")
-                sections.setdefault(current, [])
-            elif current is not None:
-                sections[current].append(line)
+        with io.TextIOWrapper(
+            io.BytesIO(raw_bytes), encoding="latin-1", newline=None
+        ) as text_stream:
+            for raw in text_stream:
+                line = raw.strip()
+                if not line:
+                    continue
+                if line[0].isalpha() or line[0] == "_":
+                    current = line.split()[0].upper().rstrip(":")
+                    if current == _BINARY:
+                        raise FileFormatNotSupportedError(
+                            f"{self.path!r} declares a BINARY section, so it is a "
+                            f"binary FEFLOW .fem whose mesh is stored in a binary "
+                            f"block, not the ASCII NODE/COOR sections this reader "
+                            f"parses; only the classic ASCII .fem format is supported"
+                        )
+                    sections.setdefault(current, [])
+                elif current is not None:
+                    sections[current].append(line)
         return sections
-
-    def _reject_binary(self, raw_bytes: bytes) -> None:
-        """Refuse a binary FEFLOW ``.fem`` with an explicit, accurate message.
-
-        A FEFLOW v6/v7 deck may store its mesh in a ``BINARY`` block -- marked by a
-        ``BINARY`` section header and carrying NUL bytes -- instead of the ASCII ``NODE`` /
-        ``COOR`` sections this reader parses. The ASCII ``PROBLEM:`` / ``CLASS`` header
-        still passes :meth:`FeflowDriver._sniff`, so without this guard dispatch would pick
-        the driver and then fail misleadingly as a missing ``NODE`` section; detecting the
-        NUL bytes (or the ``BINARY`` marker) lets the reader say what is actually wrong.
-
-        Args:
-            raw_bytes: The whole file as read, before decoding.
-
-        Raises:
-            FileFormatNotSupportedError: If the file is a binary FEFLOW ``.fem``.
-        """
-        if b"\x00" not in raw_bytes and not self._has_binary_section(raw_bytes):
-            return
-        raise FileFormatNotSupportedError(
-            f"{self.path!r} is a binary FEFLOW .fem: its mesh is stored in a BINARY block "
-            f"(with NUL bytes), not the ASCII NODE/COOR sections this reader parses; only "
-            f"the classic ASCII .fem format is supported"
-        )
-
-    @staticmethod
-    def _has_binary_section(raw_bytes: bytes) -> bool:
-        r"""Report whether a ``BINARY`` section header opens anywhere in the deck.
-
-        The scan runs on bytes, before decoding, so it is safe on a file full of NUL bytes.
-        A section header is a line whose first token (upper-cased, trailing colon stripped)
-        is ``BINARY``.
-
-        Args:
-            raw_bytes: The whole file as read, before decoding.
-
-        Returns:
-            bool: ``True`` if a ``BINARY`` section header is present.
-
-        Examples:
-            - A ``BINARY`` section header is detected before any decoding:
-
-                >>> _FeflowReader._has_binary_section(b"DIMENS\nBINARY FEM 1.0\n")
-                True
-
-            - A keyword that merely starts with ``BINARY`` is not a match:
-
-                >>> _FeflowReader._has_binary_section(b"DIMENS\nBINARYLABEL x\n")
-                False
-        """
-        binary_token = _BINARY.encode("ascii")
-        for byte_line in raw_bytes.splitlines():
-            stripped = byte_line.strip()
-            if not stripped:
-                continue
-            if stripped[:1].isalpha() or stripped[:1] == b"_":
-                if stripped.split()[0].rstrip(b":").upper() == binary_token:
-                    return True
-        return False
 
     def _parse_dimens(self, lines: list[str]) -> tuple[int, int, int]:
         """Read the ``DIMENS`` row into ``(n_nodes, n_elements, nodes_per_element)``.
