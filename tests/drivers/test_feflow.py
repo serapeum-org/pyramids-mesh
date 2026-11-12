@@ -294,8 +294,9 @@ def test_a_binary_fem_is_declined_with_an_explicit_message():
     ``PROBLEM:`` / ``CLASS`` header, so the reader itself must reject it with an accurate
     message instead of failing later as a missing ``NODE`` section.
     """
+    reader = _FeflowReader(str(_BINARY_FEM))
     with pytest.raises(FileFormatNotSupportedError, match="is a binary FEFLOW"):
-        _FeflowReader(str(_BINARY_FEM)).build()
+        reader.build()
 
 
 def test_a_binary_fem_is_declined_through_the_driver_read():
@@ -306,8 +307,9 @@ def test_a_binary_fem_is_declined_through_the_driver_read():
 
 def test_a_binary_fem_does_not_raise_the_misleading_no_node_message():
     """The old, misleading 'no NODE section' message must not surface for a binary deck."""
+    reader = _FeflowReader(str(_BINARY_FEM))
     with pytest.raises(FileFormatNotSupportedError) as excinfo:
-        _FeflowReader(str(_BINARY_FEM)).build()
+        reader.build()
     assert "no NODE section" not in str(excinfo.value)
 
 
@@ -327,8 +329,9 @@ def test_an_inline_binary_block_deck_is_declined(tmp_path):
         b"PROBLEM: A new FEFLOW problem\nCLASS (v.6.215)\n   2    1\n"
         b"DIMENS\n  4   1   3\nBINARY FEM 1.0\n" + b"\x00" * 16
     )
+    reader = _FeflowReader(str(fem_path))
     with pytest.raises(FileFormatNotSupportedError, match="is a binary FEFLOW"):
-        _FeflowReader(str(fem_path)).build()
+        reader.build()
 
 
 def test_nul_bytes_alone_decline_a_deck_without_a_binary_header(tmp_path):
@@ -338,8 +341,9 @@ def test_nul_bytes_alone_decline_a_deck_without_a_binary_header(tmp_path):
         b"PROBLEM:\nCLASS (v.7.0)\n   2    1\nDIMENS\n  3   1   3\n"
         b"NODE\n  1 2 3\x00\x00\x00\nEND\n"
     )
+    reader = _FeflowReader(str(fem_path))
     with pytest.raises(FileFormatNotSupportedError, match="is a binary FEFLOW"):
-        _FeflowReader(str(fem_path)).build()
+        reader.build()
 
 
 def test_a_binary_section_header_without_nul_bytes_is_declined(tmp_path):
@@ -348,8 +352,9 @@ def test_a_binary_section_header_without_nul_bytes_is_declined(tmp_path):
     fem_path.write_text(
         f"{_HEADER}DIMENS\n  3   1   3\nBINARY FEM 1.0\n some ascii payload\nEND\n"
     )
+    reader = _FeflowReader(str(fem_path))
     with pytest.raises(FileFormatNotSupportedError, match="is a binary FEFLOW"):
-        _FeflowReader(str(fem_path)).build()
+        reader.build()
 
 
 def test_an_ascii_deck_with_a_binary_lookalike_header_still_reads(tmp_path):
@@ -375,8 +380,9 @@ def test_the_nul_only_message_names_nul_bytes_not_a_block(tmp_path):
         b"PROBLEM:\nCLASS (v.7.0)\n   2    1\nDIMENS\n  3   1   3\n"
         b"NODE\n  1 2 3\x00\x00\x00\nEND\n"
     )
+    reader = _FeflowReader(str(fem_path))
     with pytest.raises(FileFormatNotSupportedError) as excinfo:
-        _FeflowReader(str(fem_path)).build()
+        reader.build()
     message = str(excinfo.value)
     assert "NUL bytes" in message, message
     assert "block" not in message, message
@@ -388,8 +394,9 @@ def test_the_binary_header_message_does_not_claim_nul_bytes(tmp_path):
     fem_path.write_text(
         f"{_HEADER}DIMENS\n  3   1   3\nBINARY FEM 1.0\n some ascii payload\nEND\n"
     )
+    reader = _FeflowReader(str(fem_path))
     with pytest.raises(FileFormatNotSupportedError) as excinfo:
-        _FeflowReader(str(fem_path)).build()
+        reader.build()
     message = str(excinfo.value)
     assert "BINARY section" in message, message
     assert "NUL" not in message, message
