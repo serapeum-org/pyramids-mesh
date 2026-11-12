@@ -411,7 +411,7 @@ def _drop_orphan_nodes(
     left orphaned (issue #97 -- on the NASA DPW4 grids 98% of the nodes). This compacts the
     coordinate arrays to the referenced set and rewrites ``faces`` to the new 1-based ids,
     leaving the ``_PAD`` fill untouched. A mesh whose faces already reference every node -- a
-    planar surface, or the volumetric fallback where cells become faces -- is returned
+    planar surface, or a volume mesh whose cells between them touch every node -- is returned
     unchanged.
 
     Args:
