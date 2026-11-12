@@ -2664,17 +2664,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#12-the-binary-encoding-reads-the-same" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        12. The binary encoding reads the same
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#takeaway" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3445,8 +3434,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="reading-gmsh-meshes-with-pyramids-mesh">Reading Gmsh meshes with <code>pyramids-mesh</code><a class="anchor-link" href="#reading-gmsh-meshes-with-pyramids-mesh">¶</a></h1><p><strong>Gmsh</strong> is the widely used open-source finite-element mesh generator; its <code>.msh</code> format is a common interchange for unstructured meshes feeding FE/FV solvers. Unlike the global climate grids in this series, a Gmsh mesh is a <strong>planar engineering mesh</strong> — raw <code>(x, y)</code> coordinates in model units, with <strong>no georeferencing</strong>. The <code>gmsh</code> driver reads both the legacy <strong>v2.2</strong> and current <strong>v4.1</strong> layouts, in both their <strong>ASCII and binary</strong> encodings (Gmsh writes binary by default for large meshes).</p>
-<p>This notebook reads <code>insulated-2.2.msh</code> — a genuine Gmsh mesh of <strong>111 triangles</strong> over <strong>67 nodes</strong> — into a pyramids <code>MeshDataset</code> and tours the operations it supports; at the end it reads the same mesh from a <strong>binary</strong> <code>.msh</code> to show the two encodings are interchangeable. Being triangular, it supports circumcenters.</p>
+<h1 id="reading-gmsh-meshes-with-pyramids-mesh">Reading Gmsh meshes with <code>pyramids-mesh</code><a class="anchor-link" href="#reading-gmsh-meshes-with-pyramids-mesh">¶</a></h1><p><strong>Gmsh</strong> is the widely used open-source finite-element mesh generator; its <code>.msh</code> format is a common interchange for unstructured meshes feeding FE/FV solvers. Unlike the global climate grids in this series, a Gmsh mesh is a <strong>planar engineering mesh</strong> — raw <code>(x, y)</code> coordinates in model units, with <strong>no georeferencing</strong>. The <code>gmsh</code> driver supports both the legacy v2.2 ASCII and the v4.1 formats.</p>
+<p>This notebook reads <code>insulated-2.2.msh</code> — a genuine Gmsh mesh of <strong>111 triangles</strong> over <strong>67 nodes</strong> — into a pyramids <code>MeshDataset</code> and tours the operations it supports. Being triangular, it supports circumcenters.</p>
 </div>
 </div>
 </div>
@@ -3598,7 +3587,7 @@ type(ds).__name__</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>C:\python-environments\pixi\envs\pyramids-mesh-6329545599298937347\envs\dev\Lib\site-packages\pyramids\netcdf\ugrid\_drivers.py:538: RuntimeWarning: Mesh driver 'dfsu' (pyramids_mesh.drivers.dhi:DfsuDriver) could not be loaded and was skipped: ModuleNotFoundError("No module named 'mikeio'")
+<pre>C:\python-environments\pixi\envs\pyramids-mesh-4081970794675243037\envs\dev\Lib\site-packages\pyramids\netcdf\ugrid\_drivers.py:538: RuntimeWarning: Mesh driver 'dfsu' (pyramids_mesh.drivers.dhi:DfsuDriver) could not be loaded and was skipped: ModuleNotFoundError("No module named 'mikeio'")
   driver = _instantiate(entry_point)
 </pre>
 </div>
@@ -4750,97 +4739,6 @@ back = MeshDataset.read_file(out, driver="ply")
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1c19414e">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="12-the-binary-encoding-reads-the-same">12. The binary encoding reads the same<a class="anchor-link" href="#12-the-binary-encoding-reads-the-same">¶</a></h2><p>Gmsh writes <strong>binary</strong> <code>.msh</code> by default for larger meshes, so real-world files are frequently binary rather than ASCII. The <code>gmsh</code> driver decodes both: it reads the <code>$MeshFormat</code> <em>file-type</em> and the endianness marker, then unpacks the packed <code>$Nodes</code>/<code>$Elements</code> records — for both the v2.2 and v4.1 layouts — and hands back the identical <code>MeshDataset</code>.</p>
-<p><code>insulated-binary-2.2.msh</code> is the very mesh we just toured, written as a binary Gmsh 2.2 stream. Reading it should reproduce the ASCII result exactly.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f92ece3b">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [19]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-19">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">binary_file</span> <span class="o">=</span> <span class="n">DATA</span> <span class="o">/</span> <span class="s2">"gmsh"</span> <span class="o">/</span> <span class="s2">"insulated-binary-2.2.msh"</span>
-<span class="n">db</span> <span class="o">=</span> <span class="n">MeshDataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">binary_file</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">"gmsh"</span><span class="p">)</span>
-
-<span class="n">identical</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">db</span><span class="o">.</span><span class="n">n_node</span> <span class="o">==</span> <span class="n">ds</span><span class="o">.</span><span class="n">n_node</span>
-    <span class="ow">and</span> <span class="n">db</span><span class="o">.</span><span class="n">n_face</span> <span class="o">==</span> <span class="n">ds</span><span class="o">.</span><span class="n">n_face</span>
-    <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">)</span>
-    <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">)</span>
-    <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
-        <span class="n">db</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
-        <span class="n">ds</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span><span class="s2">"n_node"</span><span class="p">:</span> <span class="n">db</span><span class="o">.</span><span class="n">n_node</span><span class="p">,</span> <span class="s2">"n_face"</span><span class="p">:</span> <span class="n">db</span><span class="o">.</span><span class="n">n_face</span><span class="p">,</span> <span class="s2">"identical_to_ascii"</span><span class="p">:</span> <span class="n">identical</span><span class="p">})</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-19">binary_file = DATA / "gmsh" / "insulated-binary-2.2.msh"
-db = MeshDataset.read_file(binary_file, driver="gmsh")
-
-identical = (
-    db.n_node == ds.n_node
-    and db.n_face == ds.n_face
-    and np.array_equal(db.mesh.node_x, ds.mesh.node_x)
-    and np.array_equal(db.mesh.node_y, ds.mesh.node_y)
-    and np.array_equal(
-        db.mesh.face_node_connectivity.data,
-        ds.mesh.face_node_connectivity.data,
-    )
-)
-pd.Series({"n_node": db.n_node, "n_face": db.n_face, "identical_to_ascii": identical})</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[19]:</div>
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>n_node                  67
-n_face                 111
-identical_to_ascii    True
-dtype: object</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3e0214c4">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Same <strong>67 nodes / 111 faces</strong>, with node coordinates and connectivity matching the ASCII read bit-for-bit (<code>identical_to_ascii</code> is <code>True</code>). The binary and ASCII files are two encodings of one mesh — every operation in this notebook behaves identically whichever you read, so a binary <code>.msh</code> straight from a solver drops in with no extra handling.</p>
-</div>
-</div>
-</div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a44cd2aa">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -4848,7 +4746,7 @@ dtype: object</pre>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="takeaway">Takeaway<a class="anchor-link" href="#takeaway">¶</a></h2><ul>
-<li>The <code>gmsh</code> driver reads a <code>.msh</code> finite-element mesh — <strong>v2.2 or v4.1, ASCII or binary</strong> — into a pyramids <code>MeshDataset</code>; a binary file reads to the same result as its ASCII equivalent.</li>
+<li>The <code>gmsh</code> driver reads a <code>.msh</code> finite-element mesh (v2.2 or v4.1) into a pyramids <code>MeshDataset</code>.</li>
 <li>Gmsh cells are <strong>triangles</strong> (<code>k = 3</code>) with <strong>planar, non-georeferenced</strong> coordinates (no CRS, no radian/degree question); being triangular, <strong><code>circumcenters()</code> works</strong>.</li>
 <li>The file is geometry-only; we attached a geometric <code>face_area</code> for a data map.</li>
 <li>The pyramids GIS layer applies in full — <code>to_geodataframe</code>, <code>bounding_polygon</code>, circumcenters, adjacency, components, crop, PLY round-trip — while <code>to_crs</code> is skipped because no CRS is recorded.</li>
