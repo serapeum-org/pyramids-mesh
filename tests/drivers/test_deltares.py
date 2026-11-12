@@ -561,6 +561,43 @@ def test_network_branch_geometry_falls_back_to_positional_xy():
     assert counts.tolist() == [2]
 
 
+class _RaisingGroup(_Group):
+    """A group whose ``OpenMDArray`` raises ``RuntimeError`` for one missing name."""
+
+    def __init__(self, arrays, missing):
+        super().__init__(arrays)
+        self._missing = missing
+
+    def OpenMDArray(self, name):
+        """Raise ``RuntimeError`` for the missing name, else defer to the base group."""
+        if name == self._missing:
+            raise RuntimeError(f"Array {name} does not exist")
+        return super().OpenMDArray(name)
+
+
+def test_reconstruct_declines_on_a_dangling_geometry_reference():
+    """A geometry container named but absent declines, not raises ``RuntimeError``.
+
+    ``build`` documents ``FileFormatNotSupportedError`` for a malformed file; a dangling
+    ``edge_geometry`` reference must therefore make reconstruction return ``None`` (the
+    caller then declines), never let GDAL's ``RuntimeError`` escape.
+    """
+    group = _RaisingGroup(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "network": _net_topo("geom"),
+        },
+        missing="geom",
+    )
+    topo = {
+        "coordinate_space": "network",
+        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+    }
+    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
+    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
 def test_edges_raise_without_edge_connectivity():
     """``_edges`` raises when the topology declares no ``edge_node_connectivity``."""
     with pytest.raises(FileFormatNotSupportedError, match="no edge_node_connectivity"):

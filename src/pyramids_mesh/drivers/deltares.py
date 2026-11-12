@@ -268,7 +268,12 @@ class _DeltaresReader:
             ParsedMesh: The ``mesh1d`` network with its node and result variables.
 
         Raises:
-            FileFormatNotSupportedError: If the file carries no 1D ``mesh_topology``.
+            FileFormatNotSupportedError: If the file carries no 1D ``mesh_topology``, or
+                if it is openable but malformed -- an attribute naming a UGRID array
+                (a ``node_coordinates`` entry, ``edge_geometry``, ``node_count``, a
+                connectivity) that the file does not actually contain. GDAL raises
+                ``RuntimeError`` for such a dangling reference; it is translated here so a
+                file the driver cannot read is declined, never thrown as a raw GDAL error.
         """
         with gdal.ExceptionMgr(useExceptions=True):
             dataset = gdal.OpenEx(self.path, gdal.OF_MULTIDIM_RASTER | gdal.OF_READONLY)
@@ -281,6 +286,12 @@ class _DeltaresReader:
                 variables.update(self._result_variables(group, topo_name))
                 crs = self._crs(group)
                 source = _string_attr(group, "source") or "Deltares 1D network"
+            except FileFormatNotSupportedError:
+                raise
+            except RuntimeError as error:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} is not a readable Deltares 1D network: {error}"
+                ) from error
             finally:
                 dataset.Close()
         return ParsedMesh(
@@ -432,14 +443,21 @@ class _DeltaresReader:
         coordinate_space = _as_str(topo.get("coordinate_space"))
         if coordinate_space is None:
             return None
-        branch_name, offset_name = _branch_offset_names(group, names)
-        if branch_name is None or offset_name is None:
+        try:
+            branch_name, offset_name = _branch_offset_names(group, names)
+            if branch_name is None or offset_name is None:
+                return None
+            branch_array = group.OpenMDArray(branch_name)
+            branch = np.asarray(branch_array.ReadAsArray()).astype(np.int64, copy=False)
+            branch = branch - self._start_index(branch_array)
+            offset = np.asarray(
+                group.OpenMDArray(offset_name).ReadAsArray(), np.float64
+            )
+            geometry = _network_branch_geometry(group, coordinate_space)
+        except RuntimeError:
+            # A dangling reference (branch/offset/geometry array named but absent) makes
+            # the file unreconstructable; decline so build() reports it as unreadable.
             return None
-        branch_array = group.OpenMDArray(branch_name)
-        branch = np.asarray(branch_array.ReadAsArray()).astype(np.int64, copy=False)
-        branch = branch - self._start_index(branch_array)
-        offset = np.asarray(group.OpenMDArray(offset_name).ReadAsArray(), np.float64)
-        geometry = _network_branch_geometry(group, coordinate_space)
         if geometry is None:
             return None
         geom_x, geom_y, vertices_per_branch = geometry
