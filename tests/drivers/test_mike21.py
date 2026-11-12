@@ -487,6 +487,54 @@ def test_mike21_zero_node_count_header_is_refused(tmp_path):
         Mike21Driver().read(_write(tmp_path, "0 UTM-33\n1 3 21\n1 1 2 3\n"))
 
 
+def test_mike21_can_open_declines_foreign_integer_leading_file(tmp_path):
+    """A foreign ``.mesh`` whose first line is ``<int> <word>`` is declined, not claimed.
+
+    The legacy header is a weak signature on its own (one leading integer), so the sniff
+    also requires a node-record-shaped second line; a generic integer-leading file has
+    none and is left for another driver rather than taken into ``read`` to fail there.
+    """
+    driver = Mike21Driver()
+    lone = _write(tmp_path, "4\n", name="lone.mesh")
+    worded = _write(tmp_path, "100 vertices\nfoo bar\n", name="worded.mesh")
+    count_only = _write(tmp_path, "1234\nnot a node record\n", name="count.mesh")
+
+    assert driver.can_open(lone) is False
+    assert driver.can_open(worded) is False
+    assert driver.can_open(count_only) is False
+
+
+def test_mike21_can_open_declines_a_medit_mesh(tmp_path):
+    """A MEDIT ``.mesh`` (``MeshVersionFormatted`` signature) is not claimed by Mike21."""
+    medit = _write(
+        tmp_path,
+        "MeshVersionFormatted 2\nDimension\n3\nVertices\n4\n0 0 0 1\n",
+        name="medit.mesh",
+    )
+
+    assert Mike21Driver().can_open(medit) is False
+
+
+def test_mike21_can_open_declines_a_headerless_node_file(tmp_path):
+    """A ``.mesh`` opening with a node record (no header) is declined by the sniff."""
+    headerless = _write(
+        tmp_path, "1 10.0 20.0 0.0 1\n2 11.0 21.0 0.0 1\n", name="headerless.mesh"
+    )
+
+    assert Mike21Driver().can_open(headerless) is False
+
+
+def test_mike21_headerless_node_file_is_refused_at_the_header(tmp_path):
+    """A file that opens with a node record is refused as an unrecognised header.
+
+    The first line has node-record shape, not header shape, so the read declines at the
+    header line rather than mislabelling a failure several records further down.
+    """
+    text = "1 10.0 20.0 0.0 1\n2 11.0 21.0 0.0 1\n3 12.0 22.0 0.0 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
 class TestIsInt:
     """Tests for the ``_is_int`` header-field predicate."""
 
@@ -530,8 +578,8 @@ class TestClassifyHeader:
             (["100079", "1000", "798"], (798, 3)),
             (["399", "UTM-33"], (399, 1)),
             (["399", "32632"], (399, 1)),
-            (["4"], (4, 1)),
-            (["100079", "1000", "many", "LONG/LAT"], (100079, 1)),
+            (["4"], None),
+            (["1", "0.0", "0.0", "0.0", "1"], None),
             (["LONG", "LAT", "only"], None),
             ([], None),
             (["0", "UTM-33"], None),

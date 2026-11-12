@@ -185,27 +185,36 @@ class Mike21Driver(BaseDriver):
         """Report whether the first line parses as a Mike21 header.
 
         The header is either ``<eum_item> <eum_unit> <node_count> <projection...>`` or
-        the legacy ``<node_count> <projection...>``, so a readable first line that
-        classifies as one of the two is the cheapest signature the format offers (see
-        :func:`_classify_header`). A binary file decodes to replacement characters and
-        fails that test rather than raising.
+        the legacy ``<node_count> <projection...>``. The legacy form is a weak signature
+        on its own -- a single leading integer -- and ``.mesh`` is a suffix the sibling
+        MEDIT driver also claims, so the sniff requires both a classifiable header (see
+        :func:`_classify_header`) *and* a node-record-shaped second line: a real Mike21
+        frame opens ``header`` then ``id x y z boundary``. That keeps a foreign
+        integer-leading ``.mesh`` -- a generic ``<int> <word>`` line, a 3D model export --
+        from being claimed on the header shape alone. A binary file decodes to
+        replacement characters and fails rather than raising.
 
-        ``.mesh`` is a common suffix, so the sniff is what keeps a foreign ``.mesh``
-        file -- a 3D model export, say -- from being claimed. It is still only a header
-        shape: a file that passes it but breaks later is refused by ``read``, which is
-        why the two share :func:`_classify_header` and cannot disagree about what a
-        header looks like.
+        It is still only a shape check: a file that passes it but breaks later is refused
+        by ``read``, which shares :func:`_classify_header`, so the two cannot disagree
+        about what a header looks like.
 
         Args:
             path: The file to inspect.
 
         Returns:
-            bool: ``True`` when the first line has a Mike21 header's shape.
+            bool: ``True`` when the first two non-blank lines are a header and a node
+            record.
         """
         with open(path, "rb") as handle:
-            first = handle.readline(4096)
-        tokens = first.decode("utf-8-sig", errors="replace").split()
-        return _classify_header(tokens) is not None
+            head = handle.read(8192)
+        lines = [
+            line
+            for line in head.decode("utf-8-sig", errors="replace").splitlines()
+            if line.strip()
+        ]
+        if not lines or _classify_header(lines[0].split()) is None:
+            return False
+        return len(lines) >= 2 and _looks_like_node_record(lines[1].split())
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
         """Read a Mike21 ``.mesh`` file into a :class:`ParsedMesh`.
@@ -400,6 +409,34 @@ def _is_int(value: str) -> bool:
     return value.isdigit()
 
 
+def _is_float(value: str) -> bool:
+    """Report whether a field parses as a floating-point number."""
+    try:
+        float(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _looks_like_node_record(tokens: list[str]) -> bool:
+    """Report whether a line has the shape of a node record rather than a header.
+
+    A node record is ``id x y z boundary_code`` -- an integer id, three floating-point
+    coordinates and an integer boundary code. A header never takes that shape (its
+    projection is a name, a WKT string or a single code), so a first line that looks like
+    a node record means the file opened without a header, and a second line of that shape
+    is what tells ``_sniff`` a real Mike21 frame follows the header.
+    """
+    return (
+        len(tokens) >= _NODE_FIELDS
+        and _is_int(tokens[0])
+        and _is_float(tokens[1])
+        and _is_float(tokens[2])
+        and _is_float(tokens[3])
+        and _is_int(tokens[4])
+    )
+
+
 def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
     """Locate the node count and projection in either Mike21 header layout.
 
@@ -411,6 +448,11 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
     number of leading integer fields is what distinguishes them: three for the EUM form,
     one for the legacy form. Keeping the rule in one place is what lets ``_sniff`` and
     ``_read_header`` agree on what a header is.
+
+    The legacy form requires a projection token after the count -- a lone integer is not
+    a header -- and a first line with node-record shape (``id x y z boundary``) is
+    declined, so a file that opens without a header is refused at the header rather than
+    read with its first node record as one.
 
     Args:
         tokens: The whitespace-split fields of the first non-blank line.
@@ -438,6 +480,8 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
             >>> _classify_header(["MeshVersionFormatted", "2"]) is None
             True
     """
+    if _looks_like_node_record(tokens):
+        return None
     if (
         len(tokens) >= 3
         and _is_int(tokens[0])
@@ -445,7 +489,7 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
         and _is_int(tokens[2])
     ):
         node_count, projection_index = int(tokens[2]), 3
-    elif tokens and _is_int(tokens[0]):
+    elif len(tokens) >= 2 and _is_int(tokens[0]):
         node_count, projection_index = int(tokens[0]), 1
     else:
         return None
