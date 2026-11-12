@@ -166,6 +166,26 @@ def test_three_dimensional_volume_mesh_is_refused_with_explicit_message(
     assert f"holds {cell} cells (VTK code {code})" in message
 
 
+def test_mixed_surface_then_volume_still_refuses_on_the_volume_cell(tmp_path):
+    """A triangle followed by a tetrahedron is still refused, on the volume row.
+
+    ``_read_nelem`` streams the NELEM rows in order, so a valid surface element preceding
+    a volume cell must not mask the rejection: the refusal has to fire on the first volume
+    row (here the second element), not be swallowed by the accumulated face.
+    """
+    text = (
+        "NDIME= 3\n"
+        "NELEM= 2\n"
+        "5 0 1 2\n"
+        "10 0 1 2 3\n"
+        "NPOIN= 4\n"
+        "0 0 0\n1 0 0\n0 1 0\n0 0 1\n"
+        "NMARK= 0\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="holds tetrahedron cells"):
+        Su2Driver().read(_write(tmp_path, "mixed_vol.su2", text))
+
+
 def test_unknown_vtk_code_is_refused(tmp_path):
     """An element code outside the SU2 surface/volume set is refused, naming the code."""
     text = "NDIME= 2\nNELEM= 1\n7 0 1 2 0\nNPOIN= 3\n0 0 0\n1 0 1\n0 1 2\nNMARK= 0\n"
