@@ -30,8 +30,10 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
 
     Args:
         path: Path to the text file to read.
-        comment: Line-comment marker. A line whose first non-blank character is this
-            marker is skipped. Defaults to ``"#"``.
+        comment: Comment marker. A line whose first non-blank character is this marker
+            is skipped; on any other line an inline occurrence of the marker and
+            everything after it, to the end of the line, is dropped before the line is
+            split. Defaults to ``"#"``.
 
     Yields:
         tuple[str, list[str]]: The keyword and the remaining whitespace-separated
@@ -90,6 +92,15 @@ def iter_records(path: str, *, comment: str = "#") -> Iterator[tuple[str, list[s
             stripped = line.strip()
             if not stripped or stripped.startswith(comment):
                 continue
+            # Drop an inline comment: everything from the first comment marker to the
+            # end of the line. GiD writes `Begin Elements Element2D3N// GUI group ...`,
+            # gluing the marker to the element-type token; without this the comment
+            # rides along as part of a field.
+            marker = stripped.find(comment)
+            if marker != -1:
+                stripped = stripped[:marker].strip()
+                if not stripped:
+                    continue
             tokens = stripped.split()
             yield tokens[0], tokens[1:]
 

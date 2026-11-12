@@ -1,0 +1,20 @@
+Begin ModelPartData
+End ModelPartData
+
+Begin Properties 1
+End Properties
+
+Begin Nodes
+    1    0.0    0.0    0.0
+    2    1.0    0.0    0.0
+    3    1.0    1.0    0.0
+    4    0.0    1.0    0.0
+    5    0.0    0.0    1.0
+    6    1.0    0.0    1.0
+    7    1.0    1.0    1.0
+    8    0.0    1.0    1.0
+End Nodes
+
+Begin Elements SmallDisplacementElement3D8N
+    1    1    1    2    3    4    5    6    7    8
+End Elements

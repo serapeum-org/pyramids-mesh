@@ -1,18 +1,23 @@
 """Kratos Multiphysics ``.mdpa`` reader.
 
-An ``.mdpa`` is Kratos' flat, block-keyed ASCII model part: ``//`` comments and paired
-``Begin <Block> ... End <Block>`` sections. ``Begin Nodes`` holds ``<id> <x> <y> <z>``
-rows; ``Begin Elements <ElementType>`` holds ``<elem_id> <prop_id> <n1>..<nN>`` rows
-whose element type names the node count (``Element3D4N`` a four-node tetrahedron,
-``Element2D3N`` a three-node surface triangle); ``Begin Conditions``, ``Begin Properties``
-and ``Begin SubModelPart`` are read past, not into.
+An ``.mdpa`` is Kratos' flat, block-keyed ASCII model part: ``//`` comments (whole-line
+or inline -- GiD glues an inline ``// GUI group ...`` onto the element-type token) and
+paired ``Begin <Block> ... End <Block>`` sections. ``Begin Nodes`` holds
+``<id> <x> <y> <z>`` rows; ``Begin Elements <ElementType>`` holds
+``<elem_id> <prop_id> <n1>..<nN>`` rows. The element type usually names the node count
+(``Element3D4N`` a four-node tetrahedron, ``Element2D3N`` a three-node surface triangle);
+when it does not (``VMS3D``, ``MonolithicPFEM22D``) the count is taken from the width of
+the first row. ``Begin Conditions`` is read only when the file has no ``Begin Elements``
+with connectivity -- a condition-only mesh (IGA, some shape-optimisation cases) builds
+from its conditions; ``Begin Properties`` and ``Begin SubModelPart`` are always read past.
 
-Each element is mapped straight to a fill-padded face row -- following the Exodus
-precedent (``exodus.py``) -- rather than expanded into bounding polygons: boundary
-extraction is pyramids' job, not a driver's (ADR-0005). When the file carries 2D surface
-elements (``Element2D3N``/``Element2D4N``) those become the faces; otherwise the 3D
-volume elements are mapped verbatim, a tetrahedron's four node ids read as a four-node
-face. Node ids are 1-based and resolved through
+Each element (or, in the fallback, each condition) is mapped straight to a fill-padded
+face row -- following the Exodus precedent (``exodus.py``) -- rather than expanded into
+bounding polygons: boundary extraction is pyramids' job, not a driver's (ADR-0005). When
+the file carries 2D surface elements (``Element2D3N``/``Element2D4N``) those become the
+faces; otherwise the 3D volume elements are mapped verbatim, a tetrahedron's four node ids
+read as a four-node face. Point elements (one node per row -- DEM particles) are refused:
+a point cloud is not a mesh. Node ids are 1-based and resolved through
 :func:`~pyramids_mesh._text.native_id_map`. The coordinates carry no datum, so ``crs`` is
 ``None``.
 """
@@ -37,11 +42,16 @@ _BEGIN = "BEGIN"
 _END = "END"
 _NODES = "NODES"
 _ELEMENTS = "ELEMENTS"
+_CONDITIONS = "CONDITIONS"
 
-# An element type name ends in the node count followed by `N`: Element3D4N is four nodes,
-# Element2D3N three. The dimension tag (`2D`/`3D`) decides which elements become faces.
+# An element type name usually ends in the node count followed by `N`: Element3D4N is
+# four nodes, Element2D3N three. Names that do not (VMS3D, MonolithicPFEM22D) take the
+# count from the first row instead. The dimension tag (`2D`/`3D`) decides which elements
+# become faces.
 _NODE_COUNT_RE = re.compile(r"(\d+)N$")
 _TWO_DIMENSIONAL = "2D"
+# A mesh element needs at least an edge; one node per row is a point cloud, not a mesh.
+_MIN_NODES_PER_ELEMENT = 2
 
 
 class KratosDriver(BaseDriver):
@@ -58,11 +68,18 @@ class KratosDriver(BaseDriver):
           the 3D elements are mapped verbatim -- a ``Element3D4N`` tetrahedron's four node
           ids read as a four-node face (the Exodus precedent), not expanded into its
           bounding triangles. Winding is judged in the ``xy`` plane like any other face.
+        - **The element type usually names the node count, else the row width gives it.**
+          ``Element2D3N`` is three nodes; a name without a trailing ``<count>N``
+          (``VMS3D``, ``MonolithicPFEM22D``) takes its node count from the first row. One
+          node per element (DEM ``SphericParticle3D``) is a point cloud, not a mesh, and
+          is refused.
         - **Node ids are resolved through an id map.** Kratos numbers from 1 and may gap
           or reorder ids, so connectivity is resolved by position; the ``1`` base is
           recorded for a writer.
-        - **Only Nodes and Elements are read.** ``Conditions``, ``Properties``,
-          ``ModelPartData`` and ``SubModelPart`` blocks are read past.
+        - **Elements build the mesh; Conditions are a fallback.** A file with no
+          ``Begin Elements`` connectivity builds from its ``Begin Conditions`` instead
+          (IGA / shape-optimisation surface meshes). ``Properties``, ``ModelPartData``
+          and ``SubModelPart`` blocks are read past.
         - The format carries no datum, so ``crs`` is ``None``.
 
     Example:
@@ -82,25 +99,26 @@ class KratosDriver(BaseDriver):
     capabilities = frozenset({"read_mesh"})
 
     def _sniff(self, path: str) -> bool:
-        """Report whether the file head carries ``Begin Nodes`` and ``Begin Elements``.
+        """Report whether the file carries ``Begin Nodes`` and Elements or Conditions.
 
         The file is decoded leniently -- so a binary or empty file answers ``False``
         rather than raising -- and scanned (short-circuiting once both are seen) for a
-        ``Begin Nodes`` and a ``Begin Elements`` block opener. Requiring both keeps a
-        FLAC3D ``.f3grid`` or an unrelated text file from qualifying; the whole file is
-        read because the ``Begin Nodes`` block precedes ``Begin Elements``, so a large
-        node block must not push the element opener past a fixed window.
+        ``Begin Nodes`` block and a ``Begin Elements`` *or* ``Begin Conditions`` block.
+        Requiring a nodes block plus some connectivity block keeps a FLAC3D ``.f3grid``
+        or an unrelated text file from qualifying, while still accepting a condition-only
+        mesh (IGA); the whole file is read because the ``Begin Nodes`` block precedes the
+        connectivity, so a large node block must not push the opener past a fixed window.
 
         Args:
             path: The file to inspect.
 
         Returns:
-            bool: ``True`` when both block openers are found.
+            bool: ``True`` when a nodes block and a connectivity block are both found.
         """
         with open(path, "rb") as handle:
             prefix = handle.read()
         has_nodes = False
-        has_elements = False
+        has_connectivity = False
         for line in prefix.decode("utf-8-sig", errors="replace").splitlines():
             tokens = line.strip().split()
             if len(tokens) < 2 or tokens[0].upper() != _BEGIN:
@@ -108,9 +126,9 @@ class KratosDriver(BaseDriver):
             block = tokens[1].upper()
             if block == _NODES:
                 has_nodes = True
-            elif block == _ELEMENTS:
-                has_elements = True
-            if has_nodes and has_elements:
+            elif block in (_ELEMENTS, _CONDITIONS):
+                has_connectivity = True
+            if has_nodes and has_connectivity:
                 return True
         return False
 
@@ -123,12 +141,14 @@ class KratosDriver(BaseDriver):
 
         Returns:
             ParsedMesh: Nodes, the fill-padded face connectivity built from the preferred
-                element set, and the element type recorded as metadata.
+                element set (or the conditions, when no elements carry connectivity), and
+                the element type recorded as metadata.
 
         Raises:
-            FileFormatNotSupportedError: If the file declares no nodes or no elements, an
-                element type name carries no node count, an element row is short, or a
-                numeric field is not a number.
+            FileFormatNotSupportedError: If the file declares no nodes, or no elements or
+                conditions with connectivity; if a block declares fewer than two nodes per
+                element (point elements); if an element row is short; or if a numeric field
+                is not a number.
         """
         scan = _Scan(path)
         scan.run()
@@ -136,10 +156,14 @@ class KratosDriver(BaseDriver):
 
 
 class _ElementGroup:
-    """One ``Begin Elements <type>`` block's rows, with the type's node count and dim."""
+    """One ``Begin Elements``/``Begin Conditions <type>`` block's rows.
+
+    ``node_count`` is ``None`` when the type name carries no ``<count>N`` suffix; it is
+    then filled from the width of the first row the block holds.
+    """
 
     def __init__(
-        self, element_type: str, node_count: int, two_dimensional: bool
+        self, element_type: str, node_count: int | None, two_dimensional: bool
     ) -> None:
         self.element_type = element_type
         self.node_count = node_count
@@ -157,7 +181,9 @@ class _Scan:
         self.node_y: list[float] = []
         self.node_z: list[float] = []
         self.groups: list[_ElementGroup] = []
-        # The block currently open: `_NODES`, `_ELEMENTS`, or None/other (read past).
+        self.cond_groups: list[_ElementGroup] = []
+        # The block currently open: `_NODES`, `_ELEMENTS`, `_CONDITIONS`, or None/other
+        # (read past).
         self._block: str | None = None
         self._group: _ElementGroup | None = None
 
@@ -165,8 +191,7 @@ class _Scan:
         """Stream the file, routing each row by the block it sits in.
 
         Raises:
-            FileFormatNotSupportedError: On an unknown element type width, a short row,
-                or a non-numeric field.
+            FileFormatNotSupportedError: On a short row or a non-numeric field.
         """
         for keyword, fields in iter_records(self.path, comment=_COMMENT):
             upper = keyword.upper()
@@ -177,46 +202,43 @@ class _Scan:
                 self._group = None
             elif self._block == _NODES:
                 self._add_node(keyword, fields)
-            elif self._block == _ELEMENTS and self._group is not None:
+            elif self._block in (_ELEMENTS, _CONDITIONS) and self._group is not None:
                 self._add_element(keyword, fields)
 
     def _open_block(self, fields: list[str]) -> None:
-        """Begin a block, tracking only ``Nodes`` and ``Elements``; others are read past.
+        """Begin a block, tracking ``Nodes``, ``Elements`` and ``Conditions``.
 
-        Raises:
-            FileFormatNotSupportedError: If an ``Elements`` block's type name carries no
-                trailing node count.
+        ``Elements`` build the mesh; ``Conditions`` are collected separately and used only
+        as a fallback (see :meth:`build`). ``Properties``/``SubModelPart`` are read past.
         """
         block = fields[0].upper() if fields else ""
         if block == _NODES:
             self._block = _NODES
             self._group = None
-        elif block == _ELEMENTS:
-            self._block = _ELEMENTS
+        elif block in (_ELEMENTS, _CONDITIONS):
+            self._block = block
             element_type = fields[1] if len(fields) > 1 else ""
             self._group = self._start_group(element_type)
-            self.groups.append(self._group)
+            target = self.groups if block == _ELEMENTS else self.cond_groups
+            target.append(self._group)
         else:
-            # A Conditions/Properties/SubModelPart block (possibly nested): read past it
-            # until its End. A nested opener resets the tracker the same way.
+            # A Properties/SubModelPart block (possibly nested): read past it until its
+            # End. A nested opener resets the tracker the same way.
             self._block = None
             self._group = None
 
     def _start_group(self, element_type: str) -> _ElementGroup:
-        """Build the group for an ``Elements`` block from its type name.
+        """Build the group for an ``Elements``/``Conditions`` block from its type name.
 
-        Raises:
-            FileFormatNotSupportedError: If the type name has no trailing ``<count>N``.
+        The node count is read from the name's trailing ``<count>N`` when present
+        (``Element2D3N`` -> 3); a name without one (``VMS3D``) leaves it ``None``, to be
+        filled from the first row's width in :meth:`_add_element`.
         """
         match = _NODE_COUNT_RE.search(element_type)
-        if match is None:
-            raise FileFormatNotSupportedError(
-                f"{self.path!r} opens an Elements block of type {element_type!r}, whose "
-                f"name carries no node count; expected a name ending in <count>N"
-            )
+        node_count = int(match.group(1)) if match is not None else None
         return _ElementGroup(
             element_type,
-            int(match.group(1)),
+            node_count,
             _TWO_DIMENSIONAL in element_type.upper(),
         )
 
@@ -239,10 +261,16 @@ class _Scan:
         self.node_z.append(_as_float(self.path, _NODES, tokens[3]))
 
     def _add_element(self, keyword: str, fields: list[str]) -> None:
-        """Collect one element row, dropping the leading element and property ids.
+        """Collect one element (or condition) row, dropping the leading two ids.
 
         A row is ``<elem_id> <prop_id> <n1>..<nN>``; the two leading ids are dropped and
-        the next ``node_count`` tokens are the connectivity.
+        the next ``node_count`` tokens are the connectivity. When the block's type name
+        carried no ``<count>N`` the count is unknown until here -- it is taken from this
+        row's width and held for the rest of the block.
+
+        Point blocks (one node per row) are recorded, not rejected here: a file may hold
+        1-node point-load conditions alongside the real elements that build the mesh, so
+        whether a point block matters is decided at selection time (see :meth:`build`).
 
         Raises:
             FileFormatNotSupportedError: If the row is short of its node ids, or a node id
@@ -251,13 +279,18 @@ class _Scan:
         assert self._group is not None  # guarded by the caller
         tokens = [keyword, *fields]
         count = self._group.node_count
+        if count is None:
+            # No <count>N in the type name (VMS3D, MonolithicPFEM22D): the row width is
+            # the only source. `<id> <prop> <n1>..<nN>` -> count is the rest.
+            count = len(tokens) - 2
+            self._group.node_count = count
         if len(tokens) < 2 + count:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has a short {self._group.element_type} row: expected an "
                 f"element id, a property id and {count} node ids, found {len(tokens)}"
             )
         self._group.vertices.append(
-            [_as_int(self.path, _ELEMENTS, tok) for tok in tokens[2 : 2 + count]]
+            [_as_int(self.path, self._block, tok) for tok in tokens[2 : 2 + count]]
         )
 
     def build(self) -> ParsedMesh:
@@ -268,7 +301,8 @@ class _Scan:
                 recorded for a writer, and the element type recorded as metadata.
 
         Raises:
-            FileFormatNotSupportedError: If the file declares no nodes or no elements.
+            FileFormatNotSupportedError: If the file declares no nodes, or no elements or
+                conditions with connectivity.
             ValueError: If an element references a node id the file never defined, or two
                 nodes share an id.
         """
@@ -276,11 +310,21 @@ class _Scan:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} declares no Nodes, so it is not a readable Kratos mesh"
             )
-        chosen = self._chosen_groups()
+        # Elements build the mesh; fall back to Conditions only when no element block
+        # carries connectivity (a condition-only mesh: IGA, some shape optimisation).
+        chosen = self._chosen_groups(self.groups)
+        from_conditions = not chosen
+        if from_conditions:
+            chosen = self._chosen_groups(self.cond_groups)
         if not chosen:
+            if self._has_only_point_groups():
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} declares only point elements (one node per element -- "
+                    f"DEM particles or point loads); a point cloud is not a mesh"
+                )
             raise FileFormatNotSupportedError(
-                f"{self.path!r} declares no Elements, so there is no connectivity to "
-                f"build a mesh from"
+                f"{self.path!r} declares no Elements or Conditions with connectivity, so "
+                f"there is nothing to build a mesh from"
             )
         node_map = native_id_map(self.node_ids)
         faces = self._resolve_faces(chosen, node_map)
@@ -297,20 +341,46 @@ class _Scan:
             original_start_index=1,
             node_z=node_z if np.any(node_z != 0.0) else None,
             crs=None,
-            global_attributes={"source": "Kratos", "element_types": types},
+            global_attributes={
+                "source": "Kratos",
+                "element_types": types,
+                "geometry_from": "Conditions" if from_conditions else "Elements",
+            },
             topology_dimension=2,
             mesh_name="mesh2d",
         )
 
-    def _chosen_groups(self) -> list[_ElementGroup]:
-        """Return the element groups that build the mesh: 2D surface ones, else 3D.
+    def _chosen_groups(self, groups: list[_ElementGroup]) -> list[_ElementGroup]:
+        """Return the groups that build the mesh: 2D surface ones, else the rest.
 
-        A file carrying any 2D surface element uses only those for the faces; a purely
-        volumetric file maps its 3D elements verbatim.
+        Only groups with at least :data:`_MIN_NODES_PER_ELEMENT` nodes per element are
+        mesh-building candidates; 1-node point blocks (DEM particles, point-load
+        conditions) are excluded so they neither build nor shadow a real mesh. Among the
+        candidates, any 2D surface groups win -- a file carrying any 2D surface element
+        uses only those for the faces; a purely volumetric file maps its 3D elements
+        verbatim. Used for the element groups and, as a fallback, the condition groups.
         """
-        with_rows = [group for group in self.groups if group.vertices]
+        with_rows = [
+            group
+            for group in groups
+            if group.vertices and (group.node_count or 0) >= _MIN_NODES_PER_ELEMENT
+        ]
         two_dimensional = [group for group in with_rows if group.two_dimensional]
         return two_dimensional or with_rows
+
+    def _has_only_point_groups(self) -> bool:
+        """Whether every block that held rows was a 1-node point block.
+
+        Distinguishes a DEM particle / point-load file (a point cloud) from one with no
+        connectivity at all, so :meth:`build` can name the real reason it is not a mesh.
+        """
+        groups_with_rows = [
+            group for group in (*self.groups, *self.cond_groups) if group.vertices
+        ]
+        return bool(groups_with_rows) and all(
+            (group.node_count or 0) < _MIN_NODES_PER_ELEMENT
+            for group in groups_with_rows
+        )
 
     def _resolve_faces(
         self, groups: list[_ElementGroup], node_map: dict[int, int]
