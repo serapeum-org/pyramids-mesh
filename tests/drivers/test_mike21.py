@@ -564,6 +564,25 @@ def test_mike21_can_open_declines_a_headerless_node_file(tmp_path):
     assert Mike21Driver().can_open(headerless) is False
 
 
+def test_mike21_can_open_a_header_with_a_very_long_projection(tmp_path):
+    """A header whose projection is larger than one read buffer is still auto-detected.
+
+    The sniff must read far enough to reach the node record after a long (WKT) projection
+    so ``can_open`` agrees with ``read``; a fixed small window would miss the second line
+    and decline a file ``read`` parses.
+    """
+    long_proj = "PROJCS[" + "A" * 8300 + "]"
+    text = (
+        f"4 {long_proj}\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+    path = _write(tmp_path, text)
+
+    assert Mike21Driver().can_open(path) is True
+    assert Mike21Driver().read(path).mesh.n_node == 4
+
+
 def test_mike21_headerless_node_file_is_refused_at_the_header(tmp_path):
     """A file that opens with a node record is refused as an unrecognised header.
 

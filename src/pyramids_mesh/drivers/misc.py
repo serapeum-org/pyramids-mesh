@@ -194,6 +194,11 @@ class Mike21Driver(BaseDriver):
         from being claimed on the header shape alone. A binary file decodes to
         replacement characters and fails rather than raising.
 
+        It reads the first two non-blank lines rather than a fixed byte window, so a long
+        (WKT) projection on the header line cannot push the node record out of reach and
+        make the sniff disagree with ``read``; each line is still capped so a file with no
+        newlines cannot force an unbounded read.
+
         It is still only a shape check: a file that passes it but breaks later is refused
         by ``read``, which shares :func:`_classify_header`, so the two cannot disagree
         about what a header looks like.
@@ -205,16 +210,18 @@ class Mike21Driver(BaseDriver):
             bool: ``True`` when the first two non-blank lines are a header and a node
             record.
         """
+        lines: list[str] = []
         with open(path, "rb") as handle:
-            head = handle.read(8192)
-        lines = [
-            line
-            for line in head.decode("utf-8-sig", errors="replace").splitlines()
-            if line.strip()
-        ]
-        if not lines or _classify_header(lines[0].split()) is None:
+            while len(lines) < 2:
+                raw = handle.readline(1 << 20)
+                if not raw:
+                    break
+                line = raw.decode("utf-8-sig", errors="replace").strip()
+                if line:
+                    lines.append(line)
+        if len(lines) < 2 or _classify_header(lines[0].split()) is None:
             return False
-        return len(lines) >= 2 and _looks_like_node_record(lines[1].split())
+        return _looks_like_node_record(lines[1].split())
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
         """Read a Mike21 ``.mesh`` file into a :class:`ParsedMesh`.
