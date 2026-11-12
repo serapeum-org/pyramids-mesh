@@ -6,10 +6,10 @@ driver-table entry in the reference landscape, so their support there is unstate
 verify against a real file before implementing. Tasks D4 and D12; see
 ``planning/design.md`` section 20.1.
 
-The Mike21 structure here was read from the format specification. Two details could
-not be checked against a vendor file -- the header's projection field and the node-record
-column order -- so they are read as the format specifies and called out in the driver's
-documented limitations rather than presented as certain.
+The Mike21 structure here was first read from the format specification and is now
+validated against DHI's published sample meshes in both header layouts, which read back
+at their true geographic coordinates -- confirming the header's projection field and the
+node-record column order that the specification alone had left uncertain.
 """
 
 from __future__ import annotations
@@ -76,11 +76,13 @@ class Mike21Driver(BaseDriver):
     model is planar and carries no per-node elevation coordinate (design section 6). The
     file's z column is read as written, never fabricated.
 
+    Header layouts:
+        Both are read. The current form is
+        ``<eum_item> <eum_unit> <node_count> <projection>``; the legacy form, still
+        shipped in DHI's own sample data, is ``<node_count> <projection>``
+        (see :func:`_classify_header`). The writer emits the current form.
+
     Documented limitations:
-        - **The projection field and the node-record column order are read as the
-          format specifies, but could not be checked against a vendor file.** If a real Mike21
-          mesh orders its node columns differently, the coordinates would be wrong in a
-          plausible way; this is the part of the driver a vendor sample should confirm.
         - **The projection is mapped to a CRS only when it is real.** A WKT string or an
           EPSG code that the vendored PROJ validates is carried; a DHI-internal name
           such as ``UTM-32`` or ``LONG/LAT`` carries no datum and leaves ``crs`` as
@@ -161,31 +163,28 @@ class Mike21Driver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the first line parses as a Mike21 header.
 
-        The header is ``<item> <unit> <node_count> <projection...>``, so a readable
-        first line whose third field is a positive integer is the cheapest signature
-        the format offers. A binary file decodes to replacement characters and fails
-        that test rather than raising.
+        The header is either ``<eum_item> <eum_unit> <node_count> <projection...>`` or
+        the legacy ``<node_count> <projection...>``, so a readable first line that
+        classifies as one of the two is the cheapest signature the format offers (see
+        :func:`_classify_header`). A binary file decodes to replacement characters and
+        fails that test rather than raising.
 
         ``.mesh`` is a common suffix, so the sniff is what keeps a foreign ``.mesh``
         file -- a 3D model export, say -- from being claimed. It is still only a header
         shape: a file that passes it but breaks later is refused by ``read``, which is
-        why the two must not disagree about what a header looks like.
+        why the two share :func:`_classify_header` and cannot disagree about what a
+        header looks like.
 
         Args:
             path: The file to inspect.
 
         Returns:
-            bool: ``True`` when the first line has the header's shape.
+            bool: ``True`` when the first line has a Mike21 header's shape.
         """
         with open(path, "rb") as handle:
             first = handle.readline(4096)
         tokens = first.decode("utf-8-sig", errors="replace").split()
-        if len(tokens) < _ELEMENT_HEADER_FIELDS + 1:
-            return False
-        try:
-            return int(tokens[2]) > 0
-        except ValueError:
-            return False
+        return _classify_header(tokens) is not None
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
         """Read a Mike21 ``.mesh`` file into a :class:`ParsedMesh`.
@@ -369,6 +368,49 @@ def _projection_to_crs(projection: str) -> str | int | None:
     return None
 
 
+def _is_int(value: str) -> bool:
+    """Report whether a header field parses as an integer."""
+    try:
+        int(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
+    """Locate the node count and projection in either Mike21 header layout.
+
+    Mike21 ``.mesh`` writes its header in one of two layouts. The current form is
+    ``<eum_item> <eum_unit> <node_count> <projection>`` -- three leading integers, then
+    the projection. The legacy form, still emitted by older tools and shipped in DHI's
+    own sample data (``Oresund.mesh``, ``odense_rough.mesh``), is
+    ``<node_count> <projection>`` -- a single leading integer, then the projection. The
+    number of leading integer fields is what distinguishes them: three for the EUM form,
+    one for the legacy form. Keeping the rule in one place is what lets ``_sniff`` and
+    ``_read_header`` agree on what a header is.
+
+    Args:
+        tokens: The whitespace-split fields of the first non-blank line.
+
+    Returns:
+        tuple[int, int] | None: ``(node_count, projection_index)`` -- the positive node
+        count and the index of the first projection field -- or ``None`` when the line
+        is not a Mike21 header.
+    """
+    if (
+        len(tokens) >= 3
+        and _is_int(tokens[0])
+        and _is_int(tokens[1])
+        and _is_int(tokens[2])
+    ):
+        node_count, projection_index = int(tokens[2]), 3
+    elif tokens and _is_int(tokens[0]):
+        node_count, projection_index = int(tokens[0]), 1
+    else:
+        return None
+    return (node_count, projection_index) if node_count > 0 else None
+
+
 class _Mike21Scan:
     """One Mike21 file's records, read in the fixed order the format lays them out."""
 
@@ -446,27 +488,34 @@ class _Mike21Scan:
         )
 
     def _read_header(self) -> tuple[int, str | int | None]:
-        """Read ``<item> <unit> <node_count> <projection...>``.
+        """Read the header in either layout: EUM 4-field or legacy 2-field.
+
+        The current form is ``<eum_item> <eum_unit> <node_count> <projection...>`` and
+        the legacy form is ``<node_count> <projection...>``; :func:`_classify_header`
+        tells them apart and locates the node count and the projection field.
 
         Returns:
             tuple[int, str | int | None]: The node count and the mapped CRS.
+
+        Raises:
+            FileFormatNotSupportedError: If the first line is neither header layout.
         """
         header = self._next("header")
-        if len(header) < _ELEMENT_HEADER_FIELDS + 1:
+        classified = _classify_header(header)
+        if classified is None:
             raise FileFormatNotSupportedError(
-                f"{self.path!r} has a short header: expected at least "
-                f"{_ELEMENT_HEADER_FIELDS + 1} fields, found {len(header)}"
+                f"{self.path!r} has an unrecognised header: a Mike21 mesh starts with "
+                f"either '<eum_item> <eum_unit> <node_count> <projection>' or the "
+                f"legacy '<node_count> <projection>', found {header!r}"
             )
-        node_count = _as_int(header[2], "header", self.path)
-        # The projection is everything after the third field, taken from the raw header
+        node_count, projection_index = classified
+        # The projection is everything after the node count, taken from the raw header
         # line so a WKT string keeps its internal spacing rather than being re-joined on
         # single spaces. The header is always the first non-blank line, so raw_lines[0].
         raw_header = self.raw_lines[0]
-        projection = raw_header.split(maxsplit=_ELEMENT_HEADER_FIELDS)
+        projection = raw_header.split(maxsplit=projection_index)
         projection_text = (
-            projection[_ELEMENT_HEADER_FIELDS]
-            if len(projection) > _ELEMENT_HEADER_FIELDS
-            else ""
+            projection[projection_index] if len(projection) > projection_index else ""
         )
         return node_count, _projection_to_crs(projection_text.strip())
 

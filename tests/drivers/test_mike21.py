@@ -1,10 +1,11 @@
 """Tests for the DHI Mike21 ``.mesh`` reader (D4).
 
 Mike21 is a frame-only text format: a header, node records, an element header, element
-records. The tests cover the index base, the projection-to-CRS mapping (a documented
-trap, since a DHI name is not a WKT), and the record-shape errors. Two format details --
-the projection field and the node-column order -- could not be checked against a vendor
-file, so the tests pin the behaviour this driver actually implements.
+records. The tests cover both header layouts (the current EUM 4-field and the legacy
+2-field, issue #92), the index base, the projection-to-CRS mapping (a documented trap,
+since a DHI name is not a WKT), and the record-shape errors. The legacy-header and
+column-order behaviour is anchored on DHI's own vendor samples under
+``tests/data/mike21/``.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -27,6 +28,20 @@ _UNIT_SQUARE = """100079 1000 4 LONG/LAT
 1 1 2 3
 2 1 3 4
 """
+
+# The same unit square under the legacy 2-field header "<n_nodes> <projection>" (issue
+# #92). ``UTM-33`` is a DHI-internal name, so the read leaves ``crs`` None.
+_UNIT_SQUARE_LEGACY = """4 UTM-33
+1 0.0 0.0 0.0 1
+2 1.0 0.0 0.0 1
+3 1.0 1.0 0.0 1
+4 0.0 1.0 0.0 1
+2 3 21
+1 1 2 3
+2 1 3 4
+"""
+
+_MIKE21_DATA = Path(__file__).parent.parent / "data" / "mike21"
 
 
 def _write(tmp_path, text, name="domain.mesh"):
@@ -265,10 +280,14 @@ def test_mike21_empty_projection_maps_to_none():
     assert misc._projection_to_crs("") is None
 
 
-def test_mike21_short_header_is_refused(tmp_path):
-    """A header line with fewer than four fields is refused."""
-    with pytest.raises(FileFormatNotSupportedError, match="short header"):
-        Mike21Driver().read(_write(tmp_path, "100079 1000\n1 0 0 0 1\n"))
+def test_mike21_unrecognised_header_is_refused(tmp_path):
+    """A first line with no integer node count in either layout is refused.
+
+    Neither the EUM 4-field nor the legacy 2-field layout applies when the line does not
+    start with an integer, so it is rejected as a header rather than read on.
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, "LONG LAT only\n1 0 0 0 1\n"))
 
 
 def test_mike21_short_element_header_is_refused(tmp_path):
@@ -308,13 +327,18 @@ def test_mike21_short_element_record_is_refused(tmp_path):
 
 
 def test_mike21_non_integer_node_count_is_refused(tmp_path):
-    """A non-integer node count in the header is refused by the integer parser."""
-    text = """100079 1000 many LONG/LAT
+    """A header whose node-count field is not an integer is refused as unrecognised.
+
+    With a non-integer in the EUM count position, the line no longer classifies as the
+    EUM layout, and its first field is not an integer either, so it is not a legacy
+    header -- it is rejected rather than read with a wrong count.
+    """
+    text = """abc 1000 4 LONG/LAT
 1 0.0 0.0 0.0 1
 1 3 21
 1 1 2 3
 """
-    with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
         Mike21Driver().read(_write(tmp_path, text))
 
 
@@ -357,6 +381,92 @@ def test_mike21_blank_lines_between_records_are_skipped(tmp_path):
 
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
+
+
+def test_mike21_reads_legacy_two_field_header(tmp_path):
+    """The legacy ``<n_nodes> <projection>`` header reads like the EUM one (issue #92).
+
+    The real DHI samples -- ``Oresund.mesh``, ``odense_rough.mesh`` -- use this older
+    header, in which the node count is the first field, not the third.
+    """
+    dataset = Mike21Driver().read(_write(tmp_path, _UNIT_SQUARE_LEGACY))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.tolist() == [[0, 1, 2], [0, 2, 3]]
+
+
+def test_mike21_can_open_true_on_legacy_header(tmp_path):
+    """Auto-detection claims a legacy 2-field file, not only an EUM 4-field one."""
+    assert Mike21Driver().can_open(_write(tmp_path, _UNIT_SQUARE_LEGACY)) is True
+
+
+def test_mike21_legacy_header_epsg_projection_is_carried(tmp_path):
+    """The projection after a legacy header is mapped just like after an EUM header.
+
+    The projection field sits at index 1 in the legacy layout rather than index 3, so a
+    real EPSG code there must still be found and carried.
+    """
+    text = _UNIT_SQUARE_LEGACY.replace("4 UTM-33", "4 32632")
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.crs == 32632
+
+
+def test_mike21_legacy_header_internal_name_leaves_crs_none(tmp_path):
+    """A DHI-internal projection name after a legacy header leaves ``crs`` None."""
+    dataset = Mike21Driver().read(_write(tmp_path, _UNIT_SQUARE_LEGACY))
+
+    assert dataset.mesh.crs is None
+
+
+def test_mike21_legacy_header_reads_mixed_quad_and_triangle(tmp_path):
+    """A legacy-header mesh mixing a quad and a triangle pads the triangle to fill.
+
+    This is the legacy header combined with the quad-padding path: the triangle's fourth
+    column is the ``0`` pad, which becomes ``-1`` fill.
+    """
+    text = (
+        "5 UTM-33\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n"
+        "4 0.0 1.0 0.0 1\n5 2.0 0.0 0.0 1\n"
+        "2 4 25\n"
+        "1 1 2 3 4\n"
+        "2 2 5 3 0\n"
+    )
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+    rows = dataset.mesh.face_node_connectivity.data.tolist()
+
+    assert (dataset.mesh.n_node, dataset.mesh.n_face) == (5, 2)
+    assert rows[0] == [0, 1, 2, 3]
+    assert rows[1][3] == -1
+
+
+def test_mike21_legacy_header_with_crlf_line_endings_reads(tmp_path):
+    """A legacy file with CRLF line endings reads: the ``\\r`` is stripped, not parsed."""
+    path = tmp_path / "crlf.mesh"
+    path.write_bytes(_UNIT_SQUARE_LEGACY.replace("\n", "\r\n").encode("utf-8"))
+    dataset = Mike21Driver().read(str(path))
+
+    assert (dataset.mesh.n_node, dataset.mesh.n_face) == (4, 2)
+
+
+def test_mike21_reads_committed_legacy_vendor_file():
+    """The committed DHI ``odense_rough`` sample (legacy header, triangles) reads."""
+    path = _MIKE21_DATA / "odense_rough_legacy_header.mesh"
+    dataset = Mike21Driver().read(str(path))
+
+    assert dataset.mesh.n_node == 399
+    assert dataset.mesh.n_face == 654
+
+
+def test_mike21_reads_committed_legacy_quad_vendor_file():
+    """The committed DHI ``odense_rough_quads`` sample (legacy header, mixed) reads."""
+    path = _MIKE21_DATA / "odense_rough_quads_legacy_header.mesh"
+    dataset = Mike21Driver().read(str(path))
+
+    assert dataset.mesh.n_node == 535
+    assert dataset.mesh.n_face == 724
 
 
 class TestMike21Writer:
