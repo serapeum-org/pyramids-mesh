@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
+from pyramids_mesh._validate import _area_tolerance
 from pyramids_mesh.drivers import interchange
 from pyramids_mesh.drivers.interchange import (
     PlyDriver,
@@ -247,6 +248,69 @@ end_header
         assert generated.read_text(encoding="utf-8") == committed.read_text(
             encoding="utf-8"
         )
+
+    # -- real Stanford scans (committed fixtures; see tests/data/ply/SOURCE.txt) --
+
+    _REAL = Path(__file__).parent.parent / "data" / "ply"
+
+    @staticmethod
+    def _read_quiet(path):
+        """Read a mesh, silencing the winding-normalisation warnings."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return PlyDriver().read(str(path))
+
+    def test_ply_reads_real_stanford_bunny(self):
+        """A real Stanford Bunny scan (res4, ASCII) reads to its full topology.
+
+        453 vertices and 948 triangular faces, with the scan's extra per-vertex
+        ``confidence`` and ``intensity`` properties surfaced as node variables rather
+        than dropped.
+        """
+        dataset = self._read_quiet(self._REAL / "bunny_res4.ply")
+
+        assert dataset.mesh.n_node == 453
+        assert dataset.mesh.n_face == 948
+        assert dataset.get("node_z").data.shape == (453,)
+        for name in ("confidence", "intensity"):
+            variable = dataset.get(name)
+            assert variable.location == "node"
+            assert variable.data.shape == (453,)
+
+    def test_ply_real_bunny_faces_are_wound_counter_clockwise(self):
+        """Every real face of the scan is counter-clockwise after normalisation.
+
+        The scan's faces are not uniformly wound on disk, so this drives the vectorised
+        ``fix_winding`` through the reader on a real, mixed-winding mesh: a correct
+        normalisation leaves no face with a negative signed area beyond its own
+        degeneracy tolerance.
+        """
+        dataset = self._read_quiet(self._REAL / "bunny_res4.ply")
+        faces = dataset.mesh.face_node_connectivity.data
+        node_x = np.asarray(dataset.mesh.node_x, dtype=np.float64)
+        node_y = np.asarray(dataset.mesh.node_y, dtype=np.float64)
+
+        for row in faces:
+            vertices = row[row != -1]
+            xs, ys = node_x[vertices], node_y[vertices]
+            local_x, local_y = xs - xs[0], ys - ys[0]
+            area2 = float(
+                np.dot(local_x, np.roll(local_y, -1))
+                - np.dot(local_y, np.roll(local_x, -1))
+            )
+            assert area2 >= -_area_tolerance(xs, ys)
+
+    def test_ply_real_armadillo_face_property_layout_is_refused(self):
+        """Refuse the real Armadillo header: a per-face scalar before the index list.
+
+        The committed ``face_property_before_list.ply`` reproduces that exact element
+        layout; a per-face scalar would mis-align the face rows, so the reader refuses
+        it.
+        """
+        with pytest.raises(FileFormatNotSupportedError, match="per-face property"):
+            PlyDriver().read(str(self._REAL / "face_property_before_list.ply"))
 
 
 class TestXmsTin:

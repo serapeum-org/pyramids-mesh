@@ -1,0 +1,24 @@
+PLY driver test fixtures.
+
+bunny_res4.ply
+  A real Stanford PLY: the Stanford Bunny reconstruction at its coarsest zipper
+  resolution (res4) -- 453 vertices, 948 triangular faces, ASCII format. Each vertex
+  carries extra 'confidence' and 'intensity' properties beyond x/y/z, which the driver
+  must surface as node-located variables rather than drop. Small enough to commit
+  (34 KB, well under the 5 MB pre-commit large-file cap) while being a genuine scanner
+  mesh with real winding and coordinates.
+    Source:  The Stanford 3D Scanning Repository, Stanford Computer Graphics Laboratory
+             http://graphics.stanford.edu/pub/3Dscanrep/bunny.tar.gz
+             (bunny/reconstruction/bun_zipper_res4.ply)
+    License: freely available for research/education; acknowledgement of the Stanford
+             Computer Graphics Laboratory requested.
+
+face_property_before_list.ply
+  Hand-written negative fixture: a per-face scalar property ('property uchar intensity')
+  declared on the face element before the vertex-index list, the exact header layout of
+  the real Stanford Armadillo PLY. The driver refuses it (FileFormatNotSupportedError),
+  since a trailing/leading per-face scalar would mis-align the face rows.
+
+Larger real meshes (dragon, happy buddha, Lucy, and the full bunny) are NOT committed --
+they exceed the 5 MB cap. They live in the gitignored examples/data/real-data/ply/ for
+local performance/scaling checks; see that folder's SOURCE.txt.

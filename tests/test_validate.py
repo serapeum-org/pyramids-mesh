@@ -14,6 +14,8 @@ import pytest
 
 from pyramids_mesh._base import ParsedMesh, ParsedVariable
 from pyramids_mesh._validate import (
+    _area_tolerance,
+    _signed_area_2,
     check_shapes,
     fix_winding,
     repad,
@@ -794,3 +796,203 @@ def test_the_active_mask_of_a_temporal_variable_is_sized_over_time_too():
 
     with pytest.raises(ValueError, match=r"expected \(3, 1\)"):
         check_shapes(parsed)
+
+
+# -- fix_winding: vectorised form is behaviour-preserving and fast (issue #93) ------
+
+
+def _fix_winding_reference(faces, node_x, node_y, fill_value):
+    """The pre-vectorisation per-face implementation, kept here as the oracle.
+
+    A literal transcription of the original loop so the vectorised ``fix_winding`` can
+    be proved identical to it on a large, mixed mesh.
+    """
+    out = np.asarray(faces).copy()
+    reversed_count = 0
+    degenerate_count = 0
+    for row in out:
+        vertices = row[row != fill_value]
+        pad = np.flatnonzero(row == fill_value)
+        if pad.size and int(pad.min()) < vertices.size:
+            raise ValueError("pads between real vertices")
+        if vertices.size < 3:
+            raise ValueError("fewer than three real nodes")
+        xs, ys = node_x[vertices], node_y[vertices]
+        area2 = _signed_area_2(xs, ys)
+        if abs(area2) <= _area_tolerance(xs, ys):
+            degenerate_count += 1
+        elif area2 < 0:
+            row[: vertices.size] = vertices[::-1]
+            reversed_count += 1
+    return out, reversed_count, degenerate_count
+
+
+def _random_faces(rng, n_faces, n_nodes, width):
+    """A mixed-width, fill-padded face array (3 or 4 real nodes per row)."""
+    faces = np.full((n_faces, width), -1, dtype=np.int64)
+    for index in range(n_faces):
+        k = int(rng.integers(3, width + 1))
+        faces[index, :k] = rng.choice(n_nodes, size=k, replace=False)
+    return faces
+
+
+def test_fix_winding_vectorised_matches_the_per_face_reference():
+    """The vectorised ``fix_winding`` equals the per-face oracle on a random mesh.
+
+    The mesh mixes triangles and quads, trailing padding, clockwise and
+    counter-clockwise faces, plus one deliberately collinear (degenerate) face, so a
+    divergence in any branch -- shape check, area sign, degeneracy, prefix reversal --
+    would surface as an array or count mismatch.
+    """
+    rng = np.random.default_rng(0)
+    n_nodes = 400
+    node_x = rng.random(n_nodes)
+    node_y = rng.random(n_nodes)
+    # Force nodes 0,1,2 collinear and point face 0 at them, to exercise the degenerate
+    # branch in the comparison (random coordinates are never within tolerance).
+    node_x[0], node_x[1], node_x[2] = 0.1, 0.2, 0.3
+    node_y[0] = node_y[1] = node_y[2] = 0.5
+    faces = _random_faces(rng, 2000, n_nodes, 4)
+    faces[0] = [0, 1, 2, -1]
+
+    got_faces, got_reversed, got_degenerate = fix_winding(faces, node_x, node_y, -1)
+    ref_faces, ref_reversed, ref_degenerate = _fix_winding_reference(
+        faces, node_x, node_y, -1
+    )
+
+    np.testing.assert_array_equal(got_faces, ref_faces)
+    assert (got_reversed, got_degenerate) == (ref_reversed, ref_degenerate)
+    # The fixture genuinely contains both cases, so the comparison is not vacuous.
+    assert got_reversed > 0
+    assert got_degenerate >= 1
+
+
+@pytest.mark.parametrize(
+    "unit_x, unit_y",
+    [
+        ([0.0, 1.0, 1.0], [0.0, 0.0, 1.0]),  # triangle
+        ([0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 1.0, 1.0]),  # quad
+        ([0.0, 1.0, 1.0, 0.5, 0.0], [0.0, 0.0, 1.0, 1.0, 1.0]),  # pentagon
+    ],
+)
+def test_fix_winding_matches_the_oracle_for_polygons_at_the_boundary(unit_x, unit_y):
+    """Batched and per-face classification agree for polygons straddling the tolerance.
+
+    The batched shoelace sums its terms in a different order from the scalar oracle's
+    ``np.dot`` pair, so a face whose ``|area2|`` sits within ~1 ULP of its degeneracy
+    tolerance could in principle classify differently. This sweeps a thin triangle, quad
+    and pentagon's height -- hence its area -- across that boundary at projected-CRS
+    magnitudes, where area and representability interact, and asserts the vectorised
+    result matches the per-face oracle, in faces and counts, at every scale.
+    """
+    base_x, base_y = 5.0e5, 7.0e6
+    width = len(unit_x)
+    faces = np.array([list(range(width))], dtype=np.int64)
+    base_unit_x = np.array(unit_x) + base_x
+    unit_y_array = np.array(unit_y)
+
+    for height in np.logspace(-11, -5, 60):
+        node_x = base_unit_x
+        node_y = unit_y_array * height + base_y
+        got = fix_winding(faces, node_x, node_y, -1)
+        reference = _fix_winding_reference(faces, node_x, node_y, -1)
+        np.testing.assert_array_equal(
+            got[0], reference[0], err_msg=f"faces diverge at height={height:g}"
+        )
+        assert got[1:] == reference[1:], f"counts diverge at height={height:g}"
+
+
+@pytest.mark.slow
+def test_fix_winding_is_dramatically_faster_than_a_per_face_loop():
+    """``fix_winding`` far outpaces a per-face loop on a large mesh (issue #93).
+
+    The issue-#93 read timeout came from ``fix_winding`` running a Python loop per
+    face. Rather than an absolute wall-clock bound -- which flakes on loaded CI
+    runners -- this compares it against the per-face reference oracle on the same
+    input, taking the best of three vectorised samples after a warm-up so a one-off
+    stall cannot perturb the fast side. The ratio self-calibrates to the runner: a
+    reintroduced per-row loop (ratio near 1) fails, the real vectorisation passes with
+    a wide margin. The results must also be identical, so the guard doubles as a
+    large-mesh equivalence check.
+    """
+    import time
+
+    rng = np.random.default_rng(1)
+    n_nodes = 50_000
+    node_x = rng.random(n_nodes)
+    node_y = rng.random(n_nodes)
+    faces = rng.integers(0, n_nodes, size=(50_000, 3)).astype(np.int64)
+
+    fix_winding(faces, node_x, node_y, -1)  # warm-up (first call pays alloc costs)
+    vectorised_samples = []
+    for _ in range(3):
+        start = time.perf_counter()
+        vectorised = fix_winding(faces, node_x, node_y, -1)
+        vectorised_samples.append(time.perf_counter() - start)
+    vectorised_seconds = min(vectorised_samples)
+
+    start = time.perf_counter()
+    reference = _fix_winding_reference(faces, node_x, node_y, -1)
+    reference_seconds = time.perf_counter() - start
+
+    np.testing.assert_array_equal(vectorised[0], reference[0])
+    assert vectorised[1:] == reference[1:], (
+        f"counts diverge from the oracle: {vectorised[1:]} vs {reference[1:]}"
+    )
+    assert reference_seconds > 5.0 * vectorised_seconds, (
+        f"vectorised fix_winding ({vectorised_seconds:.3f}s) should be >= 5x faster "
+        f"than the per-face loop ({reference_seconds:.3f}s); a per-face regression "
+        f"would make the two comparable"
+    )
+
+
+def test_fix_winding_on_empty_faces_returns_empty_and_zero_counts():
+    """A zero-row face array is returned unchanged with both counts zero.
+
+    Test scenario:
+        An empty ``(0, 3)`` connectivity has no rows to wind; the vectorised path takes
+        its early return rather than reducing over an empty axis.
+    """
+    faces = np.empty((0, 3), dtype=np.int64)
+
+    out, reversed_count, degenerate_count = fix_winding(
+        faces, np.array([0.0]), np.array([0.0]), -1
+    )
+
+    assert out.shape == (0, 3), f"expected an empty (0, 3) array, got {out.shape}"
+    assert (reversed_count, degenerate_count) == (0, 0), (
+        f"empty input must count nothing, got {(reversed_count, degenerate_count)}"
+    )
+
+
+def test_fix_winding_reverses_only_clockwise_rows_in_a_mixed_width_batch():
+    """In one mixed-width batch, only clockwise rows flip; pads and CCW/degenerate stay.
+
+    Test scenario:
+        Four rows in a width-4, ``-1``-padded array: a CCW triangle (kept), a CW
+        triangle (reversed, its trailing pad preserved), a CW quad (reversed), and a
+        collinear triangle (degenerate, kept). The exact output and the (2 reversed,
+        1 degenerate) counts pin down the batched reversal, padding handling, and the
+        degeneracy branch.
+    """
+    node_x = np.array([0.0, 1.0, 1.0, 0.0, 0.5])
+    node_y = np.array([0.0, 0.0, 1.0, 1.0, 0.0])
+    faces = np.array(
+        [
+            [0, 1, 2, -1],  # CCW triangle -> kept
+            [0, 2, 1, -1],  # CW triangle  -> reversed to [1, 2, 0, -1]
+            [0, 3, 2, 1],  # CW quad       -> reversed to [1, 2, 3, 0]
+            [0, 4, 1, -1],  # collinear     -> degenerate, kept
+        ],
+        dtype=np.int64,
+    )
+
+    out, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    expected = np.array(
+        [[0, 1, 2, -1], [1, 2, 0, -1], [1, 2, 3, 0], [0, 4, 1, -1]], dtype=np.int64
+    )
+    np.testing.assert_array_equal(out, expected)
+    assert (reversed_count, degenerate_count) == (2, 1), (
+        f"expected (2, 1), got {(reversed_count, degenerate_count)}"
+    )
