@@ -66,7 +66,7 @@ _MINIMAL_MIKE21_FIXTURE = """100079 1000 4 LONG/LAT
 
 
 class Mike21Driver(BaseDriver):
-    """Reader for the DHI Mike21 ``.mesh`` frame format.
+    r"""Reader for the DHI Mike21 ``.mesh`` frame format.
 
     Plain text despite the DHI name, so it needs no dependency. A header line, then one
     record per node, then an element header, then one record per element. The format
@@ -152,6 +152,27 @@ class Mike21Driver(BaseDriver):
             ...     dataset = Mike21Driver().read(path)
             >>> dataset.crs_wkt is None
             True
+
+        - The legacy 2-field header -- node count first, then projection, as DHI's own
+          ``Oresund.mesh`` and ``odense_rough.mesh`` are written -- reads just like the
+          current form:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from pyramids_mesh.drivers.misc import Mike21Driver
+            >>> legacy = (
+            ...     "4 UTM-33\n"
+            ...     "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
+            ...     "3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+            ...     "2 3 21\n1 1 2 3\n2 1 3 4\n"
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "legacy.mesh")
+            ...     _ = Path(path).write_text(legacy, encoding="utf-8")
+            ...     dataset = Mike21Driver().read(path)
+            >>> dataset.mesh.n_node, dataset.mesh.n_face
+            (4, 2)
     """
 
     name = "mike21"
@@ -396,6 +417,24 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
         tuple[int, int] | None: ``(node_count, projection_index)`` -- the positive node
         count and the index of the first projection field -- or ``None`` when the line
         is not a Mike21 header.
+
+    Examples:
+        - The current EUM form leads with three integers, so the node count is the third
+          field and the projection follows it:
+
+            >>> _classify_header(["100079", "1000", "4", "LONG/LAT"])
+            (4, 3)
+
+        - The legacy form leads with one integer, so the node count is the first field
+          and the projection follows it:
+
+            >>> _classify_header(["399", "UTM-33"])
+            (399, 1)
+
+        - A first line with no positive integer node count is not a header:
+
+            >>> _classify_header(["MeshVersionFormatted", "2"]) is None
+            True
     """
     if (
         len(tokens) >= 3
