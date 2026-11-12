@@ -365,7 +365,9 @@ def fix_winding(
         faces: The 0-based, fill-padded face-node connectivity.
         node_x: Node x-coordinates.
         node_y: Node y-coordinates.
-        fill_value: The pad value marking short rows.
+        fill_value: The pad value marking short rows. Must sit outside the valid node
+            index range (the pipeline uses ``-1``); a value that collides with a real
+            0-based index would be masked as padding and mis-read as a short row.
 
     Returns:
         tuple[np.ndarray, int, int]: The corrected faces, the number of faces reversed,
