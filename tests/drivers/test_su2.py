@@ -182,8 +182,9 @@ def test_mixed_surface_then_volume_still_refuses_on_the_volume_cell(tmp_path):
         "0 0 0\n1 0 0\n0 1 0\n0 0 1\n"
         "NMARK= 0\n"
     )
+    path = _write(tmp_path, "mixed_vol.su2", text)
     with pytest.raises(FileFormatNotSupportedError, match="holds tetrahedron cells"):
-        Su2Driver().read(_write(tmp_path, "mixed_vol.su2", text))
+        Su2Driver().read(path)
 
 
 def test_unknown_vtk_code_is_refused(tmp_path):
