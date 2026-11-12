@@ -868,13 +868,15 @@ def test_fix_winding_vectorised_matches_the_per_face_reference():
 
 
 @pytest.mark.slow
-def test_fix_winding_is_vectorised_not_per_face():
-    """``fix_winding`` stays fast on a half-million-face mesh (issue #93).
+def test_fix_winding_is_dramatically_faster_than_a_per_face_loop():
+    """``fix_winding`` far outpaces an equivalent per-face loop on a large mesh (issue #93).
 
-    The read timeout in issue #93 was dominated by ``fix_winding`` running a Python
-    loop per face; a per-face loop over this many faces takes many seconds, while the
-    vectorised form is well under a second. The generous bound is a regression guard
-    against a reintroduced per-row loop, not a micro-benchmark.
+    The read timeout in issue #93 was dominated by ``fix_winding`` running a Python loop
+    per face. Rather than an absolute wall-clock bound -- which flakes on loaded CI runners
+    -- this compares the vectorised function against the per-face reference oracle on the
+    *same* input: the ratio self-calibrates to the runner, so a reintroduced per-row loop
+    (ratio near 1) fails while the real vectorisation passes with a wide margin. The two
+    results must also be identical, so the guard doubles as a large-mesh equivalence check.
     """
     import time
 
@@ -882,13 +884,25 @@ def test_fix_winding_is_vectorised_not_per_face():
     n_nodes = 50_000
     node_x = rng.random(n_nodes)
     node_y = rng.random(n_nodes)
-    faces = rng.integers(0, n_nodes, size=(500_000, 3)).astype(np.int64)
+    faces = rng.integers(0, n_nodes, size=(50_000, 3)).astype(np.int64)
 
     start = time.perf_counter()
-    fix_winding(faces, node_x, node_y, -1)
-    elapsed = time.perf_counter() - start
+    vectorised = fix_winding(faces, node_x, node_y, -1)
+    vectorised_seconds = time.perf_counter() - start
 
-    assert elapsed < 2.0, f"fix_winding took {elapsed:.2f}s on 500k faces"
+    start = time.perf_counter()
+    reference = _fix_winding_reference(faces, node_x, node_y, -1)
+    reference_seconds = time.perf_counter() - start
+
+    np.testing.assert_array_equal(vectorised[0], reference[0])
+    assert vectorised[1:] == reference[1:], (
+        f"counts diverge from the oracle: {vectorised[1:]} vs {reference[1:]}"
+    )
+    assert reference_seconds > 5.0 * vectorised_seconds, (
+        f"vectorised fix_winding ({vectorised_seconds:.3f}s) should be >= 5x faster than "
+        f"the per-face loop ({reference_seconds:.3f}s); a per-face regression would make "
+        f"the two comparable"
+    )
 
 
 def test_fix_winding_on_empty_faces_returns_empty_and_zero_counts():
