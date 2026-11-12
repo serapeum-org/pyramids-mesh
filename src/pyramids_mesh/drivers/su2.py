@@ -193,8 +193,8 @@ class _Scan:
         """Stream the file, dispatching each section card onto its reader.
 
         Raises:
-            FileFormatNotSupportedError: On an unknown/volume element type, a short row,
-                or a non-numeric field.
+            FileFormatNotSupportedError: On a 3-D volume cell or any other unsupported
+                element code, a short row, or a non-numeric field.
         """
         records = iter_records(self.path, comment=_COMMENT)
         for keyword, fields in records:
