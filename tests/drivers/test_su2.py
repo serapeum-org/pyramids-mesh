@@ -160,8 +160,10 @@ def test_three_dimensional_volume_mesh_is_refused_with_explicit_message(
 
     message = str(excinfo.value)
     assert "3-D volume mesh" in message
-    assert cell in message
-    assert f"code {code}" in message
+    # Pin the name-to-code pairing on the discriminating clause: every message also lists
+    # all four cell names in a static tail, so a bare ``cell in message`` would pass even
+    # for the wrong cell. Only "holds <cell> cells (VTK code <code>)" is fixture-specific.
+    assert f"holds {cell} cells (VTK code {code})" in message
 
 
 def test_unknown_vtk_code_is_refused(tmp_path):
