@@ -21,9 +21,11 @@ from pyramids_mesh.drivers.gmsh import GmshDriver, _as_float, _as_int
 _DATA = Path(__file__).parent.parent / "data" / "gmsh"
 _V22 = str(_DATA / "insulated-2.2.msh")
 _V41 = str(_DATA / "insulated-4.1.msh")
-# Real binary Gmsh streams (file-type 1) -- the layout the reader does not yet decode.
-_BIN_V22 = str(_DATA / "square-binary-2.2.msh")
-_BIN_V41 = str(_DATA / "square-binary-4.1.msh")
+# The same 4-node square mesh in three encodings: ASCII v2.2 and binary v2.2/v4.1. A
+# binary file must read to the same result as its ASCII equivalent.
+_SQUARE_ASCII = str(_DATA / "square-ascii-2.2.msh")
+_SQUARE_BIN_V22 = str(_DATA / "square-binary-2.2.msh")
+_SQUARE_BIN_V41 = str(_DATA / "square-binary-4.1.msh")
 # An all-quadrilateral ASCII mesh (the triangle fixtures never exercise four-node faces).
 _QUAD_V22 = str(_DATA / "flap-quad-2.2.msh")
 
@@ -155,24 +157,41 @@ def test_gmsh_can_open_declines_empty_and_directory(tmp_path):
     assert driver.can_open(str(tmp_path / "missing.msh")) is False
 
 
-def test_gmsh_binary_file_is_refused(tmp_path):
-    """A binary Gmsh file (file-type 1) is refused rather than mis-read."""
-    text = "$MeshFormat\n2.2 1 8\n$EndMeshFormat\n"
-    with pytest.raises(FileFormatNotSupportedError, match="binary"):
-        GmshDriver().read(_write(tmp_path, text))
+@pytest.mark.parametrize("path", [_SQUARE_BIN_V22, _SQUARE_BIN_V41])
+def test_gmsh_reads_binary_stream(path):
+    """A genuine binary ``.msh`` stream reads, in both v2.2 and v4.1 (issue #94).
 
-
-@pytest.mark.parametrize("path", [_BIN_V22, _BIN_V41])
-def test_gmsh_real_binary_stream_is_refused(path):
-    """A genuine binary ``.msh`` stream is refused, in both v2.2 and v4.1.
-
-    ``test_gmsh_binary_file_is_refused`` crafts just the header; these are real binary
-    files (``square-binary-{2.2,4.1}.msh``) carrying actual binary ``$Nodes``/``$Elements``
-    records. The guard fires on the ``file-type 1`` field for both layouts -- so the
-    refusal is general, not specific to one version (issue #94).
+    These are real binary files carrying packed ``$Nodes``/``$Elements`` records, not a
+    crafted header: the 4-node square, 2 triangles, boundary lines dropped. The reader
+    honours the ``$MeshFormat`` endianness marker and decodes both layouts.
     """
-    with pytest.raises(FileFormatNotSupportedError, match="binary"):
-        GmshDriver().read(path)
+    dataset = GmshDriver().read(path)
+
+    assert isinstance(dataset, MeshDataset)
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.shape == (2, 3)
+
+
+def test_gmsh_binary_reads_same_mesh_as_ascii_equivalent():
+    """Each binary encoding reads to the exact mesh its ASCII equivalent does.
+
+    The three ``square-*`` fixtures are one mesh written three ways (ASCII v2.2, binary
+    v2.2, binary v4.1), so nodes and connectivity must match to the bit -- the definition
+    of done for issue #94 ("reads a binary ``.msh`` with the same result as its ASCII
+    equivalent").
+    """
+    ascii_mesh = GmshDriver().read(_SQUARE_ASCII).mesh
+    binary_v22 = GmshDriver().read(_SQUARE_BIN_V22).mesh
+    binary_v41 = GmshDriver().read(_SQUARE_BIN_V41).mesh
+
+    for other in (binary_v22, binary_v41):
+        np.testing.assert_array_equal(other.node_x, ascii_mesh.node_x)
+        np.testing.assert_array_equal(other.node_y, ascii_mesh.node_y)
+        np.testing.assert_array_equal(
+            other.face_node_connectivity.data,
+            ascii_mesh.face_node_connectivity.data,
+        )
 
 
 def test_gmsh_reads_quadrilateral_faces():
