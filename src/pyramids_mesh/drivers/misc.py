@@ -603,6 +603,11 @@ class _Mike21Scan:
         classified = _classify_header(header)
         if classified is None:
             if len(header) >= 4 and _is_int(header[0]) and _is_int(header[1]):
+                if _is_int(header[2]):
+                    raise FileFormatNotSupportedError(
+                        f"{self.path!r} has a malformed EUM header: the node count "
+                        f"{header[2]!r} is not a positive integer"
+                    )
                 raise FileFormatNotSupportedError(
                     f"{self.path!r} has a malformed EUM header: the node-count field "
                     f"{header[2]!r} is not an integer"

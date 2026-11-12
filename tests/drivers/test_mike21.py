@@ -516,6 +516,17 @@ def test_mike21_zero_node_count_header_is_refused(tmp_path):
         Mike21Driver().read(_write(tmp_path, "0 UTM-33\n1 3 21\n1 1 2 3\n"))
 
 
+def test_mike21_eum_header_with_zero_count_is_refused_as_non_positive(tmp_path):
+    """An EUM header declaring zero nodes names the non-positive count, not 'not integer'.
+
+    ``0`` is a valid integer, so the diagnosis must point at the real problem -- a
+    non-positive node count -- rather than claiming the count field is not an integer.
+    """
+    text = "100079 1000 0 LONG/LAT\n2 3 21\n1 1 2 3\n"
+    with pytest.raises(FileFormatNotSupportedError, match="not a positive integer"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
 def test_mike21_can_open_declines_foreign_integer_leading_file(tmp_path):
     """A foreign ``.mesh`` whose first line is ``<int> <word>`` is declined, not claimed.
 
