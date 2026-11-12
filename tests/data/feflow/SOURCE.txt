@@ -3,3 +3,10 @@ disv_nodes.fem -- MODFLOW-ORG/modflow6-examples, data/ex-gwe-ates/disv_nodes.fem
 CLASS v.7.501, DIMENS 2496 nodes / 4842 triangles (2D). US Government work / public domain,
 CC0-1.0 per the MODFLOW 6 project policy.
   https://github.com/MODFLOW-ORG/modflow6-examples (data/ex-gwe-ates/)
+
+binary_block.fem -- pham-hung/Subsidence_Feflow, Benchmark files/SUB_Deleeuw.fem.
+Binary FEFLOW .fem (CLASS v.6.215, DIMENS 1068 nodes / 1575 prisms): its mesh is stored in
+a BINARY block, not ASCII NODE/COOR sections. Truncated to ~1.8 KB (ASCII PROBLEM/CLASS/
+DIMENS/BINARY header + start of the binary block) -- enough to exercise the binary-reject
+guard (issue #96); the full mesh is not needed. MIT licensed.
+  https://github.com/pham-hung/Subsidence_Feflow (Benchmark files/)

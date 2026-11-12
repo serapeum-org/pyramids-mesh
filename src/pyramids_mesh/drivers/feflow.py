@@ -25,7 +25,9 @@ The geometry lives in four sections:
 The ``.fem`` suffix is **shared** with the Nastran bulk-data format, so ``can_open``
 requires the FEFLOW signature -- the first two non-blank statements being ``PROBLEM:`` then
 ``CLASS`` -- and declines a Nastran deck (which opens on ``$`` comment lines and
-``BEGIN BULK``). See ``docs/reference/feflow.md``.
+``BEGIN BULK``). This reader builds the mesh only from the **classic ASCII** ``.fem``
+layout; a FEFLOW v6/v7 deck that stores its mesh in a ``BINARY`` block is detected and
+declined with an explicit message rather than mis-parsed. See ``docs/reference/feflow.md``.
 """
 
 from __future__ import annotations
@@ -49,6 +51,11 @@ _DIMENS = "DIMENS"
 _SCALE = "SCALE"
 _NODE = "NODE"
 _COOR = "COOR"
+
+# A FEFLOW v6/v7 deck may store its mesh in a BINARY block (marked by a ``BINARY`` section
+# header and carrying NUL bytes) instead of the ASCII NODE/COOR sections. This reader parses
+# only the ASCII layout, so a binary deck is detected and declined with a clear message.
+_BINARY = "BINARY"
 
 # 1-based node ids never take 0, so 0 is a safe pad for a short element row (a mixed
 # triangle/quad deck); pyramids rewrites it to -1 during normalisation. A single-valence
@@ -84,6 +91,12 @@ class FeflowDriver(BaseDriver):
         - **``.fem`` is shared with Nastran.** ``can_open`` keys on the ``PROBLEM:`` /
           ``CLASS`` signature so a Nastran deck sharing the suffix is declined rather than
           mis-parsed.
+        - **Classic ASCII only.** A FEFLOW deck may store its mesh in a ``BINARY`` block
+          instead of ASCII ``NODE`` / ``COOR`` sections. ``can_open`` still accepts it on
+          the ASCII ``PROBLEM:`` / ``CLASS`` header (it is a FEFLOW file), but the reader
+          then rejects it with an explicit ``FileFormatNotSupportedError`` rather than
+          mis-reading it as a missing ``NODE`` section, since this reader parses only the
+          ASCII layout.
 
     Example:
         Read a FEFLOW mesh by its ``.fem`` file (shown, not run as a doctest -- it needs a
@@ -146,9 +159,10 @@ class FeflowDriver(BaseDriver):
                 ``node_z`` when the deck is 3D.
 
         Raises:
-            FileFormatNotSupportedError: If the path is not a file, or the ``DIMENS`` /
-                ``SCALE`` / ``NODE`` / ``COOR`` sections are missing, malformed, or
-                disagree with the declared dimensions.
+            FileFormatNotSupportedError: If the path is not a file, the file is a binary
+                FEFLOW ``.fem`` (its mesh in a ``BINARY`` block rather than ASCII sections),
+                or the ``DIMENS`` / ``SCALE`` / ``NODE`` / ``COOR`` sections are missing,
+                malformed, or disagree with the declared dimensions.
         """
         if not os.path.isfile(path):
             raise FileFormatNotSupportedError(f"{path!r} is not a FEFLOW .fem file")
@@ -201,35 +215,57 @@ class _FeflowReader:
     def _read_sections(self) -> dict[str, list[str]]:
         """Group the data lines by the keyword section they sit in.
 
-        A line whose first character is a letter or underscore opens a section (its first
-        token, upper-cased and with a trailing colon stripped, is the key); any other
-        non-blank line is a data row of the current section. The first occurrence of each
-        keyword wins, so a header seen twice extends the same section.
+        The file is read once, as text, in a single streaming pass that also declines a
+        binary FEFLOW ``.fem`` -- one whose mesh lives in a binary block rather than ASCII
+        ``NODE`` / ``COOR`` sections -- with an explicit message instead of mis-reading it
+        as a missing ``NODE`` section. Two tells trip it, both inside that one pass: a line
+        carrying a NUL byte, and a ``BINARY`` section header (a real binary deck usually has
+        both, and whichever its stream reaches first is reported). Otherwise a line whose
+        first character is a letter or underscore opens a section (its first token,
+        upper-cased and with a trailing colon stripped, is the key); any other non-blank
+        line is a data row of the current section. The first occurrence of each keyword
+        wins, so a header seen twice extends the same section. The read is universal-newline,
+        so a stray control byte inside a data row does not split the row.
 
         Returns:
             dict[str, list[str]]: The data rows of each section, keyed by upper-case name.
 
         Raises:
-            FileFormatNotSupportedError: If the file cannot be read.
+            FileFormatNotSupportedError: If the file cannot be read, or it is a binary
+                FEFLOW ``.fem`` (NUL bytes, or a ``BINARY`` section) rather than the classic
+                ASCII format.
         """
+        sections: dict[str, list[str]] = {}
+        current: str | None = None
         try:
-            with open(self.path, encoding="latin-1") as handle:
-                raw_lines = handle.readlines()
+            with open(self.path, encoding="latin-1") as text_stream:
+                for raw in text_stream:
+                    if "\x00" in raw:
+                        raise FileFormatNotSupportedError(
+                            f"{self.path!r} contains NUL bytes, so it is a binary "
+                            f"FEFLOW .fem rather than the classic ASCII NODE/COOR "
+                            f"format this reader parses; only the classic ASCII .fem "
+                            f"format is supported"
+                        )
+                    line = raw.strip()
+                    if not line:
+                        continue
+                    if line[0].isalpha() or line[0] == "_":
+                        current = line.split()[0].upper().rstrip(":")
+                        if current == _BINARY:
+                            raise FileFormatNotSupportedError(
+                                f"{self.path!r} declares a BINARY section, so it is a "
+                                f"binary FEFLOW .fem whose mesh is stored in a binary "
+                                f"block, not the ASCII NODE/COOR sections this reader "
+                                f"parses; only the classic ASCII .fem format is supported"
+                            )
+                        sections.setdefault(current, [])
+                    elif current is not None:
+                        sections[current].append(line)
         except OSError as error:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} could not be read as a FEFLOW .fem file: {error}"
             ) from error
-        sections: dict[str, list[str]] = {}
-        current: str | None = None
-        for raw in raw_lines:
-            line = raw.strip()
-            if not line:
-                continue
-            if line[0].isalpha() or line[0] == "_":
-                current = line.split()[0].upper().rstrip(":")
-                sections.setdefault(current, [])
-            elif current is not None:
-                sections[current].append(line)
         return sections
 
     def _parse_dimens(self, lines: list[str]) -> tuple[int, int, int]:
