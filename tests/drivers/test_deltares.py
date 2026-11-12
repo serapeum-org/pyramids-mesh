@@ -5,9 +5,13 @@ NetCDF: a ``network`` of branches and a ``mesh1d`` discretisation of computation
 with ``mesh1d_*`` results over time on a map file. The driver builds a ``Mesh1d`` from
 the ``mesh1d`` discretisation, finding both topologies by their ``cf_role`` attributes.
 
-Three genuine samples are committed under ``tests/data/deltares1d/``: a pure-1D topology
+Several genuine samples are committed under ``tests/data/deltares1d/``: a pure-1D topology
 (``korte-woerden``), a tiny combined 1D2D topology (``UGrid_1D2D``), and a pure-1D map
-file with 97 result steps (``Haskoning``). The tests read the committed bytes.
+file with 97 result steps (``Haskoning``). Three more exercise the branch+offset node
+geometry that most D-HYDRO files use instead of explicit x/y: ``dsd-demo`` (reconstructed
+from the branch geometry), ``magdalena`` (explicit ``mesh1d_node_x`` present but not
+referenced by the topology), and ``f101-boundary`` (the alternate ``branch_id`` /
+``branch_offset`` spelling, reconstructed). The tests read the committed bytes.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -15,7 +19,9 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pytest
+from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d
 
@@ -23,8 +29,10 @@ from pyramids_mesh.drivers.deltares import (
     DeltaresNetworkDriver,
     _as_str,
     _attr_map,
+    _branch_offset_names,
     _DeltaresReader,
     _fill_value,
+    _interpolate_along_branches,
     _split,
     _string_attr,
     _topology_dimension,
@@ -34,6 +42,9 @@ _DATA = Path(__file__).parent.parent / "data" / "deltares1d"
 _KORTE = _DATA / "korte-woerden-1d_FlowFM_net.nc"
 _UGRID_1D2D = _DATA / "UGrid_1D2D_net.nc"
 _HASKONING = _DATA / "Haskoning_example_map.nc"
+_DSD = _DATA / "branchoffset_1d_minimal_no-hidden-xy__dsd-demo.nc"
+_MAGDALENA = _DATA / "branchoffset_1d_hidden-xy__magdalena.nc"
+_F101 = _DATA / "branchoffset-altnames_1d__f101-boundary.nc"
 _THREEDI = Path(__file__).parent.parent / "data" / "3di" / "results_3di.nc"
 
 
@@ -50,6 +61,50 @@ def _parse(path, *, lazy=True):
 
     driver = DeltaresNetworkDriver()
     return validate_and_normalise(driver._parse(str(path), lazy=lazy))
+
+
+def _reconstructed_reference(path):
+    """Independently interpolate node x/y from a file's raw branch, offset and geometry.
+
+    Reproduces the reconstruction from the committed bytes with no reader code beyond the
+    pure interpolation helper, so a test can confirm the driver's own result matches.
+    """
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        branch = np.asarray(group.OpenMDArray("mesh1d_node_branch").ReadAsArray())
+        branch = branch.astype(np.int64) - 1  # the sample is 1-based
+        offset = np.asarray(
+            group.OpenMDArray("mesh1d_node_offset").ReadAsArray(), np.float64
+        )
+        geom_x = np.asarray(
+            group.OpenMDArray("network1d_geom_x").ReadAsArray(), np.float64
+        )
+        geom_y = np.asarray(
+            group.OpenMDArray("network1d_geom_y").ReadAsArray(), np.float64
+        )
+        counts = np.asarray(
+            group.OpenMDArray("network1d_geom_node_count").ReadAsArray()
+        ).astype(np.int64)
+    finally:
+        dataset.Close()
+    return _interpolate_along_branches(branch, offset, geom_x, geom_y, counts)
+
+
+def _sibling_node_xy(path):
+    """Read a file's explicit ``mesh1d_node_x`` / ``mesh1d_node_y`` arrays."""
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        node_x = np.asarray(
+            group.OpenMDArray("mesh1d_node_x").ReadAsArray(), np.float64
+        )
+        node_y = np.asarray(
+            group.OpenMDArray("mesh1d_node_y").ReadAsArray(), np.float64
+        )
+    finally:
+        dataset.Close()
+    return node_x, node_y
 
 
 def test_pure_1d_network_reads_node_and_edge_counts():
@@ -105,6 +160,55 @@ def test_branch_and_offset_are_carried_as_node_variables():
     assert offset.shape == (86,)
     # they are static node data, carried eagerly rather than deferred
     assert branch.values is not None
+
+
+def test_branch_offset_only_file_is_read_by_reconstruction():
+    """A file whose nodes are branch+offset (no x/y) reconstructs node coordinates.
+
+    ``dsd-demo`` stores no ``mesh1d_node_x`` anywhere; the node x/y is rebuilt by linear
+    referencing each node's offset along its branch polyline. The reconstructed nodes land
+    inside the network's geometry bounds and are all finite.
+    """
+    network = _read(_DSD)
+    assert isinstance(network, Mesh1d)
+    assert (network.n_node, network.n_edge) == (12, 13)
+    assert np.isfinite(network.node_x).all()
+    assert np.isfinite(network.node_y).all()
+    # the reconstruction matches an independent interpolation from the same raw arrays
+    expected_x, expected_y = _reconstructed_reference(_DSD)
+    assert np.allclose(network.node_x, expected_x)
+    assert np.allclose(network.node_y, expected_y)
+
+
+def test_unreferenced_node_xy_arrays_are_preferred_over_reconstruction():
+    """Explicit ``mesh1d_node_x`` present but unlisted is used verbatim, not reconstructed.
+
+    ``magdalena`` lists only branch+offset in ``node_coordinates`` yet carries genuine
+    ``mesh1d_node_x`` / ``_node_y`` arrays; those authoritative values are returned
+    exactly, in preference to interpolating.
+    """
+    network = _read(_MAGDALENA)
+    assert network.n_node == 447
+    stored_x, stored_y = _sibling_node_xy(_MAGDALENA)
+    assert np.array_equal(network.node_x, stored_x)
+    assert np.array_equal(network.node_y, stored_y)
+
+
+def test_alternate_branch_offset_spelling_is_reconstructed():
+    """The ``branch_id`` / ``branch_offset`` spelling reconstructs the same way.
+
+    ``f101-boundary`` names its node geometry ``mesh1d_node_branch_id`` /
+    ``mesh1d_node_branch_offset``; the reader tells branch from offset by dtype, so the
+    spelling does not matter and the nodes reconstruct to finite coordinates.
+    """
+    network = _read(_F101)
+    assert network.n_node == 164
+    assert np.isfinite(network.node_x).all()
+    assert np.isfinite(network.node_y).all()
+    # the alternate-spelling arrays are still carried as node variables
+    parsed = _parse(_F101)
+    assert parsed.variables["mesh1d_node_branch_id"].location == "node"
+    assert parsed.variables["mesh1d_node_branch_offset"].location == "node"
 
 
 def test_result_variables_attach_over_time():
@@ -312,7 +416,56 @@ def test_node_coordinates_raise_without_x_or_y():
     )
     topo = {"node_coordinates": "a b"}
     with pytest.raises(FileFormatNotSupportedError, match="no x/y node coordinates"):
-        _reader()._node_coordinates(group, topo)
+        _reader()._node_coordinates(group, "mesh1d", topo)
+
+
+def test_interpolate_along_branches_linear_references_offsets():
+    """A node's x/y is the point at its offset along its branch's polyline.
+
+    One L-shaped branch of two segments (0->10 east, then 10->20 north) places a node at
+    offset 5 halfway along the first segment and a node at offset 15 halfway up the
+    second; offsets are measured as cumulative chord length from the branch start.
+    """
+    geom_x = np.array([0.0, 10.0, 10.0])
+    geom_y = np.array([0.0, 0.0, 10.0])
+    counts = np.array([3])
+    branch = np.array([0, 0, 0])
+    offset = np.array([0.0, 5.0, 15.0])
+    node_x, node_y = _interpolate_along_branches(branch, offset, geom_x, geom_y, counts)
+    assert np.allclose(node_x, [0.0, 5.0, 10.0])
+    assert np.allclose(node_y, [0.0, 0.0, 5.0])
+
+
+def test_interpolate_along_branches_returns_none_for_a_branchless_node():
+    """A node on a branch that has no geometry yields ``None`` rather than ``nan``."""
+    geom_x = np.array([0.0, 1.0])
+    geom_y = np.array([0.0, 0.0])
+    counts = np.array([2, 0])  # branch 1 has no vertices
+    branch = np.array([0, 1])  # the second node sits on the empty branch
+    offset = np.array([0.0, 0.0])
+    assert _interpolate_along_branches(branch, offset, geom_x, geom_y, counts) is None
+
+
+def test_branch_offset_names_tells_branch_from_offset_by_dtype():
+    """The integer entry is the branch index; the float entry is the offset."""
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1, 2], np.int32)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.5], np.float64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_reconstruct_returns_none_without_a_coordinate_space():
+    """Reconstruction declines when the topology names no coordinate-space network."""
+    group = _Group({})
+    result = _reader()._reconstruct_node_coordinates(group, {}, ["a", "b"])
+    assert result is None
 
 
 def test_edges_raise_without_edge_connectivity():

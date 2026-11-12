@@ -9,7 +9,11 @@ offset per node). A map file adds ``mesh1d_*`` result variables over ``time``.
 
 This reader builds a :class:`~pyramids.netcdf.ugrid.Mesh1d` from the ``mesh1d``
 discretisation -- its nodes and its ``edge_node_connectivity`` -- because that is the
-computational network results live on. Both topologies are found by their ``cf_role``
+computational network results live on. Most files store the node geometry as a branch
+index and an along-branch offset rather than explicit x/y, so the reader reconstructs the
+node x/y by linear referencing each node's offset along its branch's polyline (the
+``network``'s ``edge_geometry``) when explicit x/y is absent. Both topologies are found
+by their ``cf_role``
 attributes (``mesh_topology`` on the dummy topology variable, ``edge_node_connectivity``
 on the edge table), never by a hard-coded name, so the two spelling conventions in the
 wild (``network``/``mesh1d`` and ``network1d``/``mesh1d``) read the same way.
@@ -115,8 +119,11 @@ class DeltaresNetworkDriver(BaseDriver):
     The driver builds a :class:`~pyramids.netcdf.ugrid.Mesh1d` from the ``mesh1d``
     discretisation: its nodes come from the node x/y coordinates and its edges from the
     ``edge_node_connectivity`` table (re-based to 0 if the file is 1-based, the base kept
-    for a writer). The per-node branch index and offset, and every ``mesh1d_*`` result
-    variable over ``time``, are parsed as node-located or edge-located variables.
+    for a writer). When the discretisation stores no explicit node x/y -- the common
+    D-HYDRO shape, where nodes are a branch index plus an along-branch offset -- the x/y
+    is reconstructed by linear referencing along the network's branch geometry. The
+    per-node branch index and offset, and every ``mesh1d_*`` result variable over
+    ``time``, are parsed as node-located or edge-located variables.
 
     Both topologies are discovered by their ``cf_role`` attributes rather than by name,
     so a file spelling the network ``network`` or ``network1d`` reads identically. The
@@ -268,7 +275,7 @@ class _DeltaresReader:
             try:
                 group = dataset.GetRootGroup()
                 topo_name, topo = self._discretisation(group)
-                node_x, node_y = self._node_coordinates(group, topo)
+                node_x, node_y = self._node_coordinates(group, topo_name, topo)
                 edges, start_index = self._edges(group, topo)
                 variables = self._node_attribute_variables(group, topo)
                 variables.update(self._result_variables(group, topo_name))
@@ -318,30 +325,127 @@ class _DeltaresReader:
         name = next(iter(one_d))
         return name, one_d[name]
 
-    def _node_coordinates(self, group, topo: dict) -> tuple[np.ndarray, np.ndarray]:
+    def _node_coordinates(
+        self, group, topo_name: str, topo: dict
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Return the discretisation's node x and y coordinates.
 
-        The ``node_coordinates`` attribute lists several arrays; the x and y are picked by
-        their ``projection_x_coordinate`` / ``projection_y_coordinate`` standard name, so
-        the branch index and offset in the same list are not mistaken for geometry.
+        A ``mesh1d`` discretisation positions its nodes in one of two ways, and modern
+        Delft3D FM / D-HYDRO files use the second far more often than the first:
+
+        1. **Explicit x/y.** The ``node_coordinates`` attribute lists an x and a y array,
+           told from the branch index and offset in the same list by their
+           ``projection_x_coordinate`` / ``projection_y_coordinate`` standard name.
+        2. **Branch + offset.** The ``node_coordinates`` attribute lists only a branch
+           index and an along-branch offset; the x/y must be reconstructed by linear
+           referencing each node's offset along its branch's polyline geometry, which the
+           coordinate-space ``network`` carries (``edge_geometry``).
+
+        Three sources are tried in order of fidelity: the x/y named by the topology
+        (case 1); failing that, explicit ``<mesh1d>_node_x`` / ``_node_y`` arrays that are
+        present in the file but not referenced by ``node_coordinates`` (a common D-HYDRO
+        shape); failing that, reconstruction from the branch index and offset (case 2).
+
+        Args:
+            group: The NetCDF root group.
+            topo_name: The discretisation topology's name, used to find its sibling
+                node-coordinate arrays.
+            topo: The discretisation topology's attribute mapping.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: The node x and y coordinates.
 
         Raises:
-            FileFormatNotSupportedError: If the x or y coordinate cannot be found.
+            FileFormatNotSupportedError: If no x/y is named, none is present as sibling
+                arrays, and none can be reconstructed from the branch geometry.
         """
         names = _split(topo.get("node_coordinates"))
+        node_x, node_y = _xy_by_standard_name(group, names)
+        if node_x is not None and node_y is not None:
+            return node_x, node_y
+        node_x, node_y = self._xy_from_sibling_arrays(group, topo_name)
+        if node_x is not None and node_y is not None:
+            return node_x, node_y
+        reconstructed = self._reconstruct_node_coordinates(group, topo, names)
+        if reconstructed is not None:
+            return reconstructed
+        raise FileFormatNotSupportedError(
+            f"{self.path!r} mesh1d topology has no x/y node coordinates in {names!r}, "
+            f"no sibling {topo_name}_node_x/_node_y arrays, and none could be "
+            f"reconstructed from the network branch geometry"
+        )
+
+    def _xy_from_sibling_arrays(self, group, topo_name: str):
+        """Return explicit node x/y arrays present in the file but not named by the topology.
+
+        D-HYDRO often writes ``<mesh1d>_node_x`` / ``_node_y`` alongside a
+        ``node_coordinates`` attribute that references only the branch index and offset.
+        When present, those arrays are the authoritative node geometry and are preferred
+        over reconstruction. Only node arrays belonging to the discretisation are
+        considered -- an array is matched by the ``projection_x`` / ``projection_y``
+        standard name, a name beginning with the topology's own name, and a ``node`` role
+        in the name (so an edge or face coordinate is never mistaken for a node one).
+
+        Args:
+            group: The NetCDF root group.
+            topo_name: The discretisation topology's name (the array-name prefix).
+
+        Returns:
+            tuple[np.ndarray | None, np.ndarray | None]: The x and y arrays, or
+                ``(None, None)`` when either is absent.
+        """
         node_x = node_y = None
-        for name in names:
-            standard_name = _string_attr(group.OpenMDArray(name), "standard_name")
-            if standard_name == _X_STANDARD_NAME:
-                node_x = np.asarray(group.OpenMDArray(name).ReadAsArray(), np.float64)
-            elif standard_name == _Y_STANDARD_NAME:
-                node_y = np.asarray(group.OpenMDArray(name).ReadAsArray(), np.float64)
+        for name in group.GetMDArrayNames(_SHOW_ALL):
+            if not name.startswith(topo_name) or "node" not in name:
+                continue
+            array = group.OpenMDArray(name)
+            standard_name = _string_attr(array, "standard_name")
+            if standard_name == _X_STANDARD_NAME and node_x is None:
+                node_x = np.asarray(array.ReadAsArray(), np.float64)
+            elif standard_name == _Y_STANDARD_NAME and node_y is None:
+                node_y = np.asarray(array.ReadAsArray(), np.float64)
         if node_x is None or node_y is None:
-            raise FileFormatNotSupportedError(
-                f"{self.path!r} mesh1d topology has no x/y node coordinates in "
-                f"{names!r}"
-            )
+            return None, None
         return node_x, node_y
+
+    def _reconstruct_node_coordinates(self, group, topo: dict, names: list):
+        """Reconstruct node x/y by linear referencing along the network branch geometry.
+
+        Each node is given as a branch index (``mesh1d_node_branch`` /
+        ``mesh1d_node_branch_id``) and an along-branch distance
+        (``mesh1d_node_offset`` / ``mesh1d_node_branch_offset``). The branch index is
+        re-based to 0 with the array's ``start_index``; the offset is measured in metres
+        from the branch start. The coordinate-space ``network`` named by the topology's
+        ``coordinate_space`` carries the branch polylines through its ``edge_geometry``,
+        and each node's x/y is interpolated along its branch's polyline at its offset.
+
+        Args:
+            group: The NetCDF root group.
+            topo: The discretisation topology's attribute mapping.
+            names: The topology's ``node_coordinates`` entries (branch and offset arrays).
+
+        Returns:
+            tuple[np.ndarray, np.ndarray] | None: The reconstructed node x and y, or
+                ``None`` when the file carries no branch/offset pair, no coordinate space,
+                or no usable branch geometry.
+        """
+        coordinate_space = _as_str(topo.get("coordinate_space"))
+        if coordinate_space is None:
+            return None
+        branch_name, offset_name = _branch_offset_names(group, names)
+        if branch_name is None or offset_name is None:
+            return None
+        branch_array = group.OpenMDArray(branch_name)
+        branch = np.asarray(branch_array.ReadAsArray()).astype(np.int64, copy=False)
+        branch = branch - self._start_index(branch_array)
+        offset = np.asarray(group.OpenMDArray(offset_name).ReadAsArray(), np.float64)
+        geometry = _network_branch_geometry(group, coordinate_space)
+        if geometry is None:
+            return None
+        geom_x, geom_y, vertices_per_branch = geometry
+        return _interpolate_along_branches(
+            branch, offset, geom_x, geom_y, vertices_per_branch
+        )
 
     def _edges(self, group, topo: dict) -> tuple[np.ndarray, int]:
         """Return the discretisation's edge-node connectivity and its start index.
@@ -506,6 +610,146 @@ class _DeltaresReader:
             if code > 0:
                 return code
         return None
+
+
+def _xy_by_standard_name(group, names: list):
+    """Return the x and y arrays among ``names``, picked by their standard name.
+
+    The ``node_coordinates`` list mixes geometry with the branch index and offset; the x
+    and y are the entries carrying the ``projection_x_coordinate`` /
+    ``projection_y_coordinate`` standard name.
+
+    Args:
+        group: The NetCDF root group.
+        names: The candidate coordinate-array names.
+
+    Returns:
+        tuple[np.ndarray | None, np.ndarray | None]: The x and y arrays, or ``None`` for
+            either that is not named.
+    """
+    node_x = node_y = None
+    for name in names:
+        standard_name = _string_attr(group.OpenMDArray(name), "standard_name")
+        if standard_name == _X_STANDARD_NAME:
+            node_x = np.asarray(group.OpenMDArray(name).ReadAsArray(), np.float64)
+        elif standard_name == _Y_STANDARD_NAME:
+            node_y = np.asarray(group.OpenMDArray(name).ReadAsArray(), np.float64)
+    return node_x, node_y
+
+
+def _branch_offset_names(group, names: list):
+    """Return the branch-index and along-branch-offset array names among ``names``.
+
+    A ``mesh1d`` discretisation names its branch index and offset under either spelling
+    (``mesh1d_node_branch`` / ``mesh1d_node_offset`` or ``mesh1d_node_branch_id`` /
+    ``mesh1d_node_branch_offset``), so they are told apart by dtype rather than by name:
+    the branch index is integer-valued, the offset is floating-point.
+
+    Args:
+        group: The NetCDF root group.
+        names: The topology's ``node_coordinates`` entries.
+
+    Returns:
+        tuple[str | None, str | None]: The branch-index and offset array names, each
+            ``None`` when no entry of that dtype is present.
+    """
+    branch_name = offset_name = None
+    for name in names:
+        values = np.asarray(group.OpenMDArray(name).ReadAsArray())
+        if branch_name is None and np.issubdtype(values.dtype, np.integer):
+            branch_name = name
+        elif offset_name is None and np.issubdtype(values.dtype, np.floating):
+            offset_name = name
+    return branch_name, offset_name
+
+
+def _network_branch_geometry(group, network_name: str):
+    """Return a network's branch polylines: the vertex x, vertex y, and per-branch count.
+
+    The coordinate-space ``network`` topology carries its branch polylines through an
+    ``edge_geometry`` container, whose ``node_coordinates`` name the vertex x and y and
+    whose ``node_count`` gives the number of vertices on each branch (the branches
+    concatenated into one flat vertex list). The vertex x and y are picked by standard
+    name, falling back to the first two entries in declared order.
+
+    Args:
+        group: The NetCDF root group.
+        network_name: The coordinate-space network topology's name.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray] | None: The flat vertex x, flat vertex
+            y, and per-branch vertex count, or ``None`` when the network declares no
+            usable branch geometry.
+    """
+    network = _topology_variables(group).get(network_name)
+    if network is None:
+        return None
+    geometry_name = _as_str(network.get("edge_geometry"))
+    if geometry_name is None:
+        return None
+    geometry = _attr_map(group.OpenMDArray(geometry_name))
+    coordinate_names = _split(geometry.get("node_coordinates"))
+    count_name = _as_str(geometry.get("node_count"))
+    if len(coordinate_names) < 2 or count_name is None:
+        return None
+    geom_x, geom_y = _xy_by_standard_name(group, coordinate_names)
+    if geom_x is None or geom_y is None:
+        geom_x = np.asarray(
+            group.OpenMDArray(coordinate_names[0]).ReadAsArray(), np.float64
+        )
+        geom_y = np.asarray(
+            group.OpenMDArray(coordinate_names[1]).ReadAsArray(), np.float64
+        )
+    vertices_per_branch = np.asarray(
+        group.OpenMDArray(count_name).ReadAsArray()
+    ).astype(np.int64, copy=False)
+    return geom_x, geom_y, vertices_per_branch
+
+
+def _interpolate_along_branches(
+    branch: np.ndarray,
+    offset: np.ndarray,
+    geom_x: np.ndarray,
+    geom_y: np.ndarray,
+    vertices_per_branch: np.ndarray,
+):
+    """Interpolate each node's x/y from its branch index and along-branch offset.
+
+    Each branch's polyline is sliced from the flat vertex list by the cumulative vertex
+    count, its vertices' cumulative chord length is measured from the branch start, and
+    every node on that branch has its x and y linearly interpolated at its offset. A
+    single-vertex branch degenerates to that vertex; an offset past a branch's end clamps
+    to its last vertex (``numpy.interp`` behaviour).
+
+    Args:
+        branch: Per-node branch index, 0-based.
+        offset: Per-node distance along the branch, in the geometry's units.
+        geom_x: Flat branch-vertex x coordinates.
+        geom_y: Flat branch-vertex y coordinates.
+        vertices_per_branch: Vertex count of each branch, in branch order.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray] | None: The node x and y, or ``None`` when a node
+            references a branch with no geometry (a malformed file), so the caller can
+            fall through rather than emit ``nan`` coordinates.
+    """
+    node_x = np.full(branch.shape[0], np.nan, np.float64)
+    node_y = np.full(branch.shape[0], np.nan, np.float64)
+    starts = np.concatenate(([0], np.cumsum(vertices_per_branch)))
+    for index in range(vertices_per_branch.shape[0]):
+        begin, end = int(starts[index]), int(starts[index + 1])
+        vertex_x, vertex_y = geom_x[begin:end], geom_y[begin:end]
+        on_branch = branch == index
+        if vertex_x.size == 0 or not on_branch.any():
+            continue
+        segment = np.hypot(np.diff(vertex_x), np.diff(vertex_y))
+        distance = np.concatenate(([0.0], np.cumsum(segment)))
+        here = offset[on_branch]
+        node_x[on_branch] = np.interp(here, distance, vertex_x)
+        node_y[on_branch] = np.interp(here, distance, vertex_y)
+    if np.isnan(node_x).any() or np.isnan(node_y).any():
+        return None
+    return node_x, node_y
 
 
 def _split(value) -> list:
