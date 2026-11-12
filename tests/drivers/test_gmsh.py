@@ -21,6 +21,11 @@ from pyramids_mesh.drivers.gmsh import GmshDriver, _as_float, _as_int
 _DATA = Path(__file__).parent.parent / "data" / "gmsh"
 _V22 = str(_DATA / "insulated-2.2.msh")
 _V41 = str(_DATA / "insulated-4.1.msh")
+# Real binary Gmsh streams (file-type 1) -- the layout the reader does not yet decode.
+_BIN_V22 = str(_DATA / "square-binary-2.2.msh")
+_BIN_V41 = str(_DATA / "square-binary-4.1.msh")
+# An all-quadrilateral ASCII mesh (the triangle fixtures never exercise four-node faces).
+_QUAD_V22 = str(_DATA / "flap-quad-2.2.msh")
 
 _EXPECTED_NODES = 67
 _EXPECTED_FACES = 111
@@ -155,6 +160,34 @@ def test_gmsh_binary_file_is_refused(tmp_path):
     text = "$MeshFormat\n2.2 1 8\n$EndMeshFormat\n"
     with pytest.raises(FileFormatNotSupportedError, match="binary"):
         GmshDriver().read(_write(tmp_path, text))
+
+
+@pytest.mark.parametrize("path", [_BIN_V22, _BIN_V41])
+def test_gmsh_real_binary_stream_is_refused(path):
+    """A genuine binary ``.msh`` stream is refused, in both v2.2 and v4.1.
+
+    ``test_gmsh_binary_file_is_refused`` crafts just the header; these are real binary
+    files (``square-binary-{2.2,4.1}.msh``) carrying actual binary ``$Nodes``/``$Elements``
+    records. The guard fires on the ``file-type 1`` field for both layouts -- so the
+    refusal is general, not specific to one version (issue #94).
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="binary"):
+        GmshDriver().read(path)
+
+
+def test_gmsh_reads_quadrilateral_faces():
+    """An all-quadrilateral ASCII mesh reads to four-node faces, not just triangles.
+
+    The ``insulated`` fixtures are triangle-only; this preCICE flap mesh is 45 quads plus
+    36 boundary lines, so it exercises the four-column face table and confirms the 36
+    lines are dropped the same way the triangle fixtures' lines are.
+    """
+    dataset = GmshDriver().read(_QUAD_V22)
+
+    assert isinstance(dataset, MeshDataset)
+    assert dataset.mesh.n_node == 64
+    assert dataset.mesh.n_face == 45
+    assert dataset.mesh.face_node_connectivity.data.shape == (45, 4)
 
 
 def test_gmsh_unsupported_version_is_refused(tmp_path):

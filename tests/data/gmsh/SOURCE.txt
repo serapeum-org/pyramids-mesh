@@ -1,3 +1,19 @@
 Gmsh .msh (v2.2 and v4.1) -- MIT, meshio test data (genuine Gmsh 4.2.2 output from insulated.geo;
 111 triangles + 21 boundary lines).
   https://github.com/nschloe/meshio (tests/meshes/msh/) -- fetched via the Git-LFS media endpoint.
+
+square-binary-4.1.msh -- LGPL-3.0, Firedrake test data (a 4-node unit square: 2 triangles + boundary
+lines). A genuine binary Gmsh stream (file-type 1), version 4.1.
+  https://github.com/firedrakeproject/firedrake (tests/firedrake/meshes/square_binary.msh).
+
+square-binary-2.2.msh -- the same 4-node square mesh re-encoded as a binary Gmsh 2.2 stream
+(file-type 1) with meshio 5.3.5 (meshio.write(..., file_format="gmsh22", binary=True)). Provides a
+binary v2.2 counterpart to the v4.1 file above; meshio reads both back to the identical geometry.
+
+flap-quad-2.2.msh -- LGPL-3.0, preCICE tutorials (perpendicular-flap solid: an all-quadrilateral
+mesh, 64 nodes, 45 quad faces + 36 boundary lines). ASCII Gmsh 2.2; the only quad fixture.
+  https://github.com/precice/tutorials (perpendicular-flap/solid-dune/Solid.msh).
+
+Both binary fixtures are declined by the current reader (ASCII only -- see issue #94); they pin that
+refusal today and become the golden inputs when the binary layout is implemented. The quad fixture
+exercises the four-node face path that the triangle-only insulated meshes do not.
