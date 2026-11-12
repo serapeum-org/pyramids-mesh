@@ -494,9 +494,11 @@ class TestIsInt:
         "value, expected",
         [
             ("4", True),
-            ("-5", True),
             ("0", True),
             ("100079", True),
+            ("-5", False),
+            ("+4", False),
+            ("1_000", False),
             ("many", False),
             ("", False),
             ("3.5", False),
@@ -505,15 +507,15 @@ class TestIsInt:
         ],
     )
     def test_is_int(self, value, expected):
-        """``_is_int`` is True only for base-10 integer text.
+        """``_is_int`` is True only for unsigned base-10 digit text.
 
         Args:
             value: The field text to classify.
             expected: Whether it should be recognised as an integer.
 
         Test scenario:
-            Plain integers (including signed and zero) are True; floats, exponent
-            notation, names and the empty string are False.
+            Unsigned base-10 digit runs (including zero) are True; signed, grouped
+            (``1_000``), float, exponent, name and empty forms are False.
         """
         assert misc._is_int(value) is expected, f"_is_int({value!r}) != {expected}"
 

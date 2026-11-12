@@ -390,12 +390,14 @@ def _projection_to_crs(projection: str) -> str | int | None:
 
 
 def _is_int(value: str) -> bool:
-    """Report whether a header field parses as an integer."""
-    try:
-        int(value)
-    except ValueError:
-        return False
-    return True
+    """Report whether a header field is unsigned base-10 integer text.
+
+    Uses ``str.isdigit`` rather than ``int`` so the grouped (``"1_000"``) and signed
+    (``"+4"``, ``"-5"``) forms that ``int`` accepts are rejected: a Mike21 node count or
+    EUM code is always a run of plain digits, and accepting ``"1_000"`` as ``1000`` would
+    silently misread a corrupt field.
+    """
+    return value.isdigit()
 
 
 def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
