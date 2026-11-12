@@ -53,7 +53,6 @@ _HEADER_CARDS = frozenset({_NDIME, _NELEM, _NPOIN})
 # quadrilateral, each mapped to its node-column count. These are the only codes the
 # NELEM table may carry; everything else is refused.
 _SURFACE_NODE_COUNT = {5: 3, 9: 4}
-_SURFACE_CODES = frozenset(_SURFACE_NODE_COUNT)
 
 # The 3D volume cells SU2 writes when ``NDIME= 3`` (VTK tetra 10, hexa 12, prism 13,
 # pyramid 14), mapped to their names. SU2 *does* write 13 and 14 -- they are volume
@@ -150,8 +149,9 @@ class Su2Driver(BaseDriver):
 
         Raises:
             FileFormatNotSupportedError: If the file carries no section card, declares no
-                ``NDIME``/``NPOIN``/``NELEM``, uses an unknown or volume element type, or
-                a row is short of the fields its element type requires.
+                ``NDIME``/``NPOIN``/``NELEM``, holds a 3-D volume cell (tetrahedron,
+                hexahedron, prism or pyramid) or any other unsupported element code, or a
+                row is short of the fields its element type requires.
         """
         scan = _Scan(path)
         scan.run()
