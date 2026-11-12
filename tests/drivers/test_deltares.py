@@ -673,6 +673,63 @@ def test_reconstruct_declines_on_a_dangling_geometry_reference():
     assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
 
 
+class _FakeDataset:
+    """A stand-in GDAL dataset exposing a fixed root group and a no-op close."""
+
+    def __init__(self, group):
+        self._group = group
+
+    def GetRootGroup(self):
+        """Return the fixed root group."""
+        return self._group
+
+    def Close(self):
+        """Do nothing; the fake holds no resources."""
+
+
+def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
+    """A ``node_coordinates`` entry naming a missing array is declined, not raised raw.
+
+    ``build`` opens a file whose 1D topology references ``missing_x``; GDAL raises
+    ``RuntimeError`` on the dereference, which must surface as the documented
+    ``FileFormatNotSupportedError``.
+    """
+    from pyramids_mesh.drivers import deltares
+
+    topo = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("node_coordinates", "missing_x missing_y"),
+        ]
+    )
+    group = _RaisingGroup({"mesh1d": topo}, missing="missing_x")
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    with pytest.raises(FileFormatNotSupportedError, match="not a readable Deltares 1D"):
+        deltares.DeltaresNetworkDriver()._parse("dangling.nc", lazy=True)
+
+
+def test_build_propagates_a_format_error_unwrapped(monkeypatch):
+    """A ``FileFormatNotSupportedError`` from inside build re-raises as itself."""
+    from pyramids_mesh.drivers import deltares
+
+    group = _Group({"mesh2d": _topo_array(2)})
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    with pytest.raises(FileFormatNotSupportedError, match="no 1D mesh_topology"):
+        deltares.DeltaresNetworkDriver()._parse("no_1d.nc", lazy=True)
+
+
+def test_branch_offset_names_falls_back_to_dtype_when_names_are_unhelpful():
+    """Entries named neither ``offset`` nor ``branch`` are resolved by dtype."""
+    group = _Group(
+        {
+            "foo": _Array(value=np.array([0, 1], np.int64)),
+            "bar": _Array(value=np.array([0.0, 1.0], np.float64)),
+        }
+    )
+    assert _branch_offset_names(group, ["foo", "bar"]) == ("foo", "bar")
+
+
 def test_sibling_arrays_require_a_name_boundary():
     """A sibling topology's node array (``mesh1d2d_node_x``) is not matched for ``mesh1d``."""
     group = _Group(
