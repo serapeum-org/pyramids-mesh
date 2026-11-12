@@ -870,20 +870,19 @@ def test_fix_winding_vectorised_matches_the_per_face_reference():
 @pytest.mark.parametrize(
     "unit_x, unit_y",
     [
+        ([0.0, 1.0, 1.0], [0.0, 0.0, 1.0]),  # triangle
         ([0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 1.0, 1.0]),  # quad
         ([0.0, 1.0, 1.0, 0.5, 0.0], [0.0, 0.0, 1.0, 1.0, 1.0]),  # pentagon
     ],
 )
-def test_fix_winding_matches_the_oracle_for_wide_polygons_at_the_boundary(
-    unit_x, unit_y
-):
-    """Batched and per-face classification agree for wide polygons straddling tolerance.
+def test_fix_winding_matches_the_oracle_for_polygons_at_the_boundary(unit_x, unit_y):
+    """Batched and per-face classification agree for polygons straddling the tolerance.
 
-    For triangles the batched shoelace is bit-identical to the scalar oracle, but for quads
-    and wider the full-width ``np.sum`` groups its terms differently from the old ``np.dot``
-    and could, in principle, flip a face within ~1 ULP of its degeneracy tolerance. This
-    sweeps a thin polygon's height (hence its area) across that boundary at projected-CRS
-    magnitudes -- where area and representability interact -- and asserts the vectorised
+    The batched shoelace sums its terms in a different order from the scalar oracle's
+    ``np.dot`` pair, so a face whose ``|area2|`` sits within ~1 ULP of its degeneracy
+    tolerance could in principle classify differently. This sweeps a thin triangle, quad
+    and pentagon's height -- hence its area -- across that boundary at projected-CRS
+    magnitudes, where area and representability interact, and asserts the vectorised
     result matches the per-face oracle, in faces and counts, at every scale.
     """
     base_x, base_y = 5.0e5, 7.0e6
