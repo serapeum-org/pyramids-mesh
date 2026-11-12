@@ -100,6 +100,11 @@ class CgnsDriver(BaseDriver):
     A zone carrying only volumetric sections maps those as faces verbatim (design section
     21.1) rather than returning an empty mesh.
 
+    Nodes the chosen faces do not reference are dropped and the connectivity is re-indexed
+    (:func:`_drop_orphan_nodes`): a volume grid's surface skin would otherwise keep every
+    interior ``GridCoordinates`` node, leaving a mesh that is almost all orphans (issue #97).
+    A mesh whose faces already span every node is left unchanged.
+
     Documented limitations:
         - **Only the first base and first zone are read.** A multi-base or multi-zone file
           is read for its first ``CGNSBase_t`` / ``Zone_t`` only; selecting another is not
@@ -232,6 +237,9 @@ class _CgnsReader:
                 faces, element_types = self._faces(zone)
             finally:
                 dataset.Close()
+        node_x, node_y, node_z, faces = _drop_orphan_nodes(
+            node_x, node_y, node_z, faces
+        )
         return ParsedMesh(
             node_x=node_x,
             node_y=node_y,
@@ -388,3 +396,47 @@ def _pad_sections(
         padded.append(rows)
         element_types.extend([name] * block.shape[0])
     return np.concatenate(padded, axis=0), element_types
+
+
+def _drop_orphan_nodes(
+    node_x: np.ndarray,
+    node_y: np.ndarray,
+    node_z: np.ndarray | None,
+    faces: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None, np.ndarray]:
+    """Drop nodes that no face references, re-indexing the 1-based connectivity.
+
+    A 3D volume mesh read as its surface skin keeps every ``GridCoordinates`` node, but the
+    chosen surface faces reference only the boundary nodes, so the interior volume nodes are
+    left orphaned (issue #97 -- on the NASA DPW4 grids 98% of the nodes). This compacts the
+    coordinate arrays to the referenced set and rewrites ``faces`` to the new 1-based ids,
+    leaving the ``_PAD`` fill untouched. A mesh whose faces already reference every node -- a
+    planar surface, or the volumetric fallback where cells become faces -- is returned
+    unchanged.
+
+    Args:
+        node_x: Node x-coordinates, one per node.
+        node_y: Node y-coordinates, one per node.
+        node_z: Node z-coordinates, or ``None`` for a planar mesh.
+        faces: The ``(n_face, max_width)`` 1-based connectivity, ``_PAD``-filled.
+
+    Returns:
+        tuple: The compacted ``(node_x, node_y, node_z, faces)``; ``node_z`` stays ``None``
+            when it was ``None``.
+    """
+    real = faces != _PAD
+    used = np.unique(faces[real])
+    if used.size == node_x.size:
+        return node_x, node_y, node_z, faces
+    # Map each kept 1-based id to its new 1-based position; the ``_PAD`` fill stays ``_PAD``.
+    remap = np.zeros(int(node_x.size) + 1, dtype=faces.dtype)
+    remap[used] = np.arange(1, used.size + 1)
+    compacted = faces.copy()
+    compacted[real] = remap[faces[real]]
+    index = used - 1
+    return (
+        node_x[index],
+        node_y[index],
+        None if node_z is None else node_z[index],
+        compacted,
+    )

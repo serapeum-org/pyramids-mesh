@@ -8,8 +8,9 @@ container (SIDS tree) read by forcing the vendored GDAL HDF5 multidimensional dr
 Its single ``Base``/``Zone 1`` is an unstructured zone of 3213 vertices. The zone carries
 one volumetric section ``Elem`` (2560 ``HEXA_8`` cells) and three surface sections
 ``InflowElem``/``OutflowElem``/``SidewallElem`` (128 + 128 + 960 = 1216 ``QUAD_4`` boundary
-faces). Surface sections are preferred, so the reader returns the 1216-quad surface skin.
-The tests read the committed HDF5 bytes.
+faces). Surface sections are preferred, so the reader returns the 1216-quad surface skin;
+the interior volume nodes it leaves unreferenced are dropped, so the skin keeps 1218 of the
+3213 vertices (issue #97). The tests read the committed HDF5 bytes.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -50,9 +51,13 @@ def _read_orphan():
 
 
 def test_reads_surface_skin_of_the_first_zone():
-    """The zone's surface (QUAD_4) sections build a 3213-node, 1216-face mesh."""
+    """The zone's surface (QUAD_4) sections build a 1216-face mesh of just the skin nodes.
+
+    The zone carries 3213 volume nodes; only the 1218 the surface quads reference are kept
+    (issue #97 -- the interior volume nodes are dropped rather than orphaned).
+    """
     mesh = _read().mesh
-    assert mesh.n_node == 3213
+    assert mesh.n_node == 1218
     assert mesh.n_face == 1216
 
 
@@ -63,7 +68,7 @@ def test_faces_are_quads_zero_based_and_rebased():
     assert connectivity.original_start_index == 1
     real = connectivity.data[connectivity.data != -1]
     assert int(real.min()) == 0
-    assert int(real.max()) == 3212  # 3213 nodes, 0-based
+    assert int(real.max()) == 1217  # 1218 skin nodes kept, 0-based
 
 
 def test_coordinate_z_is_carried_as_node_z():
@@ -72,7 +77,7 @@ def test_coordinate_z_is_carried_as_node_z():
     assert "node_z" in set(dataset.data_variable_names)
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
-    assert node_z.shape == (3213,)
+    assert node_z.shape == (1218,)
 
 
 def test_element_types_metadata_is_quad4():
@@ -100,19 +105,17 @@ def test_minimal_quadtri_reads_mixed_surface_skin():
     assert "node_z" in set(dataset.data_variable_names)
 
 
-def test_minimal_quadtri_keeps_orphan_interior_nodes_issue_97():
-    """Documents issue #97: the 4 interior nodes are kept but referenced by no face.
+def test_minimal_quadtri_drops_orphan_interior_nodes_issue_97():
+    """Issue #97 fixed: the 4 interior nodes are dropped; the skin carries no orphans.
 
-    The fixture carries 12 nodes; the preferred surface sections reference only the 8
-    cube corners, so the 4 interior (volume-only) nodes are orphaned. This asserts the
-    current, defective behaviour and is tightened once #97 is fixed.
+    The fixture's 12 nodes compact to the 8 cube corners the preferred surface sections
+    reference, so every kept node is referenced and the connectivity is re-indexed.
     """
     mesh = _read_orphan().mesh
     connectivity = np.asarray(mesh.face_node_connectivity.data)
     referenced = np.unique(connectivity[connectivity >= 0])
-    assert mesh.n_node == 12
-    assert referenced.size == 8
-    assert mesh.n_node - referenced.size == 4
+    assert mesh.n_node == 8
+    assert referenced.size == mesh.n_node  # zero orphans
 
 
 def test_sniff_accepts_cgns_and_declines_med_and_junk(tmp_path):
