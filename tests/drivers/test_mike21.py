@@ -452,21 +452,35 @@ def test_mike21_legacy_header_with_crlf_line_endings_reads(tmp_path):
 
 
 def test_mike21_reads_committed_legacy_vendor_file():
-    """The committed DHI ``odense_rough`` sample (legacy header, triangles) reads."""
+    """The committed DHI ``odense_rough`` sample (legacy header, triangles) reads.
+
+    The first node's coordinates are asserted, not just the counts, to pin the
+    node-record column order (x before y): the first record is
+    ``1 218234.75 6158181.03 ...``, so a swapped x/y column would flip the UTM-33 easting
+    (~218 234) and northing (~6 158 181) and fail here.
+    """
     path = _MIKE21_DATA / "odense_rough_legacy_header.mesh"
     dataset = Mike21Driver().read(str(path))
 
     assert dataset.mesh.n_node == 399
     assert dataset.mesh.n_face == 654
+    assert dataset.mesh.node_x[0] == pytest.approx(218234.754787612, abs=1e-3)
+    assert dataset.mesh.node_y[0] == pytest.approx(6158181.03268845, abs=1e-3)
 
 
 def test_mike21_reads_committed_legacy_quad_vendor_file():
-    """The committed DHI ``odense_rough_quads`` sample (legacy header, mixed) reads."""
+    """The committed DHI ``odense_rough_quads`` sample (legacy header, mixed) reads.
+
+    The first node's coordinates pin the column order as in the triangle sample: the
+    first record is ``1 212437.69 6157513.14 ...`` (UTM-33 easting then northing).
+    """
     path = _MIKE21_DATA / "odense_rough_quads_legacy_header.mesh"
     dataset = Mike21Driver().read(str(path))
 
     assert dataset.mesh.n_node == 535
     assert dataset.mesh.n_face == 724
+    assert dataset.mesh.node_x[0] == pytest.approx(212437.69349466471, abs=1e-3)
+    assert dataset.mesh.node_y[0] == pytest.approx(6157513.1362837097, abs=1e-3)
 
 
 def test_mike21_eum_header_with_non_integer_count_is_refused(tmp_path):
