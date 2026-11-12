@@ -31,6 +31,7 @@ from pyramids_mesh.drivers.cgns import (
 
 _DATA = Path(__file__).parent.parent / "data" / "cgns"
 _CGNS = _DATA / "cgnslib_vers-4400.cgns"
+_ORPHAN = _DATA / "minimal_quadtri_orphans.cgns"
 _MED = _DATA.parent / "med" / "cylinder.med"
 
 
@@ -39,6 +40,13 @@ def _read():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return CgnsDriver().read(str(_CGNS))
+
+
+def _read_orphan():
+    """Read the crafted minimal mixed quad+tri fixture (issue #97)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return CgnsDriver().read(str(_ORPHAN))
 
 
 def test_reads_surface_skin_of_the_first_zone():
@@ -73,6 +81,38 @@ def test_element_types_metadata_is_quad4():
     element_types = dataset.global_attributes["element_types"]
     assert len(element_types) == 1216
     assert set(element_types) == {"QUAD_4"}
+
+
+def test_minimal_quadtri_reads_mixed_surface_skin():
+    """The crafted fixture returns 4 surface faces: 2 quads + 2 tris padded to width 4.
+
+    This is the mixed quad+tri surface path the quad-only cgnslib fixture does not cover.
+    """
+    dataset = _read_orphan()
+    mesh = dataset.mesh
+    assert mesh.n_face == 4
+    connectivity = np.asarray(mesh.face_node_connectivity.data)
+    assert connectivity.shape == (4, 4)
+    # each triangle occupies a quad-width row, padded with one -1 fill
+    assert int((connectivity == -1).sum()) == 2
+    element_types = dataset.global_attributes["element_types"]
+    assert sorted(element_types) == ["QUAD_4", "QUAD_4", "TRI_3", "TRI_3"]
+    assert "node_z" in set(dataset.data_variable_names)
+
+
+def test_minimal_quadtri_keeps_orphan_interior_nodes_issue_97():
+    """Documents issue #97: the 4 interior nodes are kept but referenced by no face.
+
+    The fixture carries 12 nodes; the preferred surface sections reference only the 8
+    cube corners, so the 4 interior (volume-only) nodes are orphaned. This asserts the
+    current, defective behaviour and is tightened once #97 is fixed.
+    """
+    mesh = _read_orphan().mesh
+    connectivity = np.asarray(mesh.face_node_connectivity.data)
+    referenced = np.unique(connectivity[connectivity >= 0])
+    assert mesh.n_node == 12
+    assert referenced.size == 8
+    assert mesh.n_node - referenced.size == 4
 
 
 def test_sniff_accepts_cgns_and_declines_med_and_junk(tmp_path):

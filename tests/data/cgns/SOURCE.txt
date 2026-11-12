@@ -1,4 +1,16 @@
 CGNS/HDF5 (CFD General Notation System).
+Plain HDF5 containers (SIDS tree); read through the vendored GDAL HDF5 multidim driver.
+
 cgnslib_vers-4400.cgns -- official CGNS/CGNS repo, src/tests/data/. zlib licence.
-Plain HDF5 container (SIDS tree); read through the vendored GDAL HDF5 multidim driver.
   https://github.com/CGNS/CGNS (src/tests/data/)
+  Unstructured zone: one HEXA_8 volumetric section + three QUAD_4 surface sections.
+
+minimal_quadtri_orphans.cgns -- crafted minimal fixture (public-domain, no licence).
+  A 12-node unit cube written as a plain HDF5/SIDS tree: nodes 1-8 are the cube corners
+  (surface), nodes 9-12 are interior points. One Zone_t "blk-1" (Unstructured) carrying
+  one HEXA_8 and one TETRA_4 volumetric section plus one QUAD_4 (2 faces) and one TRI_3
+  (2 faces) surface section. Surface sections are preferred, so the 4 interior nodes are
+  referenced by no face -- a minimal, committable reproduction of the orphan-node defect
+  (issue #97) that also exercises the mixed quad+tri surface padding the quad-only
+  cgnslib fixture does not. The real DPW4 grids the defect was found on are too large to
+  commit (263 MB - 1.2 GB; kept in the local, untracked examples/data/real-data/cgns set).
