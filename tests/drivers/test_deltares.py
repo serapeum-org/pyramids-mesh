@@ -33,6 +33,7 @@ from pyramids_mesh.drivers.deltares import (
     _DeltaresReader,
     _fill_value,
     _interpolate_along_branches,
+    _network_branch_geometry,
     _split,
     _string_attr,
     _topology_dimension,
@@ -466,6 +467,98 @@ def test_reconstruct_returns_none_without_a_coordinate_space():
     group = _Group({})
     result = _reader()._reconstruct_node_coordinates(group, {}, ["a", "b"])
     assert result is None
+
+
+def test_branch_offset_names_ignores_a_non_numeric_entry():
+    """A ``node_coordinates`` entry that is neither integer nor float is skipped."""
+    group = _Group(
+        {
+            "label": _Array(value=np.array(["a", "b"], dtype=object)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.0], np.float64)),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["label", "mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_reconstruct_returns_none_without_a_branch_offset_pair():
+    """A coordinate space but no integer branch index declines reconstruction."""
+    group = _Group(
+        {
+            "x": _Array(value=np.array([0.0], np.float64)),
+            "y": _Array(value=np.array([0.0], np.float64)),
+        }
+    )
+    topo = {"coordinate_space": "network", "node_coordinates": "x y"}
+    assert _reader()._reconstruct_node_coordinates(group, topo, ["x", "y"]) is None
+
+
+def test_reconstruct_returns_none_when_network_has_no_geometry():
+    """A valid branch+offset pair but a geometry-less network declines reconstruction."""
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "network": _topo_array(1),
+        }
+    )
+    topo = {
+        "coordinate_space": "network",
+        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+    }
+    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
+    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
+def _net_topo(edge_geometry=None):
+    """Build a fake 1D network ``mesh_topology`` with an optional ``edge_geometry``."""
+    attrs = [_Attr("cf_role", "mesh_topology"), _Attr("topology_dimension", 1)]
+    if edge_geometry is not None:
+        attrs.append(_Attr("edge_geometry", edge_geometry))
+    return _Array(attrs=attrs)
+
+
+def test_network_branch_geometry_none_when_network_absent():
+    """No network topology of the given name yields ``None``."""
+    assert _network_branch_geometry(_Group({}), "network") is None
+
+
+def test_network_branch_geometry_none_without_edge_geometry():
+    """A network that declares no ``edge_geometry`` yields ``None``."""
+    group = _Group({"network": _net_topo()})
+    assert _network_branch_geometry(group, "network") is None
+
+
+def test_network_branch_geometry_none_without_full_geometry():
+    """A geometry container missing its vertex x/y or count yields ``None``."""
+    geometry = _Array(
+        attrs=[_Attr("node_coordinates", "only_x"), _Attr("node_count", None)]
+    )
+    group = _Group({"network": _net_topo("geom"), "geom": geometry})
+    assert _network_branch_geometry(group, "network") is None
+
+
+def test_network_branch_geometry_falls_back_to_positional_xy():
+    """Vertex x/y with no standard name are taken as the first two coordinate entries."""
+    group = _Group(
+        {
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    geom_x, geom_y, counts = _network_branch_geometry(group, "network")
+    assert np.allclose(geom_x, [0.0, 1.0])
+    assert np.allclose(geom_y, [0.0, 0.0])
+    assert counts.tolist() == [2]
 
 
 def test_edges_raise_without_edge_connectivity():
