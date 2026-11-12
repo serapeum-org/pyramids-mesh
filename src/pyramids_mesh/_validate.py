@@ -486,7 +486,7 @@ def fix_winding(
         )
 
     # Signed area of every row at once, the batched form of ``_signed_area_2``. Each row
-    # is translated to its first vertex (always real -- padding is a trailing run) so the
+    # is translated to its first vertex (always real -- padding is trailing) so the
     # shoelace products stay element-sized; pad cells are masked to zero. With the
     # leading vertex at the origin the wrap term of the last real vertex is zero whether
     # it wraps to vertex 0 or to the first pad cell, so a plain roll over the full width

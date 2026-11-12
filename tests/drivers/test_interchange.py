@@ -249,7 +249,7 @@ end_header
             encoding="utf-8"
         )
 
-    # -- real Stanford scans (committed small fixtures; see tests/data/ply/SOURCE.txt) --
+    # -- real Stanford scans (committed fixtures; see tests/data/ply/SOURCE.txt) --
 
     _REAL = Path(__file__).parent.parent / "data" / "ply"
 

@@ -969,10 +969,11 @@ def test_fix_winding_reverses_only_clockwise_rows_in_a_mixed_width_batch():
     """In one mixed-width batch, only clockwise rows flip; pads and CCW/degenerate stay.
 
     Test scenario:
-        Four rows in a width-4, ``-1``-padded array: a CCW triangle (kept), a CW triangle
-        (reversed, its trailing pad preserved), a CW quad (reversed), and a collinear
-        triangle (degenerate, kept). The exact output and the (2 reversed, 1 degenerate)
-        counts pin down the batched reversal, padding handling, and degeneracy branch.
+        Four rows in a width-4, ``-1``-padded array: a CCW triangle (kept), a CW
+        triangle (reversed, its trailing pad preserved), a CW quad (reversed), and a
+        collinear triangle (degenerate, kept). The exact output and the (2 reversed,
+        1 degenerate) counts pin down the batched reversal, padding handling, and the
+        degeneracy branch.
     """
     node_x = np.array([0.0, 1.0, 1.0, 0.0, 0.5])
     node_y = np.array([0.0, 0.0, 1.0, 1.0, 0.0])
@@ -993,5 +994,5 @@ def test_fix_winding_reverses_only_clockwise_rows_in_a_mixed_width_batch():
     )
     np.testing.assert_array_equal(out, expected)
     assert (reversed_count, degenerate_count) == (2, 1), (
-        f"expected 2 reversed and 1 degenerate, got {(reversed_count, degenerate_count)}"
+        f"expected (2, 1), got {(reversed_count, degenerate_count)}"
     )
