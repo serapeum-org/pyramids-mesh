@@ -598,6 +598,74 @@ def test_reconstruct_declines_on_a_dangling_geometry_reference():
     assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
 
 
+def test_sibling_arrays_require_a_name_boundary():
+    """A sibling topology's node array (``mesh1d2d_node_x``) is not matched for ``mesh1d``."""
+    group = _Group(
+        {
+            "mesh1d2d_node_x": _Array(
+                value=np.array([0.0]),
+                attrs=[_Attr("standard_name", "projection_x_coordinate")],
+            ),
+            "mesh1d2d_node_y": _Array(
+                value=np.array([0.0]),
+                attrs=[_Attr("standard_name", "projection_y_coordinate")],
+            ),
+        }
+    )
+    assert _reader()._xy_from_sibling_arrays(group, "mesh1d") == (None, None)
+
+
+def test_branch_offset_names_prefers_names_over_an_unstandardised_xy():
+    """Name matching keeps a float x/y array from being mistaken for the offset.
+
+    With a float ``mesh1d_node_x`` listed first, a dtype-only rule would take it as the
+    offset; matching ``offset`` / ``branch`` by name selects the real arrays instead.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_x": _Array(value=np.array([1.0, 2.0], np.float64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_x", "mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_branch_offset_names_handles_the_alternate_spelling_by_name():
+    """``..._branch_offset`` is the offset, not the branch, despite containing ``branch``."""
+    group = _Group(
+        {
+            "mesh1d_node_branch_id": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_branch_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_branch_id", "mesh1d_node_branch_offset"]
+    )
+    assert branch == "mesh1d_node_branch_id"
+    assert offset == "mesh1d_node_branch_offset"
+
+
+def test_network_branch_geometry_none_on_count_vertex_mismatch():
+    """A ``node_count`` that does not sum to the vertex-list length yields ``None``."""
+    group = _Group(
+        {
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0, 2.0])),
+            "gy": _Array(value=np.array([0.0, 0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),  # sums to 2, but 3 vertices exist
+        }
+    )
+    assert _network_branch_geometry(group, "network") is None
+
+
 def test_edges_raise_without_edge_connectivity():
     """``_edges`` raises when the topology declares no ``edge_node_connectivity``."""
     with pytest.raises(FileFormatNotSupportedError, match="no edge_node_connectivity"):

@@ -394,7 +394,8 @@ class _DeltaresReader:
         When present, those arrays are the authoritative node geometry and are preferred
         over reconstruction. Only node arrays belonging to the discretisation are
         considered -- an array is matched by the ``projection_x`` / ``projection_y``
-        standard name, a name beginning with the topology's own name, and a ``node`` role
+        standard name, a name beginning with the topology's own name and an underscore
+        (so a sibling topology such as ``mesh1d2d`` is not matched), and a ``node`` role
         in the name (so an edge or face coordinate is never mistaken for a node one).
 
         Args:
@@ -407,7 +408,7 @@ class _DeltaresReader:
         """
         node_x = node_y = None
         for name in group.GetMDArrayNames(_SHOW_ALL):
-            if not name.startswith(topo_name) or "node" not in name:
+            if not name.startswith(f"{topo_name}_") or "node" not in name:
                 continue
             array = group.OpenMDArray(name)
             standard_name = _string_attr(array, "standard_name")
@@ -660,8 +661,13 @@ def _branch_offset_names(group, names: list):
 
     A ``mesh1d`` discretisation names its branch index and offset under either spelling
     (``mesh1d_node_branch`` / ``mesh1d_node_offset`` or ``mesh1d_node_branch_id`` /
-    ``mesh1d_node_branch_offset``), so they are told apart by dtype rather than by name:
-    the branch index is integer-valued, the offset is floating-point.
+    ``mesh1d_node_branch_offset``). They are matched by name first -- the entry whose name
+    contains ``offset`` is the offset (tested before ``branch`` so the alternate spelling's
+    ``..._branch_offset`` is not mistaken for the branch index), the remaining entry whose
+    name contains ``branch`` is the branch index. Any entry left unresolved falls back to
+    dtype: an integer entry is the branch index, a floating-point entry the offset. The
+    name test avoids feeding an unstandardised x/y array (a float that tier 0 missed) into
+    reconstruction as if it were a distance.
 
     Args:
         group: The NetCDF root group.
@@ -669,10 +675,18 @@ def _branch_offset_names(group, names: list):
 
     Returns:
         tuple[str | None, str | None]: The branch-index and offset array names, each
-            ``None`` when no entry of that dtype is present.
+            ``None`` when neither the name nor the dtype identifies one.
     """
     branch_name = offset_name = None
     for name in names:
+        lowered = name.lower()
+        if offset_name is None and "offset" in lowered:
+            offset_name = name
+        elif branch_name is None and "branch" in lowered:
+            branch_name = name
+    for name in names:
+        if name in (branch_name, offset_name):
+            continue
         values = np.asarray(group.OpenMDArray(name).ReadAsArray())
         if branch_name is None and np.issubdtype(values.dtype, np.integer):
             branch_name = name
@@ -721,6 +735,10 @@ def _network_branch_geometry(group, network_name: str):
     vertices_per_branch = np.asarray(
         group.OpenMDArray(count_name).ReadAsArray()
     ).astype(np.int64, copy=False)
+    if int(vertices_per_branch.sum()) != geom_x.shape[0]:
+        # The per-branch counts must tile the flat vertex list exactly; a mismatch would
+        # slice branches against the wrong vertices, so the geometry is unusable.
+        return None
     return geom_x, geom_y, vertices_per_branch
 
 
