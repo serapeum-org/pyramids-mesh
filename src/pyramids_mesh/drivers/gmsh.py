@@ -218,7 +218,9 @@ def _build_parsed_mesh(
         # recorded for a writer.
         start_index=0,
         original_start_index=1,
-        node_z=node_z_array if np.any(node_z_array != 0.0) else None,
+        # ``.any()`` keeps the elevation only when some z is non-zero; it treats an
+        # exact 0.0 as absent without a float-equality check on the coordinates.
+        node_z=node_z_array if node_z_array.any() else None,
         crs=None,
         global_attributes={"source": "Gmsh"},
         topology_dimension=2,
