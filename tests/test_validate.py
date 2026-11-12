@@ -889,3 +889,54 @@ def test_fix_winding_is_vectorised_not_per_face():
     elapsed = time.perf_counter() - start
 
     assert elapsed < 2.0, f"fix_winding took {elapsed:.2f}s on 500k faces"
+
+
+def test_fix_winding_on_empty_faces_returns_empty_and_zero_counts():
+    """A zero-row face array is returned unchanged with both counts zero.
+
+    Test scenario:
+        An empty ``(0, 3)`` connectivity has no rows to wind; the vectorised path takes
+        its early return rather than reducing over an empty axis.
+    """
+    faces = np.empty((0, 3), dtype=np.int64)
+
+    out, reversed_count, degenerate_count = fix_winding(
+        faces, np.array([0.0]), np.array([0.0]), -1
+    )
+
+    assert out.shape == (0, 3), f"expected an empty (0, 3) array, got {out.shape}"
+    assert (reversed_count, degenerate_count) == (0, 0), (
+        f"empty input must count nothing, got {(reversed_count, degenerate_count)}"
+    )
+
+
+def test_fix_winding_reverses_only_clockwise_rows_in_a_mixed_width_batch():
+    """In one mixed-width batch, only clockwise rows flip; pads and CCW/degenerate stay.
+
+    Test scenario:
+        Four rows in a width-4, ``-1``-padded array: a CCW triangle (kept), a CW triangle
+        (reversed, its trailing pad preserved), a CW quad (reversed), and a collinear
+        triangle (degenerate, kept). The exact output and the (2 reversed, 1 degenerate)
+        counts pin down the batched reversal, padding handling, and degeneracy branch.
+    """
+    node_x = np.array([0.0, 1.0, 1.0, 0.0, 0.5])
+    node_y = np.array([0.0, 0.0, 1.0, 1.0, 0.0])
+    faces = np.array(
+        [
+            [0, 1, 2, -1],  # CCW triangle -> kept
+            [0, 2, 1, -1],  # CW triangle  -> reversed to [1, 2, 0, -1]
+            [0, 3, 2, 1],  # CW quad       -> reversed to [1, 2, 3, 0]
+            [0, 4, 1, -1],  # collinear     -> degenerate, kept
+        ],
+        dtype=np.int64,
+    )
+
+    out, reversed_count, degenerate_count = fix_winding(faces, node_x, node_y, -1)
+
+    expected = np.array(
+        [[0, 1, 2, -1], [1, 2, 0, -1], [1, 2, 3, 0], [0, 4, 1, -1]], dtype=np.int64
+    )
+    np.testing.assert_array_equal(out, expected)
+    assert (reversed_count, degenerate_count) == (2, 1), (
+        f"expected 2 reversed and 1 degenerate, got {(reversed_count, degenerate_count)}"
+    )
