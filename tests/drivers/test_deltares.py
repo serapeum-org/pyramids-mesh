@@ -65,11 +65,14 @@ def _parse(path, *, lazy=True):
 
 
 def _reconstructed_reference(path):
-    """Independently interpolate node x/y from a file's raw branch, offset and geometry.
+    """Interpolate node x/y with shapely -- an oracle independent of the driver's helper.
 
-    Reproduces the reconstruction from the committed bytes with no reader code beyond the
-    pure interpolation helper, so a test can confirm the driver's own result matches.
+    Uses ``shapely.LineString.interpolate`` per branch rather than
+    ``_interpolate_along_branches``, so a match proves the driver's linear-referencing
+    math is correct, not merely self-consistent with itself.
     """
+    from shapely.geometry import LineString
+
     dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
     try:
         group = dataset.GetRootGroup()
@@ -89,7 +92,15 @@ def _reconstructed_reference(path):
         ).astype(np.int64)
     finally:
         dataset.Close()
-    return _interpolate_along_branches(branch, offset, geom_x, geom_y, counts)
+    starts = np.concatenate(([0], np.cumsum(counts)))
+    node_x = np.empty(branch.shape[0], np.float64)
+    node_y = np.empty(branch.shape[0], np.float64)
+    for index, (branch_index, distance) in enumerate(zip(branch, offset)):
+        begin, end = int(starts[branch_index]), int(starts[branch_index + 1])
+        line = LineString(np.column_stack([geom_x[begin:end], geom_y[begin:end]]))
+        point = line.interpolate(float(distance))
+        node_x[index], node_y[index] = point.x, point.y
+    return node_x, node_y
 
 
 def _sibling_node_xy(path):
@@ -106,6 +117,18 @@ def _sibling_node_xy(path):
     finally:
         dataset.Close()
     return node_x, node_y
+
+
+def _network_geometry_bounds(path):
+    """Return a file's network branch-geometry ``(x_min, x_max), (y_min, y_max)`` bounds."""
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        geom_x = np.asarray(group.OpenMDArray("network1d_geom_x").ReadAsArray(), float)
+        geom_y = np.asarray(group.OpenMDArray("network1d_geom_y").ReadAsArray(), float)
+    finally:
+        dataset.Close()
+    return (geom_x.min(), geom_x.max()), (geom_y.min(), geom_y.max())
 
 
 def test_pure_1d_network_reads_node_and_edge_counts():
@@ -175,10 +198,38 @@ def test_branch_offset_only_file_is_read_by_reconstruction():
     assert (network.n_node, network.n_edge) == (12, 13)
     assert np.isfinite(network.node_x).all()
     assert np.isfinite(network.node_y).all()
-    # the reconstruction matches an independent interpolation from the same raw arrays
+    # the reconstruction matches an independent shapely interpolation of the raw arrays
     expected_x, expected_y = _reconstructed_reference(_DSD)
     assert np.allclose(network.node_x, expected_x)
     assert np.allclose(network.node_y, expected_y)
+    # and every node lands within the network's own geometry bounds
+    geom_x, geom_y = _network_geometry_bounds(_DSD)
+    assert geom_x[0] - 1e-6 <= network.node_x.min()
+    assert network.node_x.max() <= geom_x[1] + 1e-6
+    assert geom_y[0] - 1e-6 <= network.node_y.min()
+    assert network.node_y.max() <= geom_y[1] + 1e-6
+
+
+def test_reconstruction_reproduces_stored_coordinates_on_a_real_file():
+    """Reconstruction of the magdalena network reproduces its stored node x/y exactly.
+
+    ``magdalena`` carries both branch+offset geometry and authoritative
+    ``mesh1d_node_x`` / ``_node_y``. Reconstructing directly (bypassing the sibling-array
+    tier) and comparing to the stored arrays is a real 447-node ground truth for the
+    linear-referencing math -- they must agree to within floating-point tolerance.
+    """
+    dataset = gdal.OpenEx(str(_MAGDALENA), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        reader = _DeltaresReader(str(_MAGDALENA), lazy=True)
+        _, topo = reader._discretisation(group)
+        names = _split(topo.get("node_coordinates"))
+        recon_x, recon_y = reader._reconstruct_node_coordinates(group, topo, names)
+    finally:
+        dataset.Close()
+    stored_x, stored_y = _sibling_node_xy(_MAGDALENA)
+    assert np.allclose(recon_x, stored_x, atol=1e-6)
+    assert np.allclose(recon_y, stored_y, atol=1e-6)
 
 
 def test_unreferenced_node_xy_arrays_are_preferred_over_reconstruction():
@@ -435,6 +486,30 @@ def test_interpolate_along_branches_linear_references_offsets():
     node_x, node_y = _interpolate_along_branches(branch, offset, geom_x, geom_y, counts)
     assert np.allclose(node_x, [0.0, 5.0, 10.0])
     assert np.allclose(node_y, [0.0, 0.0, 5.0])
+
+
+def test_interpolate_along_branches_clamps_an_offset_past_the_branch_end():
+    """An offset beyond a branch's length clamps to its last vertex (np.interp behaviour)."""
+    geom_x = np.array([0.0, 10.0])
+    geom_y = np.array([0.0, 0.0])
+    counts = np.array([2])
+    node_x, node_y = _interpolate_along_branches(
+        np.array([0]), np.array([15.0]), geom_x, geom_y, counts
+    )
+    assert node_x[0] == 10.0
+    assert node_y[0] == 0.0
+
+
+def test_interpolate_along_branches_degenerates_a_single_vertex_branch():
+    """A branch with one vertex places every node on it at that vertex, for any offset."""
+    geom_x = np.array([5.0])
+    geom_y = np.array([7.0])
+    counts = np.array([1])
+    node_x, node_y = _interpolate_along_branches(
+        np.array([0, 0]), np.array([0.0, 3.0]), geom_x, geom_y, counts
+    )
+    assert np.allclose(node_x, [5.0, 5.0])
+    assert np.allclose(node_y, [7.0, 7.0])
 
 
 def test_interpolate_along_branches_returns_none_for_a_branchless_node():
