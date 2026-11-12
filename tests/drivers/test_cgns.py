@@ -386,6 +386,20 @@ def test_higher_order_surface_codes_keep_only_corner_nodes():
     assert _cgns_corner_count("QUAD_9") == 4
 
 
+def test_cgns_example_notebook_commits_no_machine_specific_path():
+    """The committed cgns example notebook must not embed an absolute local path.
+
+    Re-executing the notebook bakes the executing checkout's absolute path into the warning
+    stderr (e.g. a worktree ``src`` path or a pixi ``site-packages`` path); such a path is
+    machine-specific, meaningless on the rendered docs site, and leaks the local layout. It
+    must be scrubbed to a relative module path before commit (PR review SF1).
+    """
+    notebook = Path(__file__).parents[2] / "docs" / "examples" / "cgns.ipynb"
+    text = notebook.read_text(encoding="utf-8")
+    for needle in ("worktrees", "python-environments", "site-packages"):
+        assert needle not in text, f"notebook leaks a machine-specific path token: {needle!r}"
+
+
 class TestDropOrphanNodes:
     """Unit tests for _drop_orphan_nodes, the issue #97 node compaction."""
 
