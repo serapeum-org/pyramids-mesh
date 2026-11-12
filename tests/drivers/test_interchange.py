@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
+from pyramids_mesh._validate import _area_tolerance
 from pyramids_mesh.drivers import interchange
 from pyramids_mesh.drivers.interchange import (
     PlyDriver,
@@ -299,18 +300,14 @@ end_header
                 np.dot(local_x, np.roll(local_y, -1))
                 - np.dot(local_y, np.roll(local_x, -1))
             )
-            span = max(float(np.ptp(xs)), float(np.ptp(ys)))
-            magnitude = max(float(np.abs(xs).max()), float(np.abs(ys).max()))
-            tolerance = (
-                8.0 * float(np.finfo(np.float64).eps) * span * max(span, magnitude)
-            )
-            assert area2 >= -tolerance
+            assert area2 >= -_area_tolerance(xs, ys)
 
     def test_ply_real_armadillo_face_property_layout_is_refused(self):
-        """The real Armadillo header -- a per-face scalar before the index list -- is refused.
+        """Refuse the real Armadillo header: a per-face scalar before the index list.
 
         The committed ``face_property_before_list.ply`` reproduces that exact element
-        layout; a per-face scalar would mis-align the face rows, so the reader refuses it.
+        layout; a per-face scalar would mis-align the face rows, so the reader refuses
+        it.
         """
         with pytest.raises(FileFormatNotSupportedError, match="per-face property"):
             PlyDriver().read(str(self._REAL / "face_property_before_list.ply"))
