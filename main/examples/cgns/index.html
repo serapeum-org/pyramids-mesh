@@ -60,7 +60,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3518,11 +3518,11 @@ ds</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>C:\python-environments\pixi\envs\pyramids-mesh-4081970794675243037\envs\dev\Lib\site-packages\pyramids\netcdf\ugrid\_drivers.py:538: RuntimeWarning: Mesh driver 'dfsu' (pyramids_mesh.drivers.dhi:DfsuDriver) could not be loaded and was skipped: ModuleNotFoundError("No module named 'mikeio'")
+<pre>pyramids\netcdf\ugrid\_drivers.py:538: RuntimeWarning: Mesh driver 'dfsu' (pyramids_mesh.drivers.dhi:DfsuDriver) could not be loaded and was skipped: ModuleNotFoundError("No module named 'mikeio'")
   driver = _instantiate(entry_point)
-C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_mesh\_base.py:484: UserWarning: 320 clockwise face(s) were reversed to counter-clockwise; a writer will emit the corrected order
+pyramids_mesh\_base.py:484: UserWarning: 320 clockwise face(s) were reversed to counter-clockwise; a writer will emit the corrected order
   parsed = validate_and_normalise(parsed)
-C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_mesh\_base.py:484: UserWarning: 576 degenerate face(s) have no winding and were left unchanged
+pyramids_mesh\_base.py:484: UserWarning: 576 degenerate face(s) have no winding and were left unchanged
   parsed = validate_and_normalise(parsed)
 </pre>
 </div>
@@ -3530,7 +3530,7 @@ C:\python-environments\worktrees\pyramids-mesh\example-notebooks\src\pyramids_me
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>MeshDataset(mesh='mesh2d', n_node=3213, n_face=1216, n_edge=0, variables=['node_z'])</pre>
+<pre>MeshDataset(mesh='mesh2d', n_node=1218, n_face=1216, n_edge=0, variables=['node_z'])</pre>
 </div>
 </div>
 </div>
@@ -3631,7 +3631,7 @@ print("bounds :", ds.bounds)</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>n_node : 3213
+<pre>n_node : 1218
 n_face : 1216
 crs    : None
 epsg   : None
@@ -3734,11 +3734,11 @@ bounds : (0.0, 0.0, 20.0, 16.0)
 <tbody>
 <tr>
 <th>node_z</th>
-<td>3213</td>
+<td>1218</td>
 <td>0.0</td>
 <td>8.0</td>
 <td>4.0</td>
-<td>2.581989</td>
+<td>3.321819</td>
 </tr>
 </tbody>
 </table>
