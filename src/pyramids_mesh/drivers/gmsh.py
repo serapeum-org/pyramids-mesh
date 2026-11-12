@@ -476,32 +476,19 @@ class _GmshReader:
             ) from None
 
     def _read_header(self) -> int:
-        """Read ``$MeshFormat`` and return the major version.
+        """Consume ``$MeshFormat`` and return the major version.
 
-        The file-type and version were already vetted by :func:`_mesh_format` before this
-        reader was chosen, so this only re-reads the major to drive node/element layout.
+        :func:`_mesh_format` has already vetted the header, version and file-type before
+        this reader was chosen, so this only walks the two header lines -- to position the
+        stream at the first section -- and returns the major that drives node/element
+        layout.
 
         Returns:
             int: The major version, ``2`` or ``4``.
-
-        Raises:
-            FileFormatNotSupportedError: If the header is missing or the version is
-                unsupported.
         """
-        first = self._next("$MeshFormat header")
-        if first[0] != _HEADER:
-            raise FileFormatNotSupportedError(
-                f"{self.path!r} is not a Gmsh file: expected a {_HEADER} header, "
-                f"found {first[0]!r}"
-            )
+        self._next("$MeshFormat header")
         fields = self._next("version line")
-        major = int(_as_float(fields[0], "Gmsh version", self.path))
-        if major not in _SUPPORTED_MAJORS:
-            raise FileFormatNotSupportedError(
-                f"{self.path!r} declares Gmsh version {fields[0]!r}; only the 2.2 and "
-                f"4.1 layouts are read"
-            )
-        return major
+        return int(_as_float(fields[0], "Gmsh version", self.path))
 
     def _read_nodes(self, major: int) -> None:
         """Read the ``$Nodes`` section in the layout the version dictates."""
@@ -696,13 +683,10 @@ class _GmshBinaryReader:
         Gmsh writes a binary integer equal to ``1`` right after the ``$MeshFormat``
         version line; reading it as little- then big-endian tells the two apart. A file
         whose marker cannot be read as ``1`` either way keeps the little-endian default,
-        which is what every mainstream platform writes.
+        which is what every mainstream platform writes. The header's presence was already
+        confirmed by :func:`_mesh_format`, so it is found here.
         """
         begin = self.raw.find(b"$MeshFormat")
-        if begin == -1:
-            raise FileFormatNotSupportedError(
-                f"{self.path!r} is not a Gmsh file: no {_HEADER} header"
-            )
         end_keyword = self.raw.find(b"\n", begin)
         end_version = self.raw.find(b"\n", end_keyword + 1)
         marker = self.raw[end_version + 1 : end_version + 1 + _INT_SIZE]

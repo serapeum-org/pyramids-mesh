@@ -216,6 +216,25 @@ def test_gmsh_unsupported_version_is_refused(tmp_path):
         GmshDriver().read(_write(tmp_path, text))
 
 
+def test_gmsh_unknown_file_type_is_refused(tmp_path):
+    """A file-type that is neither ASCII (0) nor binary (1) is refused by name."""
+    text = "$MeshFormat\n2.2 2 8\n$EndMeshFormat\n"
+    with pytest.raises(FileFormatNotSupportedError, match="file-type"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_gmsh_empty_file_is_refused(tmp_path):
+    """An empty ``.msh`` has no ``$MeshFormat`` header, so it is not a Gmsh file."""
+    with pytest.raises(FileFormatNotSupportedError, match="empty"):
+        GmshDriver().read(_write(tmp_path, ""))
+
+
+def test_gmsh_header_without_version_is_refused(tmp_path):
+    """A file that is just ``$MeshFormat`` with no version line is refused."""
+    with pytest.raises(FileFormatNotSupportedError, match="version line"):
+        GmshDriver().read(_write(tmp_path, "$MeshFormat\n"))
+
+
 def test_gmsh_file_without_faces_is_refused(tmp_path):
     """A file of only boundary lines has no surface, so it is refused."""
     text = """$MeshFormat
