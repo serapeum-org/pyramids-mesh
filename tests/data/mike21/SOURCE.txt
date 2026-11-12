@@ -1,0 +1,17 @@
+DHI MIKE 21 flexible-mesh files (ASCII .mesh), legacy 2-field header variant.
+
+These exercise the legacy "<n_nodes> <projection>" header (issue #92) against real DHI
+vendor data, as a committed anchor for the inline fixtures. The current EUM 4-field
+header is covered by tests/data/minimal.mesh and the inline fixtures in test_mike21.py.
+
+odense_rough_legacy_header.mesh -- DHI Odense estuary, triangles only (399 nodes, 654
+  faces), projection "UTM-33". From DHI/mikeio tests/testdata/odense_rough.mesh, BSD-3-Clause.
+  https://github.com/DHI/mikeio
+
+odense_rough_quads_legacy_header.mesh -- same estuary, mixed quad+triangle (535 nodes,
+  724 faces, element-type 25), projection "UTM-33". From lutraconsulting/MDAL
+  tests/data/mike21/odense_rough_quads.mesh, MIT.
+  https://github.com/lutraconsulting/MDAL
+
+The broader validation corpus (14 files, both header layouts, LF/CRLF, WKT projection,
+.MESH suffix) is downloaded locally to examples/data/real-data/mike21/ (gitignored).

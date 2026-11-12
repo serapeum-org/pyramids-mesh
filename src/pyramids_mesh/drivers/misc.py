@@ -6,10 +6,10 @@ driver-table entry in the reference landscape, so their support there is unstate
 verify against a real file before implementing. Tasks D4 and D12; see
 ``planning/design.md`` section 20.1.
 
-The Mike21 structure here was read from the format specification. Two details could
-not be checked against a vendor file -- the header's projection field and the node-record
-column order -- so they are read as the format specifies and called out in the driver's
-documented limitations rather than presented as certain.
+The Mike21 structure here was first read from the format specification and is now
+validated against DHI's published sample meshes in both header layouts, which read back
+at their true geographic coordinates -- confirming the header's projection field and the
+node-record column order that the specification alone had left uncertain.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ _MINIMAL_MIKE21_FIXTURE = """100079 1000 4 LONG/LAT
 
 
 class Mike21Driver(BaseDriver):
-    """Reader for the DHI Mike21 ``.mesh`` frame format.
+    r"""Reader for the DHI Mike21 ``.mesh`` frame format.
 
     Plain text despite the DHI name, so it needs no dependency. A header line, then one
     record per node, then an element header, then one record per element. The format
@@ -76,11 +76,13 @@ class Mike21Driver(BaseDriver):
     model is planar and carries no per-node elevation coordinate (design section 6). The
     file's z column is read as written, never fabricated.
 
+    Header layouts:
+        Both are read. The current form is
+        ``<eum_item> <eum_unit> <node_count> <projection>``; the legacy form, still
+        shipped in DHI's own sample data, is ``<node_count> <projection>``
+        (see :func:`_classify_header`). The writer emits the current form.
+
     Documented limitations:
-        - **The projection field and the node-record column order are read as the
-          format specifies, but could not be checked against a vendor file.** If a real Mike21
-          mesh orders its node columns differently, the coordinates would be wrong in a
-          plausible way; this is the part of the driver a vendor sample should confirm.
         - **The projection is mapped to a CRS only when it is real.** A WKT string or an
           EPSG code that the vendored PROJ validates is carried; a DHI-internal name
           such as ``UTM-32`` or ``LONG/LAT`` carries no datum and leaves ``crs`` as
@@ -150,6 +152,27 @@ class Mike21Driver(BaseDriver):
             ...     dataset = Mike21Driver().read(path)
             >>> dataset.crs_wkt is None
             True
+
+        - The legacy 2-field header -- node count first, then projection, as DHI's own
+          ``Oresund.mesh`` and ``odense_rough.mesh`` are written -- reads just like the
+          current form:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> from pyramids_mesh.drivers.misc import Mike21Driver
+            >>> legacy = (
+            ...     "4 UTM-33\n"
+            ...     "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
+            ...     "3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+            ...     "2 3 21\n1 1 2 3\n2 1 3 4\n"
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "legacy.mesh")
+            ...     _ = Path(path).write_text(legacy, encoding="utf-8")
+            ...     dataset = Mike21Driver().read(path)
+            >>> dataset.mesh.n_node, dataset.mesh.n_face
+            (4, 2)
     """
 
     name = "mike21"
@@ -161,31 +184,44 @@ class Mike21Driver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the first line parses as a Mike21 header.
 
-        The header is ``<item> <unit> <node_count> <projection...>``, so a readable
-        first line whose third field is a positive integer is the cheapest signature
-        the format offers. A binary file decodes to replacement characters and fails
-        that test rather than raising.
+        The header is either ``<eum_item> <eum_unit> <node_count> <projection...>`` or
+        the legacy ``<node_count> <projection...>``. The legacy form is a weak signature
+        on its own -- a single leading integer -- and ``.mesh`` is a suffix the sibling
+        MEDIT driver also claims, so the sniff requires both a classifiable header (see
+        :func:`_classify_header`) *and* a node-record-shaped second line: a real Mike21
+        frame opens ``header`` then ``id x y z boundary``. That keeps a foreign
+        integer-leading ``.mesh`` -- a generic ``<int> <word>`` line, a 3D model export --
+        from being claimed on the header shape alone. A binary file decodes to
+        replacement characters and fails rather than raising.
 
-        ``.mesh`` is a common suffix, so the sniff is what keeps a foreign ``.mesh``
-        file -- a 3D model export, say -- from being claimed. It is still only a header
-        shape: a file that passes it but breaks later is refused by ``read``, which is
-        why the two must not disagree about what a header looks like.
+        It reads the first two non-blank lines rather than a fixed byte window, so a long
+        (WKT) projection on the header line cannot push the node record out of reach and
+        make the sniff disagree with ``read``; each line is still capped so a file with no
+        newlines cannot force an unbounded read.
+
+        It is still only a shape check: a file that passes it but breaks later is refused
+        by ``read``, which shares :func:`_classify_header`, so the two cannot disagree
+        about what a header looks like.
 
         Args:
             path: The file to inspect.
 
         Returns:
-            bool: ``True`` when the first line has the header's shape.
+            bool: ``True`` when the first two non-blank lines are a header and a node
+            record.
         """
+        lines: list[str] = []
         with open(path, "rb") as handle:
-            first = handle.readline(4096)
-        tokens = first.decode("utf-8-sig", errors="replace").split()
-        if len(tokens) < _ELEMENT_HEADER_FIELDS + 1:
+            while len(lines) < 2:
+                raw = handle.readline(1 << 20)
+                if not raw:
+                    break
+                line = raw.decode("utf-8-sig", errors="replace").strip()
+                if line:
+                    lines.append(line)
+        if len(lines) < 2 or _classify_header(lines[0].split()) is None:
             return False
-        try:
-            return int(tokens[2]) > 0
-        except ValueError:
-            return False
+        return _looks_like_node_record(lines[1].split())
 
     def _parse(self, path: str, *, lazy: bool) -> ParsedMesh:
         """Read a Mike21 ``.mesh`` file into a :class:`ParsedMesh`.
@@ -369,6 +405,120 @@ def _projection_to_crs(projection: str) -> str | int | None:
     return None
 
 
+def _is_int(value: str) -> bool:
+    """Report whether a field is unsigned ASCII base-10 integer text (``int``-safe).
+
+    ``str.isdigit`` alone is both looser and stricter than ``int``: it accepts
+    superscript and other-script digit characters (``"²"``, ``"②"``) that ``int``
+    rejects, and rejects the grouped (``"1_000"``) and signed (``"+4"``, ``"-5"``) forms
+    ``int`` accepts. Pairing it with ``str.isascii`` pins the predicate to plain ASCII
+    digit runs, so ``True`` here guarantees ``int(value)`` succeeds -- callers convert
+    with a bare ``int`` and must not be handed a value that then raises -- while the
+    non-ASCII and non-digit forms decline cleanly rather than crashing a count field.
+    """
+    return value.isdigit() and value.isascii()
+
+
+def _is_float(value: str) -> bool:
+    """Report whether a field parses as a floating-point number."""
+    try:
+        float(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _looks_like_node_record(tokens: list[str]) -> bool:
+    """Report whether a line has the shape of a node record rather than a header.
+
+    A node record is ``id x y z boundary_code``. The shape tested is exactly what
+    :meth:`_Mike21Scan._read_nodes` requires -- an integer id, three floating-point
+    coordinates and a fifth field present for width -- and no more: the boundary code is
+    not kept, so it is not constrained here either, keeping the sniff from declining a
+    file ``read`` would accept. A header never takes this shape (its projection is a
+    name, a WKT string or a single code), so a first line that looks like a node record
+    means the file opened without a header, and a second line of that shape is what tells
+    ``_sniff`` a real Mike21 frame follows the header.
+    """
+    return (
+        len(tokens) >= _NODE_FIELDS
+        and _is_int(tokens[0])
+        and _is_float(tokens[1])
+        and _is_float(tokens[2])
+        and _is_float(tokens[3])
+    )
+
+
+def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
+    """Locate the node count and projection in either Mike21 header layout.
+
+    Mike21 ``.mesh`` writes its header in one of two layouts. The current form is
+    ``<eum_item> <eum_unit> <node_count> <projection>`` -- three leading integers, then
+    the projection. The legacy form, still emitted by older tools and shipped in DHI's
+    own sample data (``Oresund.mesh``, ``odense_rough.mesh``), is
+    ``<node_count> <projection>`` -- a single leading integer, then the projection. The
+    number of leading integer fields is what distinguishes them: three for the EUM form,
+    one for the legacy form. Keeping the rule in one place is what lets ``_sniff`` and
+    ``_read_header`` agree on what a header is.
+
+    The legacy form requires a projection token after the count -- a lone integer is not
+    a header -- and a first line with node-record shape (``id x y z boundary``) is
+    declined, so a file that opens without a header is refused at the header rather than
+    read with its first node record as one.
+
+    The rule assumes a legacy projection never begins with two integers: no real DHI
+    projection does (``UTM-33``, ``LONG/LAT``, a single EPSG code, or a WKT string
+    starting ``PROJCS``/``GEOGCS``). A legacy header whose projection did -- e.g.
+    ``399 123 456 Zone`` -- would be misread as EUM (count ``456``), not refused. No known
+    vendor file takes that shape.
+
+    Args:
+        tokens: The whitespace-split fields of the first non-blank line.
+
+    Returns:
+        tuple[int, int] | None: ``(node_count, projection_index)`` -- the positive node
+        count and the index of the first projection field -- or ``None`` when the line
+        is not a Mike21 header.
+
+    Examples:
+        - The current EUM form leads with three integers, so the node count is the third
+          field and the projection follows it:
+
+            >>> _classify_header(["100079", "1000", "4", "LONG/LAT"])
+            (4, 3)
+
+        - The legacy form leads with one integer, so the node count is the first field
+          and the projection follows it:
+
+            >>> _classify_header(["399", "UTM-33"])
+            (399, 1)
+
+        - A first line with no positive integer node count is not a header:
+
+            >>> _classify_header(["MeshVersionFormatted", "2"]) is None
+            True
+    """
+    if _looks_like_node_record(tokens):
+        return None
+    if (
+        len(tokens) >= 3
+        and _is_int(tokens[0])
+        and _is_int(tokens[1])
+        and _is_int(tokens[2])
+    ):
+        node_count, projection_index = int(tokens[2]), 3
+    elif len(tokens) >= 4 and _is_int(tokens[0]) and _is_int(tokens[1]):
+        # Two leading integer codes and a fourth field, but a non-integer where the count
+        # belongs: a malformed EUM header, not a legacy one. Decline it so ``_read_header``
+        # names the bad count rather than reading the EUM item code as the node count.
+        return None
+    elif len(tokens) >= 2 and _is_int(tokens[0]):
+        node_count, projection_index = int(tokens[0]), 1
+    else:
+        return None
+    return (node_count, projection_index) if node_count > 0 else None
+
+
 class _Mike21Scan:
     """One Mike21 file's records, read in the fixed order the format lays them out."""
 
@@ -446,27 +596,44 @@ class _Mike21Scan:
         )
 
     def _read_header(self) -> tuple[int, str | int | None]:
-        """Read ``<item> <unit> <node_count> <projection...>``.
+        """Read the header in either layout: EUM 4-field or legacy 2-field.
+
+        The current form is ``<eum_item> <eum_unit> <node_count> <projection...>`` and
+        the legacy form is ``<node_count> <projection...>``; :func:`_classify_header`
+        tells them apart and locates the node count and the projection field.
 
         Returns:
             tuple[int, str | int | None]: The node count and the mapped CRS.
+
+        Raises:
+            FileFormatNotSupportedError: If the first line is neither header layout.
         """
         header = self._next("header")
-        if len(header) < _ELEMENT_HEADER_FIELDS + 1:
+        classified = _classify_header(header)
+        if classified is None:
+            if len(header) >= 4 and _is_int(header[0]) and _is_int(header[1]):
+                if _is_int(header[2]):
+                    raise FileFormatNotSupportedError(
+                        f"{self.path!r} has a malformed EUM header: the node count "
+                        f"{header[2]!r} is not a positive integer"
+                    )
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has a malformed EUM header: the node-count field "
+                    f"{header[2]!r} is not an integer"
+                )
             raise FileFormatNotSupportedError(
-                f"{self.path!r} has a short header: expected at least "
-                f"{_ELEMENT_HEADER_FIELDS + 1} fields, found {len(header)}"
+                f"{self.path!r} has an unrecognised header: a Mike21 mesh starts with "
+                f"either '<eum_item> <eum_unit> <node_count> <projection>' or the "
+                f"legacy '<node_count> <projection>', found {header!r}"
             )
-        node_count = _as_int(header[2], "header", self.path)
-        # The projection is everything after the third field, taken from the raw header
+        node_count, projection_index = classified
+        # The projection is everything after the node count, taken from the raw header
         # line so a WKT string keeps its internal spacing rather than being re-joined on
         # single spaces. The header is always the first non-blank line, so raw_lines[0].
         raw_header = self.raw_lines[0]
-        projection = raw_header.split(maxsplit=_ELEMENT_HEADER_FIELDS)
+        projection = raw_header.split(maxsplit=projection_index)
         projection_text = (
-            projection[_ELEMENT_HEADER_FIELDS]
-            if len(projection) > _ELEMENT_HEADER_FIELDS
-            else ""
+            projection[projection_index] if len(projection) > projection_index else ""
         )
         return node_count, _projection_to_crs(projection_text.strip())
 

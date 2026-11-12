@@ -1,10 +1,11 @@
 """Tests for the DHI Mike21 ``.mesh`` reader (D4).
 
 Mike21 is a frame-only text format: a header, node records, an element header, element
-records. The tests cover the index base, the projection-to-CRS mapping (a documented
-trap, since a DHI name is not a WKT), and the record-shape errors. Two format details --
-the projection field and the node-column order -- could not be checked against a vendor
-file, so the tests pin the behaviour this driver actually implements.
+records. The tests cover both header layouts (the current EUM 4-field and the legacy
+2-field, issue #92), the index base, the projection-to-CRS mapping (a documented trap,
+since a DHI name is not a WKT), and the record-shape errors. The legacy-header and
+column-order behaviour is anchored on DHI's own vendor samples under
+``tests/data/mike21/``.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -27,6 +28,20 @@ _UNIT_SQUARE = """100079 1000 4 LONG/LAT
 1 1 2 3
 2 1 3 4
 """
+
+# The same unit square under the legacy 2-field header "<n_nodes> <projection>" (issue
+# #92). ``UTM-33`` is a DHI-internal name, so the read leaves ``crs`` None.
+_UNIT_SQUARE_LEGACY = """4 UTM-33
+1 0.0 0.0 0.0 1
+2 1.0 0.0 0.0 1
+3 1.0 1.0 0.0 1
+4 0.0 1.0 0.0 1
+2 3 21
+1 1 2 3
+2 1 3 4
+"""
+
+_MIKE21_DATA = Path(__file__).parent.parent / "data" / "mike21"
 
 
 def _write(tmp_path, text, name="domain.mesh"):
@@ -265,10 +280,14 @@ def test_mike21_empty_projection_maps_to_none():
     assert misc._projection_to_crs("") is None
 
 
-def test_mike21_short_header_is_refused(tmp_path):
-    """A header line with fewer than four fields is refused."""
-    with pytest.raises(FileFormatNotSupportedError, match="short header"):
-        Mike21Driver().read(_write(tmp_path, "100079 1000\n1 0 0 0 1\n"))
+def test_mike21_unrecognised_header_is_refused(tmp_path):
+    """A first line with no integer node count in either layout is refused.
+
+    Neither the EUM 4-field nor the legacy 2-field layout applies when the line does not
+    start with an integer, so it is rejected as a header rather than read on.
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, "LONG LAT only\n1 0 0 0 1\n"))
 
 
 def test_mike21_short_element_header_is_refused(tmp_path):
@@ -308,13 +327,18 @@ def test_mike21_short_element_record_is_refused(tmp_path):
 
 
 def test_mike21_non_integer_node_count_is_refused(tmp_path):
-    """A non-integer node count in the header is refused by the integer parser."""
-    text = """100079 1000 many LONG/LAT
+    """A header whose node-count field is not an integer is refused as unrecognised.
+
+    With a non-integer in the EUM count position, the line no longer classifies as the
+    EUM layout, and its first field is not an integer either, so it is not a legacy
+    header -- it is rejected rather than read with a wrong count.
+    """
+    text = """abc 1000 4 LONG/LAT
 1 0.0 0.0 0.0 1
 1 3 21
 1 1 2 3
 """
-    with pytest.raises(FileFormatNotSupportedError, match="expected an integer"):
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
         Mike21Driver().read(_write(tmp_path, text))
 
 
@@ -357,6 +381,325 @@ def test_mike21_blank_lines_between_records_are_skipped(tmp_path):
 
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
+
+
+def test_mike21_reads_legacy_two_field_header(tmp_path):
+    """The legacy ``<n_nodes> <projection>`` header reads like the EUM one (issue #92).
+
+    The real DHI samples -- ``Oresund.mesh``, ``odense_rough.mesh`` -- use this older
+    header, in which the node count is the first field, not the third.
+    """
+    dataset = Mike21Driver().read(_write(tmp_path, _UNIT_SQUARE_LEGACY))
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.tolist() == [[0, 1, 2], [0, 2, 3]]
+
+
+def test_mike21_can_open_true_on_legacy_header(tmp_path):
+    """Auto-detection claims a legacy 2-field file, not only an EUM 4-field one."""
+    assert Mike21Driver().can_open(_write(tmp_path, _UNIT_SQUARE_LEGACY)) is True
+
+
+def test_mike21_legacy_header_epsg_projection_is_carried(tmp_path):
+    """The projection after a legacy header is mapped just like after an EUM header.
+
+    The projection field sits at index 1 in the legacy layout rather than index 3, so a
+    real EPSG code there must still be found and carried.
+    """
+    text = _UNIT_SQUARE_LEGACY.replace("4 UTM-33", "4 32632")
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+
+    assert dataset.mesh.crs == 32632
+
+
+def test_mike21_legacy_header_internal_name_leaves_crs_none(tmp_path):
+    """A DHI-internal projection name after a legacy header leaves ``crs`` None."""
+    dataset = Mike21Driver().read(_write(tmp_path, _UNIT_SQUARE_LEGACY))
+
+    assert dataset.mesh.crs is None
+
+
+def test_mike21_legacy_header_reads_mixed_quad_and_triangle(tmp_path):
+    """A legacy-header mesh mixing a quad and a triangle pads the triangle to fill.
+
+    This is the legacy header combined with the quad-padding path: the triangle's fourth
+    column is the ``0`` pad, which becomes ``-1`` fill.
+    """
+    text = (
+        "5 UTM-33\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n"
+        "4 0.0 1.0 0.0 1\n5 2.0 0.0 0.0 1\n"
+        "2 4 25\n"
+        "1 1 2 3 4\n"
+        "2 2 5 3 0\n"
+    )
+    dataset = Mike21Driver().read(_write(tmp_path, text))
+    rows = dataset.mesh.face_node_connectivity.data.tolist()
+
+    assert (dataset.mesh.n_node, dataset.mesh.n_face) == (5, 2)
+    assert rows[0] == [0, 1, 2, 3]
+    assert rows[1][3] == -1
+
+
+def test_mike21_legacy_header_with_crlf_line_endings_reads(tmp_path):
+    """A legacy file with CRLF line endings reads: the ``\\r`` is stripped, not parsed."""
+    path = tmp_path / "crlf.mesh"
+    path.write_bytes(_UNIT_SQUARE_LEGACY.replace("\n", "\r\n").encode("utf-8"))
+    dataset = Mike21Driver().read(str(path))
+
+    assert (dataset.mesh.n_node, dataset.mesh.n_face) == (4, 2)
+
+
+def test_mike21_reads_committed_legacy_vendor_file():
+    """The committed DHI ``odense_rough`` sample (legacy header, triangles) reads.
+
+    The first node's coordinates are asserted, not just the counts, to pin the
+    node-record column order (x before y): the first record is
+    ``1 218234.75 6158181.03 ...``, so a swapped x/y column would flip the UTM-33 easting
+    (~218 234) and northing (~6 158 181) and fail here.
+    """
+    path = _MIKE21_DATA / "odense_rough_legacy_header.mesh"
+    dataset = Mike21Driver().read(str(path))
+
+    assert dataset.mesh.n_node == 399
+    assert dataset.mesh.n_face == 654
+    assert dataset.mesh.node_x[0] == pytest.approx(218234.754787612, abs=1e-3)
+    assert dataset.mesh.node_y[0] == pytest.approx(6158181.03268845, abs=1e-3)
+
+
+def test_mike21_reads_committed_legacy_quad_vendor_file():
+    """The committed DHI ``odense_rough_quads`` sample (legacy header, mixed) reads.
+
+    The first node's coordinates pin the column order as in the triangle sample: the
+    first record is ``1 212437.69 6157513.14 ...`` (UTM-33 easting then northing).
+    """
+    path = _MIKE21_DATA / "odense_rough_quads_legacy_header.mesh"
+    dataset = Mike21Driver().read(str(path))
+
+    assert dataset.mesh.n_node == 535
+    assert dataset.mesh.n_face == 724
+    assert dataset.mesh.node_x[0] == pytest.approx(212437.69349466471, abs=1e-3)
+    assert dataset.mesh.node_y[0] == pytest.approx(6157513.1362837097, abs=1e-3)
+
+
+def test_mike21_eum_header_with_non_integer_count_is_refused(tmp_path):
+    """A 4-field EUM header whose node-count field is non-integer is refused clearly.
+
+    Two leading integer codes then a non-integer where the count belongs is a malformed
+    EUM header, not a legacy one; the read names the bad count field rather than taking
+    the EUM item code (``100079``) as the count and failing further down the file.
+    """
+    text = "100079 1000 many LONG/LAT\n1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed EUM header"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_unicode_digit_count_is_declined_not_crashed(tmp_path):
+    """A header count written with a Unicode digit is declined, never raised through.
+
+    ``str.isdigit`` accepts superscript and other-script digits that ``int`` rejects, so
+    the header check must agree with ``int``: the sniff returns False and the read raises
+    the documented ``FileFormatNotSupportedError`` rather than leaking a ``ValueError``.
+    """
+    path = tmp_path / "unicode.mesh"
+    path.write_text("100079 1000 ² LONG/LAT\n1 0.0 0.0 0.0 1\n", encoding="utf-8")
+
+    assert Mike21Driver().can_open(str(path)) is False
+    with pytest.raises(FileFormatNotSupportedError):
+        Mike21Driver().read(str(path))
+
+
+def test_mike21_zero_node_count_header_is_refused(tmp_path):
+    """A header declaring zero nodes is refused rather than read as an empty mesh."""
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, "0 UTM-33\n1 3 21\n1 1 2 3\n"))
+
+
+def test_mike21_eum_header_with_zero_count_is_refused_as_non_positive(tmp_path):
+    """An EUM header declaring zero nodes names the non-positive count, not 'not integer'.
+
+    ``0`` is a valid integer, so the diagnosis must point at the real problem -- a
+    non-positive node count -- rather than claiming the count field is not an integer.
+    """
+    text = "100079 1000 0 LONG/LAT\n2 3 21\n1 1 2 3\n"
+    with pytest.raises(FileFormatNotSupportedError, match="not a positive integer"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_can_open_declines_foreign_integer_leading_file(tmp_path):
+    """A foreign ``.mesh`` whose first line is ``<int> <word>`` is declined, not claimed.
+
+    The legacy header is a weak signature on its own (one leading integer), so the sniff
+    also requires a node-record-shaped second line; a generic integer-leading file has
+    none and is left for another driver rather than taken into ``read`` to fail there.
+    """
+    driver = Mike21Driver()
+    lone = _write(tmp_path, "4\n", name="lone.mesh")
+    worded = _write(tmp_path, "100 vertices\nfoo bar\n", name="worded.mesh")
+    count_only = _write(tmp_path, "1234\nnot a node record\n", name="count.mesh")
+
+    assert driver.can_open(lone) is False
+    assert driver.can_open(worded) is False
+    assert driver.can_open(count_only) is False
+
+
+def test_mike21_can_open_declines_a_medit_mesh(tmp_path):
+    """A MEDIT ``.mesh`` (``MeshVersionFormatted`` signature) is not claimed by Mike21."""
+    medit = _write(
+        tmp_path,
+        "MeshVersionFormatted 2\nDimension\n3\nVertices\n4\n0 0 0 1\n",
+        name="medit.mesh",
+    )
+
+    assert Mike21Driver().can_open(medit) is False
+
+
+def test_mike21_can_open_declines_a_headerless_node_file(tmp_path):
+    """A ``.mesh`` opening with a node record (no header) is declined by the sniff."""
+    headerless = _write(
+        tmp_path, "1 10.0 20.0 0.0 1\n2 11.0 21.0 0.0 1\n", name="headerless.mesh"
+    )
+
+    assert Mike21Driver().can_open(headerless) is False
+
+
+def test_mike21_can_open_a_header_with_a_very_long_projection(tmp_path):
+    """A header whose projection is larger than one read buffer is still auto-detected.
+
+    The sniff must read far enough to reach the node record after a long (WKT) projection
+    so ``can_open`` agrees with ``read``; a fixed small window would miss the second line
+    and decline a file ``read`` parses.
+    """
+    long_proj = "PROJCS[" + "A" * 8300 + "]"
+    text = (
+        f"4 {long_proj}\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+    path = _write(tmp_path, text)
+
+    assert Mike21Driver().can_open(path) is True
+    assert Mike21Driver().read(path).mesh.n_node == 4
+
+
+def test_mike21_headerless_node_file_is_refused_at_the_header(tmp_path):
+    """A file that opens with a node record is refused as an unrecognised header.
+
+    The first line has node-record shape, not header shape, so the read declines at the
+    header line rather than mislabelling a failure several records further down.
+    """
+    text = "1 10.0 20.0 0.0 1\n2 11.0 21.0 0.0 1\n3 12.0 22.0 0.0 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_can_open_skips_a_blank_line_before_the_first_node(tmp_path):
+    """The sniff skips a blank line between the header and the first node record.
+
+    It collects the first two *non-blank* lines, so a blank separator after the header
+    does not make it miss the node record and wrongly decline the file.
+    """
+    text = (
+        "4 UTM-33\n\n"
+        "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n3 1.0 1.0 0.0 1\n4 0.0 1.0 0.0 1\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+
+    assert Mike21Driver().can_open(_write(tmp_path, text)) is True
+
+
+def test_mike21_can_open_matches_read_on_noninteger_boundary(tmp_path):
+    """Sniff accepts a non-integer boundary column, because ``read`` does not validate it.
+
+    ``_read_nodes`` reads the id and the three coordinates and ignores the boundary code,
+    so the sniff must not decline a file over a boundary token ``read`` never checks.
+    """
+    text = (
+        "4 UTM-33\n"
+        "1 0.0 0.0 0.0 open\n2 1.0 0.0 0.0 open\n"
+        "3 1.0 1.0 0.0 open\n4 0.0 1.0 0.0 open\n"
+        "2 3 21\n1 1 2 3\n2 1 3 4\n"
+    )
+    path = _write(tmp_path, text)
+
+    assert Mike21Driver().can_open(path) is True
+    assert Mike21Driver().read(path).mesh.n_node == 4
+
+
+class TestIsInt:
+    """Tests for the ``_is_int`` header-field predicate."""
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("4", True),
+            ("0", True),
+            ("100079", True),
+            ("-5", False),
+            ("+4", False),
+            ("1_000", False),
+            ("many", False),
+            ("", False),
+            ("3.5", False),
+            ("1e3", False),
+            ("UTM-33", False),
+        ],
+    )
+    def test_is_int(self, value, expected):
+        """``_is_int`` is True only for unsigned base-10 digit text.
+
+        Args:
+            value: The field text to classify.
+            expected: Whether it should be recognised as an integer.
+
+        Test scenario:
+            Unsigned base-10 digit runs (including zero) are True; signed, grouped
+            (``1_000``), float, exponent, name and empty forms are False.
+        """
+        assert misc._is_int(value) is expected, f"_is_int({value!r}) != {expected}"
+
+
+class TestClassifyHeader:
+    """Tests for ``_classify_header``, the shared EUM/legacy header discriminator."""
+
+    @pytest.mark.parametrize(
+        "tokens, expected",
+        [
+            (["100079", "1000", "4", "LONG/LAT"], (4, 3)),
+            (["100079", "1000", "798"], (798, 3)),
+            (["399", "UTM-33"], (399, 1)),
+            (["399", "32632"], (399, 1)),
+            (["4"], None),
+            (["100079", "1000", "many", "LONG/LAT"], None),
+            (["399", "123", "456", "Zone"], (456, 3)),
+            (["1", "0.0", "0.0", "0.0", "1"], None),
+            (["LONG", "LAT", "only"], None),
+            ([], None),
+            (["0", "UTM-33"], None),
+            (["100079", "1000", "0", "LONG/LAT"], None),
+            (["-5", "UTM-33"], None),
+        ],
+    )
+    def test_classify_header(self, tokens, expected):
+        """``_classify_header`` locates the node count and projection, or declines.
+
+        Args:
+            tokens: The whitespace-split first line.
+            expected: ``(node_count, projection_index)`` or ``None``.
+
+        Test scenario:
+            Three leading integers select the EUM layout (count at index 2, projection
+            at 3); a single leading integer with a projection selects the legacy layout
+            (count at 0, projection at 1). None is returned for: a node-record-shaped
+            line, a lone integer, an EUM-shaped line whose count field is non-integer,
+            and any line with no positive integer count (empty, non-numeric, zero,
+            negative). A legacy projection beginning with two integers is the documented
+            ambiguous case -- it is read as EUM ``(456, 3)`` rather than refused.
+        """
+        assert misc._classify_header(tokens) == expected, (
+            f"_classify_header({tokens!r}) != {expected}"
+        )
 
 
 class TestMike21Writer:
