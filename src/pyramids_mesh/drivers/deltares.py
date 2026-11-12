@@ -460,11 +460,11 @@ class _DeltaresReader:
             # A dangling reference (branch/offset/geometry array named but absent) makes
             # the file unreconstructable; decline so build() reports it as unreadable.
             return None
-        if geometry is None:
+        if geometry is None or branch.shape != offset.shape:
             return None
-        geom_x, geom_y, vertices_per_branch = geometry
+        geom_x, geom_y, vertices_per_branch, edge_length = geometry
         return _interpolate_along_branches(
-            branch, offset, geom_x, geom_y, vertices_per_branch
+            branch, offset, geom_x, geom_y, vertices_per_branch, edge_length
         )
 
     def _edges(self, group, topo: dict) -> tuple[np.ndarray, int]:
@@ -710,9 +710,10 @@ def _network_branch_geometry(group, network_name: str):
         network_name: The coordinate-space network topology's name.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray] | None: The flat vertex x, flat vertex
-            y, and per-branch vertex count, or ``None`` when the network declares no
-            usable branch geometry.
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None] | None: The flat
+            vertex x, flat vertex y, per-branch vertex count, and per-branch declared
+            length (``edge_length``, or ``None`` when the network declares none), or
+            ``None`` when the network declares no usable branch geometry.
     """
     network = _topology_variables(group).get(network_name)
     if network is None:
@@ -740,7 +741,33 @@ def _network_branch_geometry(group, network_name: str):
         # The per-branch counts must tile the flat vertex list exactly; a mismatch would
         # slice branches against the wrong vertices, so the geometry is unusable.
         return None
-    return geom_x, geom_y, vertices_per_branch
+    edge_length = _branch_lengths(group, network, vertices_per_branch.shape[0])
+    return geom_x, geom_y, vertices_per_branch, edge_length
+
+
+def _branch_lengths(group, network: dict, branch_count: int):
+    """Return a network's per-branch declared length (``edge_length``), or ``None``.
+
+    The ``edge_length`` attribute of the network topology names the array of branch
+    lengths used to interpret chainage offsets. It is used only when it is present and has
+    one length per branch; anything else falls back to chord-length measurement.
+
+    Args:
+        group: The NetCDF root group.
+        network: The network topology's attribute mapping.
+        branch_count: The number of branches the geometry describes.
+
+    Returns:
+        np.ndarray | None: The per-branch length, or ``None`` when it is absent or does
+            not have one entry per branch.
+    """
+    length_name = _as_str(network.get("edge_length"))
+    if length_name is None:
+        return None
+    edge_length = np.asarray(group.OpenMDArray(length_name).ReadAsArray(), np.float64)
+    if edge_length.shape != (branch_count,):
+        return None
+    return edge_length
 
 
 def _interpolate_along_branches(
@@ -749,6 +776,7 @@ def _interpolate_along_branches(
     geom_x: np.ndarray,
     geom_y: np.ndarray,
     vertices_per_branch: np.ndarray,
+    branch_length: np.ndarray | None = None,
 ):
     """Interpolate each node's x/y from its branch index and along-branch offset.
 
@@ -758,12 +786,21 @@ def _interpolate_along_branches(
     single-vertex branch degenerates to that vertex; an offset past a branch's end clamps
     to its last vertex (``numpy.interp`` behaviour).
 
+    In D-HYDRO an offset is a **chainage** in ``[0, branch_length]``, and the branch's
+    declared length need not equal its digitised polyline's chord length. When
+    ``branch_length`` is given, each branch's distance axis is rescaled from chord length
+    to the declared length, so a node's chainage is placed at the same fraction along the
+    polyline rather than at the same raw distance. Without it, the raw chord length is
+    used (equivalent when the two agree, as they do for well-formed files).
+
     Args:
         branch: Per-node branch index, 0-based.
-        offset: Per-node distance along the branch, in the geometry's units.
+        offset: Per-node distance (chainage) along the branch.
         geom_x: Flat branch-vertex x coordinates.
         geom_y: Flat branch-vertex y coordinates.
         vertices_per_branch: Vertex count of each branch, in branch order.
+        branch_length: Per-branch declared length (``network1d_edge_length``) used to
+            interpret the chainage, or ``None`` to measure by chord length alone.
 
     Returns:
         tuple[np.ndarray, np.ndarray] | None: The node x and y, or ``None`` when any node
@@ -785,6 +822,12 @@ def _interpolate_along_branches(
             continue
         segment = np.hypot(np.diff(vertex_x), np.diff(vertex_y))
         distance = np.concatenate(([0.0], np.cumsum(segment)))
+        if branch_length is not None and distance[-1] > 0:
+            length = float(branch_length[index])
+            if length > 0:
+                # Rescale the chord-distance axis to the branch's declared chainage, so a
+                # node's offset is placed at its fraction along the polyline.
+                distance = distance * (length / distance[-1])
         here = offset[on_branch]
         node_x[on_branch] = np.interp(here, distance, vertex_x)
         node_y[on_branch] = np.interp(here, distance, vertex_y)

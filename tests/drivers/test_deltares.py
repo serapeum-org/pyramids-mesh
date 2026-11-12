@@ -90,15 +90,21 @@ def _reconstructed_reference(path):
         counts = np.asarray(
             group.OpenMDArray("network1d_geom_node_count").ReadAsArray()
         ).astype(np.int64)
+        edge_length = np.asarray(
+            group.OpenMDArray("network1d_edge_length").ReadAsArray(), np.float64
+        )
     finally:
         dataset.Close()
     starts = np.concatenate(([0], np.cumsum(counts)))
     node_x = np.empty(branch.shape[0], np.float64)
     node_y = np.empty(branch.shape[0], np.float64)
-    for index, (branch_index, distance) in enumerate(zip(branch, offset)):
+    for index, (branch_index, offset_value) in enumerate(zip(branch, offset)):
         begin, end = int(starts[branch_index]), int(starts[branch_index + 1])
         line = LineString(np.column_stack([geom_x[begin:end], geom_y[begin:end]]))
-        point = line.interpolate(float(distance))
+        # offset is a chainage in [0, edge_length]; map it to chord distance for shapely.
+        length = float(edge_length[branch_index])
+        chord = offset_value if length <= 0 else offset_value * line.length / length
+        point = line.interpolate(float(chord))
         node_x[index], node_y[index] = point.x, point.y
     return node_x, node_y
 
@@ -630,10 +636,33 @@ def test_network_branch_geometry_falls_back_to_positional_xy():
             "cnt": _Array(value=np.array([2])),
         }
     )
-    geom_x, geom_y, counts = _network_branch_geometry(group, "network")
+    geom_x, geom_y, counts, edge_length = _network_branch_geometry(group, "network")
     assert np.allclose(geom_x, [0.0, 1.0])
     assert np.allclose(geom_y, [0.0, 0.0])
     assert counts.tolist() == [2]
+    assert edge_length is None  # this network declares no edge_length attribute
+
+
+def test_interpolate_along_branches_honours_declared_branch_length():
+    """A chainage offset is placed by fraction when the branch length differs from chord.
+
+    One straight branch of chord length 10 but declared length 20: a node at chainage 10
+    is halfway along the branch, so it must land at the polyline midpoint (5, 0), not at
+    chord-distance 10 (the branch end).
+    """
+    geom_x = np.array([0.0, 10.0])
+    geom_y = np.array([0.0, 0.0])
+    counts = np.array([2])
+    node_x, node_y = _interpolate_along_branches(
+        np.array([0]),
+        np.array([10.0]),
+        geom_x,
+        geom_y,
+        counts,
+        branch_length=np.array([20.0]),
+    )
+    assert np.allclose(node_x, [5.0])
+    assert np.allclose(node_y, [0.0])
 
 
 class _RaisingGroup(_Group):
@@ -664,6 +693,34 @@ def test_reconstruct_declines_on_a_dangling_geometry_reference():
             "network": _net_topo("geom"),
         },
         missing="geom",
+    )
+    topo = {
+        "coordinate_space": "network",
+        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+    }
+    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
+    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
+def test_reconstruct_declines_on_mismatched_branch_offset_lengths():
+    """A branch index and offset of different lengths decline, not raise ``IndexError``.
+
+    A malformed file whose ``mesh1d_node_branch`` and ``mesh1d_node_offset`` differ in
+    length must be reported as unreadable, not surface a raw ``IndexError`` from the
+    boolean-mask index in interpolation.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
     )
     topo = {
         "coordinate_space": "network",
