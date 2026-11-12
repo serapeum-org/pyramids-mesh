@@ -469,6 +469,93 @@ def test_mike21_reads_committed_legacy_quad_vendor_file():
     assert dataset.mesh.n_face == 724
 
 
+def test_mike21_eum_shaped_header_with_non_integer_count_is_read_as_legacy(tmp_path):
+    """A 4-field header whose count field is non-integer is reinterpreted as legacy.
+
+    With ``many`` in the EUM count position the line no longer classifies as the EUM
+    layout; its first field (``100079``) becomes the legacy node count, which outruns the
+    file, so the read fails naming the missing records rather than silently truncating.
+    """
+    text = "100079 1000 many LONG/LAT\n1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
+    with pytest.raises(FileFormatNotSupportedError, match="ends before"):
+        Mike21Driver().read(_write(tmp_path, text))
+
+
+def test_mike21_zero_node_count_header_is_refused(tmp_path):
+    """A header declaring zero nodes is refused rather than read as an empty mesh."""
+    with pytest.raises(FileFormatNotSupportedError, match="unrecognised header"):
+        Mike21Driver().read(_write(tmp_path, "0 UTM-33\n1 3 21\n1 1 2 3\n"))
+
+
+class TestIsInt:
+    """Tests for the ``_is_int`` header-field predicate."""
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("4", True),
+            ("-5", True),
+            ("0", True),
+            ("100079", True),
+            ("many", False),
+            ("", False),
+            ("3.5", False),
+            ("1e3", False),
+            ("UTM-33", False),
+        ],
+    )
+    def test_is_int(self, value, expected):
+        """``_is_int`` is True only for base-10 integer text.
+
+        Args:
+            value: The field text to classify.
+            expected: Whether it should be recognised as an integer.
+
+        Test scenario:
+            Plain integers (including signed and zero) are True; floats, exponent
+            notation, names and the empty string are False.
+        """
+        assert misc._is_int(value) is expected, f"_is_int({value!r}) != {expected}"
+
+
+class TestClassifyHeader:
+    """Tests for ``_classify_header``, the shared EUM/legacy header discriminator."""
+
+    @pytest.mark.parametrize(
+        "tokens, expected",
+        [
+            (["100079", "1000", "4", "LONG/LAT"], (4, 3)),
+            (["100079", "1000", "798"], (798, 3)),
+            (["399", "UTM-33"], (399, 1)),
+            (["399", "32632"], (399, 1)),
+            (["4"], (4, 1)),
+            (["100079", "1000", "many", "LONG/LAT"], (100079, 1)),
+            (["LONG", "LAT", "only"], None),
+            ([], None),
+            (["0", "UTM-33"], None),
+            (["100079", "1000", "0", "LONG/LAT"], None),
+            (["-5", "UTM-33"], None),
+        ],
+    )
+    def test_classify_header(self, tokens, expected):
+        """``_classify_header`` locates the node count and projection, or declines.
+
+        Args:
+            tokens: The whitespace-split first line.
+            expected: ``(node_count, projection_index)`` or ``None``.
+
+        Test scenario:
+            Three leading integers select the EUM layout (count at index 2, projection
+            at 3); a single leading integer selects the legacy layout (count at 0,
+            projection at 1); an EUM-shaped line with a non-integer count falls back to
+            legacy; a line with no positive integer count in either position returns
+            None, covering the empty, non-numeric, zero and negative cases.
+        """
+        assert misc._classify_header(tokens) == expected, (
+            f"_classify_header({tokens!r}) != {expected}"
+        )
+
+
 class TestMike21Writer:
     """Round-trip tests for the Mike21 .mesh writer (W4)."""
 
