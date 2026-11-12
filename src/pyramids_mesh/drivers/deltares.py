@@ -426,8 +426,9 @@ class _DeltaresReader:
         Each node is given as a branch index (``mesh1d_node_branch`` /
         ``mesh1d_node_branch_id``) and an along-branch distance
         (``mesh1d_node_offset`` / ``mesh1d_node_branch_offset``). The branch index is
-        re-based to 0 with the array's ``start_index``; the offset is measured in metres
-        from the branch start. The coordinate-space ``network`` named by the topology's
+        re-based to 0 with the array's ``start_index``; the offset is measured along the
+        branch from its start, in the geometry's units. The coordinate-space ``network``
+        named by the topology's
         ``coordinate_space`` carries the branch polylines through its ``edge_geometry``,
         and each node's x/y is interpolated along its branch's polyline at its offset.
 
@@ -765,9 +766,13 @@ def _interpolate_along_branches(
         vertices_per_branch: Vertex count of each branch, in branch order.
 
     Returns:
-        tuple[np.ndarray, np.ndarray] | None: The node x and y, or ``None`` when a node
-            references a branch with no geometry (a malformed file), so the caller can
-            fall through rather than emit ``nan`` coordinates.
+        tuple[np.ndarray, np.ndarray] | None: The node x and y, or ``None`` when any node
+            references a branch with no geometry (an out-of-range branch index or a
+            zero-vertex branch -- a malformed file). Reconstruction is the last-resort
+            tier, so a ``None`` here declines the whole file: the caller raises
+            ``FileFormatNotSupportedError`` rather than emitting ``nan`` coordinates. A
+            single unreconstructable node therefore rejects the file, which is deliberate
+            -- a mesh missing a node would have dangling edge connectivity.
     """
     node_x = np.full(branch.shape[0], np.nan, np.float64)
     node_y = np.full(branch.shape[0], np.nan, np.float64)
