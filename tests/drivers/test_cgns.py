@@ -23,9 +23,11 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.cgns import (
+    _PAD,
     CgnsDriver,
     _cgns_corner_count,
     _CgnsReader,
+    _drop_orphan_nodes,
     _group_label,
     _pad_sections,
 )
@@ -382,3 +384,73 @@ def test_higher_order_surface_codes_keep_only_corner_nodes():
     assert _cgns_corner_count("QUAD_4") == 4
     assert _cgns_corner_count("QUAD_8") == 4
     assert _cgns_corner_count("QUAD_9") == 4
+
+
+class TestDropOrphanNodes:
+    """Unit tests for _drop_orphan_nodes, the issue #97 node compaction."""
+
+    def test_drops_unreferenced_nodes_and_keeps_contiguous_ids(self):
+        """Interior nodes no face references are removed; a leading id block is unchanged.
+
+        Test scenario:
+            6 nodes with one quad referencing 1-based ids {1,2,3,4}; nodes 5-6 are interior
+            volume-only nodes. They are dropped, coordinates subset to the four corners, and
+            the connectivity is unchanged because the kept ids are already 1..4.
+        """
+        node_x = np.array([0.0, 1.0, 1.0, 0.0, 9.0, 9.0])
+        node_y = np.array([0.0, 0.0, 1.0, 1.0, 9.0, 9.0])
+        node_z = np.array([0.0, 0.0, 0.0, 0.0, 5.0, 5.0])
+        faces = np.array([[1, 2, 3, 4]], dtype=np.int64)
+        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(node_x, node_y, node_z, faces)
+        assert out_x.tolist() == [0.0, 1.0, 1.0, 0.0], f"x not subset: {out_x}"
+        assert out_y.tolist() == [0.0, 0.0, 1.0, 1.0], f"y not subset: {out_y}"
+        assert out_z.tolist() == [0.0, 0.0, 0.0, 0.0], f"z not subset: {out_z}"
+        assert out_faces.tolist() == [[1, 2, 3, 4]], f"faces changed: {out_faces}"
+
+    def test_reindexes_non_contiguous_referenced_ids(self):
+        """Gaps in the referenced ids compact to a dense 1-based range, with node_z None.
+
+        Test scenario:
+            4 nodes, a padded triangle referencing ids {1, 3, 4}; node 2 is orphaned. The
+            kept ids 1,3,4 remap to 1,2,3 and the connectivity follows; ``node_z`` stays None.
+        """
+        node_x = np.array([10.0, 20.0, 30.0, 40.0])
+        node_y = np.zeros(4)
+        faces = np.array([[1, 3, 4, _PAD]], dtype=np.int64)
+        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(node_x, node_y, None, faces)
+        assert out_x.tolist() == [10.0, 30.0, 40.0], f"node 2 not dropped: {out_x}"
+        assert out_z is None, f"node_z should stay None, got {out_z!r}"
+        assert out_faces.tolist() == [[1, 2, 3, _PAD]], f"ids not remapped: {out_faces}"
+
+    def test_noop_when_every_node_is_referenced(self):
+        """A mesh whose faces span all nodes is returned unchanged, as the same objects.
+
+        Test scenario:
+            4 nodes, one quad referencing all of them -> no orphans -> identity return, so a
+            2D surface or the volumetric fallback pays no copy cost.
+        """
+        node_x = np.arange(4.0)
+        node_y = np.arange(4.0)
+        node_z = np.arange(4.0)
+        faces = np.array([[1, 2, 3, 4]], dtype=np.int64)
+        out_x, out_y, out_z, out_faces = _drop_orphan_nodes(node_x, node_y, node_z, faces)
+        assert out_x is node_x, "x array should be returned unchanged"
+        assert out_y is node_y, "y array should be returned unchanged"
+        assert out_z is node_z, "z array should be returned unchanged"
+        assert out_faces is faces, "faces should be returned unchanged"
+
+    def test_pad_fill_is_left_untouched(self):
+        """The _PAD fill in short rows is preserved while real ids are remapped.
+
+        Test scenario:
+            A quad and a padded triangle; node 5 is orphaned. After compaction the pad slot
+            stays _PAD rather than being rewritten as a remapped id.
+        """
+        node_x = np.array([0.0, 1.0, 2.0, 3.0, 99.0])
+        node_y = np.zeros(5)
+        faces = np.array([[1, 2, 3, 4], [1, 2, 3, _PAD]], dtype=np.int64)
+        out_x, _, _, out_faces = _drop_orphan_nodes(node_x, node_y, None, faces)
+        assert out_x.tolist() == [0.0, 1.0, 2.0, 3.0], f"orphan not dropped: {out_x}"
+        assert out_faces.tolist() == [[1, 2, 3, 4], [1, 2, 3, _PAD]], (
+            f"pad fill not preserved: {out_faces}"
+        )
