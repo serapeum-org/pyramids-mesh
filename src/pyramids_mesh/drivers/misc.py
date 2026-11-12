@@ -489,6 +489,11 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
         and _is_int(tokens[2])
     ):
         node_count, projection_index = int(tokens[2]), 3
+    elif len(tokens) >= 4 and _is_int(tokens[0]) and _is_int(tokens[1]):
+        # Two leading integer codes and a fourth field, but a non-integer where the count
+        # belongs: a malformed EUM header, not a legacy one. Decline it so ``_read_header``
+        # names the bad count rather than reading the EUM item code as the node count.
+        return None
     elif len(tokens) >= 2 and _is_int(tokens[0]):
         node_count, projection_index = int(tokens[0]), 1
     else:
@@ -588,6 +593,11 @@ class _Mike21Scan:
         header = self._next("header")
         classified = _classify_header(header)
         if classified is None:
+            if len(header) >= 4 and _is_int(header[0]) and _is_int(header[1]):
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} has a malformed EUM header: the node-count field "
+                    f"{header[2]!r} is not an integer"
+                )
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has an unrecognised header: a Mike21 mesh starts with "
                 f"either '<eum_item> <eum_unit> <node_count> <projection>' or the "

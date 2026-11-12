@@ -469,15 +469,15 @@ def test_mike21_reads_committed_legacy_quad_vendor_file():
     assert dataset.mesh.n_face == 724
 
 
-def test_mike21_eum_shaped_header_with_non_integer_count_is_read_as_legacy(tmp_path):
-    """A 4-field header whose count field is non-integer is reinterpreted as legacy.
+def test_mike21_eum_header_with_non_integer_count_is_refused(tmp_path):
+    """A 4-field EUM header whose node-count field is non-integer is refused clearly.
 
-    With ``many`` in the EUM count position the line no longer classifies as the EUM
-    layout; its first field (``100079``) becomes the legacy node count, which outruns the
-    file, so the read fails naming the missing records rather than silently truncating.
+    Two leading integer codes then a non-integer where the count belongs is a malformed
+    EUM header, not a legacy one; the read names the bad count field rather than taking
+    the EUM item code (``100079``) as the count and failing further down the file.
     """
     text = "100079 1000 many LONG/LAT\n1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
-    with pytest.raises(FileFormatNotSupportedError, match="ends before"):
+    with pytest.raises(FileFormatNotSupportedError, match="malformed EUM header"):
         Mike21Driver().read(_write(tmp_path, text))
 
 
@@ -579,6 +579,7 @@ class TestClassifyHeader:
             (["399", "UTM-33"], (399, 1)),
             (["399", "32632"], (399, 1)),
             (["4"], None),
+            (["100079", "1000", "many", "LONG/LAT"], None),
             (["1", "0.0", "0.0", "0.0", "1"], None),
             (["LONG", "LAT", "only"], None),
             ([], None),
