@@ -867,6 +867,42 @@ def test_fix_winding_vectorised_matches_the_per_face_reference():
     assert got_degenerate >= 1
 
 
+@pytest.mark.parametrize(
+    "unit_x, unit_y",
+    [
+        ([0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 1.0, 1.0]),  # quad
+        ([0.0, 1.0, 1.0, 0.5, 0.0], [0.0, 0.0, 1.0, 1.0, 1.0]),  # pentagon
+    ],
+)
+def test_fix_winding_matches_the_oracle_for_wide_polygons_at_the_boundary(
+    unit_x, unit_y
+):
+    """Batched and per-face classification agree for wide polygons straddling tolerance.
+
+    For triangles the batched shoelace is bit-identical to the scalar oracle, but for quads
+    and wider the full-width ``np.sum`` groups its terms differently from the old ``np.dot``
+    and could, in principle, flip a face within ~1 ULP of its degeneracy tolerance. This
+    sweeps a thin polygon's height (hence its area) across that boundary at projected-CRS
+    magnitudes -- where area and representability interact -- and asserts the vectorised
+    result matches the per-face oracle, in faces and counts, at every scale.
+    """
+    base_x, base_y = 5.0e5, 7.0e6
+    width = len(unit_x)
+    faces = np.array([list(range(width))], dtype=np.int64)
+    base_unit_x = np.array(unit_x) + base_x
+    unit_y_array = np.array(unit_y)
+
+    for height in np.logspace(-11, -5, 60):
+        node_x = base_unit_x
+        node_y = unit_y_array * height + base_y
+        got = fix_winding(faces, node_x, node_y, -1)
+        reference = _fix_winding_reference(faces, node_x, node_y, -1)
+        np.testing.assert_array_equal(
+            got[0], reference[0], err_msg=f"faces diverge at height={height:g}"
+        )
+        assert got[1:] == reference[1:], f"counts diverge at height={height:g}"
+
+
 @pytest.mark.slow
 def test_fix_winding_is_dramatically_faster_than_a_per_face_loop():
     """``fix_winding`` far outpaces an equivalent per-face loop on a large mesh (issue #93).
