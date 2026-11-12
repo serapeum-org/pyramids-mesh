@@ -1,3 +1,7 @@
 Gmsh .msh (v2.2 and v4.1) -- MIT, meshio test data (genuine Gmsh 4.2.2 output from insulated.geo;
 111 triangles + 21 boundary lines).
   https://github.com/nschloe/meshio (tests/meshes/msh/) -- fetched via the Git-LFS media endpoint.
+
+insulated-binary-2.2.msh -- the same insulated mesh re-encoded as a binary Gmsh 2.2 stream
+(file-type 1) with meshio 5.3.5 (meshio.write(..., file_format="gmsh22", binary=True)). The gmsh.ipynb
+example reads it to show a binary .msh decodes to the identical MeshDataset as its ASCII twin.

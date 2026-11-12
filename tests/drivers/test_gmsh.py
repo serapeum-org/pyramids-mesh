@@ -21,6 +21,13 @@ from pyramids_mesh.drivers.gmsh import GmshDriver, _as_float, _as_int
 _DATA = Path(__file__).parent.parent / "data" / "gmsh"
 _V22 = str(_DATA / "insulated-2.2.msh")
 _V41 = str(_DATA / "insulated-4.1.msh")
+# The same 4-node square mesh in three encodings: ASCII v2.2 and binary v2.2/v4.1. A
+# binary file must read to the same result as its ASCII equivalent.
+_SQUARE_ASCII = str(_DATA / "square-ascii-2.2.msh")
+_SQUARE_BIN_V22 = str(_DATA / "square-binary-2.2.msh")
+_SQUARE_BIN_V41 = str(_DATA / "square-binary-4.1.msh")
+# An all-quadrilateral ASCII mesh (the triangle fixtures never exercise four-node faces).
+_QUAD_V22 = str(_DATA / "flap-quad-2.2.msh")
 
 _EXPECTED_NODES = 67
 _EXPECTED_FACES = 111
@@ -150,11 +157,56 @@ def test_gmsh_can_open_declines_empty_and_directory(tmp_path):
     assert driver.can_open(str(tmp_path / "missing.msh")) is False
 
 
-def test_gmsh_binary_file_is_refused(tmp_path):
-    """A binary Gmsh file (file-type 1) is refused rather than mis-read."""
-    text = "$MeshFormat\n2.2 1 8\n$EndMeshFormat\n"
-    with pytest.raises(FileFormatNotSupportedError, match="binary"):
-        GmshDriver().read(_write(tmp_path, text))
+@pytest.mark.parametrize("path", [_SQUARE_BIN_V22, _SQUARE_BIN_V41])
+def test_gmsh_reads_binary_stream(path):
+    """A genuine binary ``.msh`` stream reads, in both v2.2 and v4.1 (issue #94).
+
+    These are real binary files carrying packed ``$Nodes``/``$Elements`` records, not a
+    crafted header: the 4-node square, 2 triangles, boundary lines dropped. The reader
+    honours the ``$MeshFormat`` endianness marker and decodes both layouts.
+    """
+    dataset = GmshDriver().read(path)
+
+    assert isinstance(dataset, MeshDataset)
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.shape == (2, 3)
+
+
+def test_gmsh_binary_reads_same_mesh_as_ascii_equivalent():
+    """Each binary encoding reads to the exact mesh its ASCII equivalent does.
+
+    The three ``square-*`` fixtures are one mesh written three ways (ASCII v2.2, binary
+    v2.2, binary v4.1), so nodes and connectivity must match to the bit -- the definition
+    of done for issue #94 ("reads a binary ``.msh`` with the same result as its ASCII
+    equivalent").
+    """
+    ascii_mesh = GmshDriver().read(_SQUARE_ASCII).mesh
+    binary_v22 = GmshDriver().read(_SQUARE_BIN_V22).mesh
+    binary_v41 = GmshDriver().read(_SQUARE_BIN_V41).mesh
+
+    for other in (binary_v22, binary_v41):
+        np.testing.assert_array_equal(other.node_x, ascii_mesh.node_x)
+        np.testing.assert_array_equal(other.node_y, ascii_mesh.node_y)
+        np.testing.assert_array_equal(
+            other.face_node_connectivity.data,
+            ascii_mesh.face_node_connectivity.data,
+        )
+
+
+def test_gmsh_reads_quadrilateral_faces():
+    """An all-quadrilateral ASCII mesh reads to four-node faces, not just triangles.
+
+    The ``insulated`` fixtures are triangle-only; this preCICE flap mesh is 45 quads plus
+    36 boundary lines, so it exercises the four-column face table and confirms the 36
+    lines are dropped the same way the triangle fixtures' lines are.
+    """
+    dataset = GmshDriver().read(_QUAD_V22)
+
+    assert isinstance(dataset, MeshDataset)
+    assert dataset.mesh.n_node == 64
+    assert dataset.mesh.n_face == 45
+    assert dataset.mesh.face_node_connectivity.data.shape == (45, 4)
 
 
 def test_gmsh_unsupported_version_is_refused(tmp_path):
@@ -162,6 +214,25 @@ def test_gmsh_unsupported_version_is_refused(tmp_path):
     text = "$MeshFormat\n3.0 0 8\n$EndMeshFormat\n"
     with pytest.raises(FileFormatNotSupportedError, match="version"):
         GmshDriver().read(_write(tmp_path, text))
+
+
+def test_gmsh_unknown_file_type_is_refused(tmp_path):
+    """A file-type that is neither ASCII (0) nor binary (1) is refused by name."""
+    text = "$MeshFormat\n2.2 2 8\n$EndMeshFormat\n"
+    with pytest.raises(FileFormatNotSupportedError, match="file-type"):
+        GmshDriver().read(_write(tmp_path, text))
+
+
+def test_gmsh_empty_file_is_refused(tmp_path):
+    """An empty ``.msh`` has no ``$MeshFormat`` header, so it is not a Gmsh file."""
+    with pytest.raises(FileFormatNotSupportedError, match="empty"):
+        GmshDriver().read(_write(tmp_path, ""))
+
+
+def test_gmsh_header_without_version_is_refused(tmp_path):
+    """A file that is just ``$MeshFormat`` with no version line is refused."""
+    with pytest.raises(FileFormatNotSupportedError, match="version line"):
+        GmshDriver().read(_write(tmp_path, "$MeshFormat\n"))
 
 
 def test_gmsh_file_without_faces_is_refused(tmp_path):
