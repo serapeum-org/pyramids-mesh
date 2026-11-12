@@ -5,6 +5,10 @@ The fixtures are genuine SU2 ``.su2`` meshes committed under ``tests/data/su2/``
 ``square.su2`` (128 triangles, 81 nodes). The tests read the committed bytes, so they
 cover the traps a real SU2 file carries: VTK-typed rows of mixed arity, 0-based
 connectivity, the trailing element/point index columns, and the boundary markers.
+
+The ``min_3d_*.su2`` fixtures are minimal one-cell files, each a real NELEM row of a 3-D
+volume cell (tetrahedron, hexahedron, prism, pyramid) lifted from the su2code
+``deformation/brick_*`` meshes, used to pin the 3-D-volume rejection message (#95).
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -128,26 +132,45 @@ def test_glued_card_value_is_accepted(tmp_path):
     assert Su2Driver().read(str(path)).mesh.n_face == 1
 
 
-def test_volume_element_type_is_refused(tmp_path):
-    """A VTK tetra (code 10) is refused: this reader builds surface meshes only."""
-    text = "NDIME= 3\nNELEM= 1\n10 0 1 2 3 0\nNPOIN= 4\n"
-    text += "0 0 0 0\n1 0 0 1\n0 1 0 2\n0 0 1 3\nNMARK= 0\n"
-    path = tmp_path / "tet.su2"
-    path.write_text(text, encoding="utf-8")
+# The committed minimal volume fixtures: one real NELEM row of each 3-D cell type, lifted
+# from the su2code deformation/brick_* meshes (see data/su2/SOURCE.txt). Each must be
+# refused with an explicit "3-D volume mesh" message naming the cell -- regression for #95.
+_VOLUME_FIXTURES = [
+    ("min_3d_tet_rejected.su2", 10, "tetrahedron"),
+    ("min_3d_hex_rejected.su2", 12, "hexahedron"),
+    ("min_3d_prism_rejected.su2", 13, "prism"),
+    ("min_3d_pyra_rejected.su2", 14, "pyramid"),
+]
 
-    with pytest.raises(
-        FileFormatNotSupportedError, match="volume/line element code 10"
-    ):
-        Su2Driver().read(str(path))
+
+@pytest.mark.parametrize("name, code, cell", _VOLUME_FIXTURES)
+def test_three_dimensional_volume_mesh_is_refused_with_explicit_message(
+    name, code, cell
+):
+    """Every 3-D volume cell type is refused with an explicit "3-D volume mesh" message.
+
+    Regression for issue #95: a real 3-D SU2 volume mesh (tetrahedron 10, hexahedron 12,
+    prism 13 or pyramid 14) must fail with a message that names the cell and calls it a
+    3-D volume mesh -- not a generic "unknown code". Prism (13) and pyramid (14) are codes
+    SU2 genuinely writes, so they must not be reported as unknown. The fixtures are the
+    committed one-cell ``min_3d_*.su2`` files, each a real element row from su2code.
+    """
+    with pytest.raises(FileFormatNotSupportedError) as excinfo:
+        _read(_DATA / name)
+
+    message = str(excinfo.value)
+    assert "3-D volume mesh" in message
+    assert cell in message
+    assert f"code {code}" in message
 
 
 def test_unknown_vtk_code_is_refused(tmp_path):
-    """An element code outside the SU2 table is refused, naming the code."""
+    """An element code outside the SU2 surface/volume set is refused, naming the code."""
     text = "NDIME= 2\nNELEM= 1\n7 0 1 2 0\nNPOIN= 3\n0 0 0\n1 0 1\n0 1 2\nNMARK= 0\n"
     path = tmp_path / "bad.su2"
     path.write_text(text, encoding="utf-8")
 
-    with pytest.raises(FileFormatNotSupportedError, match="VTK element code 7"):
+    with pytest.raises(FileFormatNotSupportedError, match="unsupported element code 7"):
         Su2Driver().read(str(path))
 
 

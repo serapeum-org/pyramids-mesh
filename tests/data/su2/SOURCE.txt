@@ -1,2 +1,8 @@
 SU2 .su2 -- LGPL-2.1, su2code/TestCases. 5x5Mesh.su2 = quads (VTK code 9); square.su2 = triangles
 (code 5). SU2 is 0-based. https://github.com/su2code/TestCases
+
+min_3d_*.su2 -- minimal one-cell 3-D volume meshes (NDIME=3, NELEM=1), each carrying a single real
+NELEM row lifted from the su2code deformation/brick_* meshes: tet (code 10, brick_tets), hex (12,
+brick_hex), prism (13, brick_prism), pyramid (14, brick_pyra). They hold no NPOIN/NMARK sections --
+the reader refuses them on the volume element before reading nodes -- and exist only to pin the
+"3-D volume mesh" rejection message (issue #95). Not real standalone meshes.
