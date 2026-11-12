@@ -580,6 +580,7 @@ class TestClassifyHeader:
             (["399", "32632"], (399, 1)),
             (["4"], None),
             (["100079", "1000", "many", "LONG/LAT"], None),
+            (["399", "123", "456", "Zone"], (456, 3)),
             (["1", "0.0", "0.0", "0.0", "1"], None),
             (["LONG", "LAT", "only"], None),
             ([], None),
@@ -597,10 +598,12 @@ class TestClassifyHeader:
 
         Test scenario:
             Three leading integers select the EUM layout (count at index 2, projection
-            at 3); a single leading integer selects the legacy layout (count at 0,
-            projection at 1); an EUM-shaped line with a non-integer count falls back to
-            legacy; a line with no positive integer count in either position returns
-            None, covering the empty, non-numeric, zero and negative cases.
+            at 3); a single leading integer with a projection selects the legacy layout
+            (count at 0, projection at 1). None is returned for: a node-record-shaped
+            line, a lone integer, an EUM-shaped line whose count field is non-integer,
+            and any line with no positive integer count (empty, non-numeric, zero,
+            negative). A legacy projection beginning with two integers is the documented
+            ambiguous case -- it is read as EUM ``(456, 3)`` rather than refused.
         """
         assert misc._classify_header(tokens) == expected, (
             f"_classify_header({tokens!r}) != {expected}"

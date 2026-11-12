@@ -454,6 +454,12 @@ def _classify_header(tokens: list[str]) -> tuple[int, int] | None:
     declined, so a file that opens without a header is refused at the header rather than
     read with its first node record as one.
 
+    The rule assumes a legacy projection never begins with two integers: no real DHI
+    projection does (``UTM-33``, ``LONG/LAT``, a single EPSG code, or a WKT string
+    starting ``PROJCS``/``GEOGCS``). A legacy header whose projection did -- e.g.
+    ``399 123 456 Zone`` -- would be misread as EUM (count ``456``), not refused. No known
+    vendor file takes that shape.
+
     Args:
         tokens: The whitespace-split fields of the first non-blank line.
 
