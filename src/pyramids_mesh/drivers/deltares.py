@@ -764,24 +764,45 @@ def _network_branch_geometry(group, network_name: str):
     count_name = _as_str(geometry.get("node_count"))
     if len(coordinate_names) < 2 or count_name is None:
         return None
-    geom_x, geom_y = _xy_by_standard_name(group, coordinate_names)
-    if geom_x is None and geom_y is None:
-        # Neither axis carries a standard name: take them in declared x, y order.
-        geom_x = np.asarray(
-            group.OpenMDArray(coordinate_names[0]).ReadAsArray(), np.float64
-        )
-        geom_y = np.asarray(
-            group.OpenMDArray(coordinate_names[1]).ReadAsArray(), np.float64
-        )
-    elif geom_x is None or geom_y is None:
-        # Exactly one axis is standard-named: a partial match is ambiguous (declared order
-        # may disagree with the named axis), so decline rather than risk swapping x and y.
+    vertex_xy = _geometry_vertex_xy(group, coordinate_names)
+    if vertex_xy is None:
         return None
+    geom_x, geom_y = vertex_xy
     vertices_per_branch = np.asarray(
         group.OpenMDArray(count_name).ReadAsArray()
     ).astype(np.int64, copy=False)
     edge_length = _branch_lengths(group, network, vertices_per_branch.shape[0])
     return geom_x, geom_y, vertices_per_branch, edge_length
+
+
+def _geometry_vertex_xy(group, coordinate_names: list):
+    """Return the geometry's flat vertex x and y arrays, or ``None`` when ambiguous.
+
+    The vertex x and y are picked by their ``projection_x`` / ``projection_y`` standard
+    name. When neither carries one they are taken in declared x, y order; when exactly one
+    does the match is ambiguous (declared order may disagree with the named axis), so
+    ``None`` is returned rather than risk swapping x and y.
+
+    Args:
+        group: The NetCDF root group.
+        coordinate_names: The geometry container's ``node_coordinates`` entries.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray] | None: The vertex x and y, or ``None`` on a partial
+            standard-name match.
+    """
+    geom_x, geom_y = _xy_by_standard_name(group, coordinate_names)
+    if geom_x is not None and geom_y is not None:
+        return geom_x, geom_y
+    if geom_x is not None or geom_y is not None:
+        return None
+    geom_x = np.asarray(
+        group.OpenMDArray(coordinate_names[0]).ReadAsArray(), np.float64
+    )
+    geom_y = np.asarray(
+        group.OpenMDArray(coordinate_names[1]).ReadAsArray(), np.float64
+    )
+    return geom_x, geom_y
 
 
 def _branch_lengths(group, network: dict, branch_count: int):
