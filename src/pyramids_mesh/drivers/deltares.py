@@ -719,6 +719,10 @@ def _branch_offset_names(group, names: list):
             offset_name = name
         elif branch_name is None and "branch" in lowered:
             branch_name = name
+    if branch_name is not None and offset_name is not None:
+        # Both resolved by name; skip the dtype loop so an unrelated extra entry (a
+        # dangling reference among them included) is never opened just to be discarded.
+        return branch_name, offset_name
     for name in names:
         if name in (branch_name, offset_name):
             continue
@@ -761,13 +765,18 @@ def _network_branch_geometry(group, network_name: str):
     if len(coordinate_names) < 2 or count_name is None:
         return None
     geom_x, geom_y = _xy_by_standard_name(group, coordinate_names)
-    if geom_x is None or geom_y is None:
+    if geom_x is None and geom_y is None:
+        # Neither axis carries a standard name: take them in declared x, y order.
         geom_x = np.asarray(
             group.OpenMDArray(coordinate_names[0]).ReadAsArray(), np.float64
         )
         geom_y = np.asarray(
             group.OpenMDArray(coordinate_names[1]).ReadAsArray(), np.float64
         )
+    elif geom_x is None or geom_y is None:
+        # Exactly one axis is standard-named: a partial match is ambiguous (declared order
+        # may disagree with the named axis), so decline rather than risk swapping x and y.
+        return None
     vertices_per_branch = np.asarray(
         group.OpenMDArray(count_name).ReadAsArray()
     ).astype(np.int64, copy=False)

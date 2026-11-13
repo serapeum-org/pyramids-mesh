@@ -6,7 +6,7 @@ Topology (no results):
     https://github.com/Deltares/UGrid
 Branch+offset node geometry (no explicit mesh1d x/y, or x/y present but unreferenced):
   branchoffset_1d_minimal_no-hidden-xy__dsd-demo.nc -- MIT, Deltares HYDROLIB-core; tiny
-    pure-1D net, 12 nodes / 22 branches, node x/y reconstructed from branch geometry.
+    pure-1D net, 12 mesh1d nodes / 11 network branches, node x/y reconstructed from geometry.
     https://github.com/Deltares/HYDROLIB-core (docs/tutorials/dsd/demo/data/FlowFM_net.nc)
   branchoffset_1d_hidden-xy__magdalena.nc -- MIT, Deltares HYDROLIB-core; pure-1D, 447
     nodes, node_coordinates lists only branch+offset but mesh1d_node_x/_y are present.

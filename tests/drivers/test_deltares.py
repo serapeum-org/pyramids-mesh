@@ -234,8 +234,10 @@ def test_reconstruction_reproduces_stored_coordinates_on_a_real_file():
     finally:
         dataset.Close()
     stored_x, stored_y = _sibling_node_xy(_MAGDALENA)
-    assert np.allclose(recon_x, stored_x, atol=1e-6)
-    assert np.allclose(recon_y, stored_y, atol=1e-6)
+    # rtol=0 so the atol is the real bound (projected coords ~5e5 would otherwise let the
+    # default rtol=1e-5 pass a ~5 m error); the residual is 0, so this tight check holds.
+    assert np.allclose(recon_x, stored_x, rtol=0, atol=1e-6)
+    assert np.allclose(recon_y, stored_y, rtol=0, atol=1e-6)
 
 
 def test_unreferenced_node_xy_arrays_are_preferred_over_reconstruction():
@@ -619,6 +621,29 @@ def test_network_branch_geometry_ignores_a_wrong_length_edge_length():
     assert counts.tolist() == [2]
 
 
+def test_network_branch_geometry_declines_a_partial_standard_name_match():
+    """Only one geometry axis carrying a standard name declines, rather than risk a swap.
+
+    If ``geom_y`` is standard-named but ``geom_x`` is not, falling back to positional order
+    could silently swap x and y; the reader declines (``None``) instead.
+    """
+    group = _Group(
+        {
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),  # no standard name
+            "gy": _Array(
+                value=np.array([2.0, 3.0]),
+                attrs=[_Attr("standard_name", "projection_y_coordinate")],
+            ),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    assert _network_branch_geometry(group, "network") is None
+
+
 class _RaisingGroup(_Group):
     """A group whose ``OpenMDArray`` raises ``RuntimeError`` for one missing name."""
 
@@ -869,6 +894,44 @@ def test_branch_offset_names_falls_back_to_dtype_when_names_are_unhelpful():
         }
     )
     assert _branch_offset_names(group, ["foo", "bar"]) == ("foo", "bar")
+
+
+def test_branch_offset_names_mixes_name_and_dtype_resolution():
+    """One entry matched by name, the other by dtype; the named one is skipped by dtype.
+
+    ``mesh1d_node_offset`` resolves by name; the branch index (named ``idx``) resolves by
+    its integer dtype, and the dtype loop skips the already-named offset entry.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "idx": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    assert _branch_offset_names(group, ["mesh1d_node_offset", "idx"]) == (
+        "idx",
+        "mesh1d_node_offset",
+    )
+
+
+def test_branch_offset_names_skips_the_dtype_loop_once_resolved_by_name():
+    """Resolving both by name skips the dtype loop, so an extra dangling entry is not read.
+
+    A third ``node_coordinates`` entry that would raise ``RuntimeError`` if opened must not
+    be touched once branch and offset are found by name, or a file with an unrelated
+    dangling entry would needlessly fail reconstruction.
+    """
+    group = _RaisingGroup(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.0], np.float64)),
+        },
+        missing="extra",
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_branch", "mesh1d_node_offset", "extra"]
+    )
+    assert (branch, offset) == ("mesh1d_node_branch", "mesh1d_node_offset")
 
 
 def test_sibling_arrays_require_a_name_boundary():
