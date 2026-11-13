@@ -656,17 +656,12 @@ def test_reconstruct_declines_on_a_dangling_geometry_reference():
     assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
 
 
-def test_reconstruct_declines_on_mismatched_branch_offset_lengths():
-    """A branch index and offset of different lengths decline, not raise ``IndexError``.
-
-    A malformed file whose ``mesh1d_node_branch`` and ``mesh1d_node_offset`` differ in
-    length must be reported as unreadable, not surface a raw ``IndexError`` from the
-    boolean-mask index in interpolation.
-    """
-    group = _Group(
+def _branch_offset_group(branch, offset):
+    """A fake group with a 2-vertex branch geometry and the given branch/offset arrays."""
+    return _Group(
         {
-            "mesh1d_node_branch": _Array(value=np.array([0, 0, 1], np.int64)),
-            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "mesh1d_node_branch": _Array(value=branch),
+            "mesh1d_node_offset": _Array(value=offset),
             "network": _net_topo("geom"),
             "geom": _Array(
                 attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
@@ -676,12 +671,88 @@ def test_reconstruct_declines_on_mismatched_branch_offset_lengths():
             "cnt": _Array(value=np.array([2])),
         }
     )
-    topo = {
-        "coordinate_space": "network",
-        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
-    }
-    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
-    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
+_BRANCH_OFFSET_TOPO = {
+    "coordinate_space": "network",
+    "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+}
+_BRANCH_OFFSET_NAMES = ["mesh1d_node_branch", "mesh1d_node_offset"]
+
+
+def test_reconstruct_raises_a_format_error_with_the_primitive_diagnosis():
+    """Malformed geometry raises FileFormatNotSupportedError chaining the primitive's reason.
+
+    A branch index and offset of different lengths make ``place_nodes_on_network`` raise a
+    ``ValueError``; the driver must re-raise it as a declining ``FileFormatNotSupportedError``
+    whose message carries the upstream cause, not swallow it into a bare ``None`` (and never
+    leak a raw ``IndexError``).
+    """
+    group = _branch_offset_group(np.array([0, 0, 1], np.int64), np.array([0.0, 5.0]))
+    with pytest.raises(
+        FileFormatNotSupportedError, match="could not be resolved"
+    ) as exc:
+        _reader()._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+    assert "shape" in str(exc.value), f"upstream diagnosis not chained: {exc.value}"
+    assert isinstance(exc.value.__cause__, ValueError), (
+        "ValueError not chained as cause"
+    )
+
+
+def test_reconstruct_does_not_swallow_a_driver_side_value_error():
+    """A ValueError from the driver's own array prep surfaces; it is not a format decline.
+
+    The narrowed catch wraps only the GDAL reads (RuntimeError) and the primitive call
+    (ValueError); a coercion error raised preparing the arrays -- here a non-numeric offset
+    that ``np.asarray(..., float64)`` cannot convert -- must propagate, not be reclassified.
+    """
+    group = _branch_offset_group(
+        np.array([0, 1], np.int64), np.array(["x", "y"], dtype=object)
+    )
+    with pytest.raises(ValueError):
+        _reader()._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+
+
+def test_reconstruct_rebases_a_one_based_branch_index():
+    """A branch array with ``start_index=1`` is re-based to 0 before the primitive runs.
+
+    Branch ids ``[1, 1]`` on a single-branch network (index 0) would be out of range without
+    re-basing; with ``start_index=1`` they resolve to that branch's two endpoints.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(
+                value=np.array([1, 1], np.int64), attrs=[_Attr("start_index", 1)]
+            ),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 10.0])),
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    node_x, node_y = _reader()._reconstruct_node_coordinates(
+        group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+    )
+    assert np.allclose(node_x, [0.0, 10.0])
+    assert np.allclose(node_y, [0.0, 0.0])
+
+
+def test_reconstruct_leaves_a_zero_based_branch_index_unchanged():
+    """With no ``start_index`` attribute the branch index defaults to 0-based and is used as-is."""
+    group = _branch_offset_group(np.array([0, 0], np.int64), np.array([0.0, 10.0]))
+    node_x, node_y = _reader()._reconstruct_node_coordinates(
+        group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+    )
+    assert np.allclose(node_x, [0.0, 10.0])
+    assert np.allclose(node_y, [0.0, 0.0])
 
 
 class _FakeDataset:

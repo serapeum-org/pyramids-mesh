@@ -445,9 +445,15 @@ class _DeltaresReader:
 
         Returns:
             tuple[np.ndarray, np.ndarray] | None: The reconstructed node x and y, or
-                ``None`` when the file carries no branch/offset pair, no coordinate space,
-                no usable branch geometry, or the geometry is malformed (the primitive
-                rejects it).
+                ``None`` when the file carries no coordinate space, no branch/offset pair,
+                or no usable branch geometry (including a dangling array reference).
+
+        Raises:
+            FileFormatNotSupportedError: The branch geometry is present but
+                :func:`~pyramids.netcdf.ugrid.place_nodes_on_network` rejects it as
+                malformed (mismatched branch/offset lengths, an out-of-range branch index,
+                a non-tiling vertex count, a non-finite value, ...). The primitive's own
+                diagnosis is chained so the real cause is not lost.
         """
         coordinate_space = _as_str(topo.get("coordinate_space"))
         if coordinate_space is None:
@@ -463,20 +469,28 @@ class _DeltaresReader:
                 group.OpenMDArray(offset_name).ReadAsArray(), np.float64
             )
             geometry = _network_branch_geometry(group, coordinate_space)
-            if geometry is None:
-                return None
-            geom_x, geom_y, vertices_per_branch, edge_length = geometry
-            # The derivation itself is owned by pyramids (ADR-0005); the driver only reads
-            # the raw arrays and hands them to the linear-referencing primitive.
+        except RuntimeError:
+            # A dangling reference (an array named but absent) makes the file unreadable;
+            # decline so build() reports it. A ValueError is deliberately NOT caught here:
+            # a coercion failure in the driver's own array prep should surface, not be
+            # silently reclassified as "wrong format".
+            return None
+        if geometry is None:
+            return None
+        geom_x, geom_y, vertices_per_branch, edge_length = geometry
+        # The derivation itself is owned by pyramids (ADR-0005); the driver only reads the
+        # raw arrays and hands them to the linear-referencing primitive.
+        try:
             return place_nodes_on_network(
                 branch, offset, geom_x, geom_y, vertices_per_branch, edge_length
             )
-        except (RuntimeError, ValueError):
-            # RuntimeError: a dangling GDAL reference (an array named but absent).
-            # ValueError: place_nodes_on_network rejecting malformed geometry (mismatched
-            # lengths, non-tiling vertex counts, an out-of-range branch index, ...). Either
-            # way the file cannot be reconstructed, so decline and let build() report it.
-            return None
+        except ValueError as error:
+            # The branch geometry is present but the primitive rejects it as malformed;
+            # decline with its specific diagnosis rather than a bare, generic message.
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} has branch+offset mesh1d geometry that could not be "
+                f"resolved to coordinates: {error}"
+            ) from error
 
     def _edges(self, group, topo: dict) -> tuple[np.ndarray, int]:
         """Return the discretisation's edge-node connectivity and its start index.
