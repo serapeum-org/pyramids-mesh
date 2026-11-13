@@ -10,10 +10,11 @@ offset per node). A map file adds ``mesh1d_*`` result variables over ``time``.
 This reader builds a :class:`~pyramids.netcdf.ugrid.Mesh1d` from the ``mesh1d``
 discretisation -- its nodes and its ``edge_node_connectivity`` -- because that is the
 computational network results live on. Most files store the node geometry as a branch
-index and an along-branch offset rather than explicit x/y, so the reader reconstructs the
-node x/y by linear referencing each node's offset along its branch's polyline (the
-``network``'s ``edge_geometry``) when explicit x/y is absent. Both topologies are found
-by their ``cf_role``
+index and an along-branch offset rather than explicit x/y; when explicit x/y is absent the
+reader reads the branch geometry (the ``network``'s ``edge_geometry``) and derives the
+node x/y through :func:`pyramids.netcdf.ugrid.place_nodes_on_network` -- the linear-
+referencing primitive lives upstream, not in this driver (ADR-0005). Both topologies are
+found by their ``cf_role``
 attributes (``mesh_topology`` on the dummy topology variable, ``edge_node_connectivity``
 on the edge table), never by a hard-coded name, so the two spelling conventions in the
 wild (``network``/``mesh1d`` and ``network1d``/``mesh1d``) read the same way.
@@ -35,7 +36,7 @@ import pyramids  # noqa: F401  # isort:skip
 import numpy as np
 from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, place_nodes_on_network
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh.drivers.threedi import _ThreeDiLoader  # reopen-per-read lazy loader
@@ -120,10 +121,12 @@ class DeltaresNetworkDriver(BaseDriver):
     discretisation: its nodes come from the node x/y coordinates and its edges from the
     ``edge_node_connectivity`` table (re-based to 0 if the file is 1-based, the base kept
     for a writer). When the discretisation stores no explicit node x/y -- the common
-    D-HYDRO shape, where nodes are a branch index plus an along-branch offset -- the x/y
-    is reconstructed by linear referencing along the network's branch geometry. The
-    per-node branch index and offset, and every ``mesh1d_*`` result variable over
-    ``time``, are parsed as node-located or edge-located variables.
+    D-HYDRO shape, where nodes are a branch index plus an along-branch offset -- the driver
+    reads the network's branch geometry and derives the x/y through
+    :func:`pyramids.netcdf.ugrid.place_nodes_on_network` (the linear-referencing primitive
+    is upstream, not reimplemented here). The per-node branch index and offset, and every
+    ``mesh1d_*`` result variable over ``time``, are parsed as node-located or edge-located
+    variables.
 
     Both topologies are discovered by their ``cf_role`` attributes rather than by name,
     so a file spelling the network ``network`` or ``network1d`` reads identically. The
@@ -426,11 +429,14 @@ class _DeltaresReader:
         Each node is given as a branch index (``mesh1d_node_branch`` /
         ``mesh1d_node_branch_id``) and an along-branch distance
         (``mesh1d_node_offset`` / ``mesh1d_node_branch_offset``). The branch index is
-        re-based to 0 with the array's ``start_index``; the offset is measured along the
-        branch from its start, in the geometry's units. The coordinate-space ``network``
-        named by the topology's
-        ``coordinate_space`` carries the branch polylines through its ``edge_geometry``,
-        and each node's x/y is interpolated along its branch's polyline at its offset.
+        re-based to 0 with the array's ``start_index``; the offset is a chainage along the
+        branch. The coordinate-space ``network`` named by the topology's
+        ``coordinate_space`` carries the branch polylines through its ``edge_geometry`` and
+        a per-branch declared length (``edge_length``). This method only reads those raw
+        arrays; the node x/y is derived by
+        :func:`~pyramids.netcdf.ugrid.place_nodes_on_network`, the linear-referencing
+        primitive -- the coordinate derivation is owned by pyramids, not duplicated here
+        (ADR-0005).
 
         Args:
             group: The NetCDF root group.
@@ -440,7 +446,8 @@ class _DeltaresReader:
         Returns:
             tuple[np.ndarray, np.ndarray] | None: The reconstructed node x and y, or
                 ``None`` when the file carries no branch/offset pair, no coordinate space,
-                or no usable branch geometry.
+                no usable branch geometry, or the geometry is malformed (the primitive
+                rejects it).
         """
         coordinate_space = _as_str(topo.get("coordinate_space"))
         if coordinate_space is None:
@@ -456,16 +463,20 @@ class _DeltaresReader:
                 group.OpenMDArray(offset_name).ReadAsArray(), np.float64
             )
             geometry = _network_branch_geometry(group, coordinate_space)
-        except RuntimeError:
-            # A dangling reference (branch/offset/geometry array named but absent) makes
-            # the file unreconstructable; decline so build() reports it as unreadable.
+            if geometry is None:
+                return None
+            geom_x, geom_y, vertices_per_branch, edge_length = geometry
+            # The derivation itself is owned by pyramids (ADR-0005); the driver only reads
+            # the raw arrays and hands them to the linear-referencing primitive.
+            return place_nodes_on_network(
+                branch, offset, geom_x, geom_y, vertices_per_branch, edge_length
+            )
+        except (RuntimeError, ValueError):
+            # RuntimeError: a dangling GDAL reference (an array named but absent).
+            # ValueError: place_nodes_on_network rejecting malformed geometry (mismatched
+            # lengths, non-tiling vertex counts, an out-of-range branch index, ...). Either
+            # way the file cannot be reconstructed, so decline and let build() report it.
             return None
-        if geometry is None or branch.shape != offset.shape:
-            return None
-        geom_x, geom_y, vertices_per_branch, edge_length = geometry
-        return _interpolate_along_branches(
-            branch, offset, geom_x, geom_y, vertices_per_branch, edge_length
-        )
 
     def _edges(self, group, topo: dict) -> tuple[np.ndarray, int]:
         """Return the discretisation's edge-node connectivity and its start index.
@@ -737,10 +748,6 @@ def _network_branch_geometry(group, network_name: str):
     vertices_per_branch = np.asarray(
         group.OpenMDArray(count_name).ReadAsArray()
     ).astype(np.int64, copy=False)
-    if int(vertices_per_branch.sum()) != geom_x.shape[0]:
-        # The per-branch counts must tile the flat vertex list exactly; a mismatch would
-        # slice branches against the wrong vertices, so the geometry is unusable.
-        return None
     edge_length = _branch_lengths(group, network, vertices_per_branch.shape[0])
     return geom_x, geom_y, vertices_per_branch, edge_length
 
@@ -768,72 +775,6 @@ def _branch_lengths(group, network: dict, branch_count: int):
     if edge_length.shape != (branch_count,):
         return None
     return edge_length
-
-
-def _interpolate_along_branches(
-    branch: np.ndarray,
-    offset: np.ndarray,
-    geom_x: np.ndarray,
-    geom_y: np.ndarray,
-    vertices_per_branch: np.ndarray,
-    branch_length: np.ndarray | None = None,
-):
-    """Interpolate each node's x/y from its branch index and along-branch offset.
-
-    Each branch's polyline is sliced from the flat vertex list by the cumulative vertex
-    count, its vertices' cumulative chord length is measured from the branch start, and
-    every node on that branch has its x and y linearly interpolated at its offset. A
-    single-vertex branch degenerates to that vertex; an offset past a branch's end clamps
-    to its last vertex (``numpy.interp`` behaviour).
-
-    In D-HYDRO an offset is a **chainage** in ``[0, branch_length]``, and the branch's
-    declared length need not equal its digitised polyline's chord length. When
-    ``branch_length`` is given, each branch's distance axis is rescaled from chord length
-    to the declared length, so a node's chainage is placed at the same fraction along the
-    polyline rather than at the same raw distance. Without it, the raw chord length is
-    used (equivalent when the two agree, as they do for well-formed files).
-
-    Args:
-        branch: Per-node branch index, 0-based.
-        offset: Per-node distance (chainage) along the branch.
-        geom_x: Flat branch-vertex x coordinates.
-        geom_y: Flat branch-vertex y coordinates.
-        vertices_per_branch: Vertex count of each branch, in branch order.
-        branch_length: Per-branch declared length (``network1d_edge_length``) used to
-            interpret the chainage, or ``None`` to measure by chord length alone.
-
-    Returns:
-        tuple[np.ndarray, np.ndarray] | None: The node x and y, or ``None`` when any node
-            references a branch with no geometry (an out-of-range branch index or a
-            zero-vertex branch -- a malformed file). Reconstruction is the last-resort
-            tier, so a ``None`` here declines the whole file: the caller raises
-            ``FileFormatNotSupportedError`` rather than emitting ``nan`` coordinates. A
-            single unreconstructable node therefore rejects the file, which is deliberate
-            -- a mesh missing a node would have dangling edge connectivity.
-    """
-    node_x = np.full(branch.shape[0], np.nan, np.float64)
-    node_y = np.full(branch.shape[0], np.nan, np.float64)
-    starts = np.concatenate(([0], np.cumsum(vertices_per_branch)))
-    for index in range(vertices_per_branch.shape[0]):
-        begin, end = int(starts[index]), int(starts[index + 1])
-        vertex_x, vertex_y = geom_x[begin:end], geom_y[begin:end]
-        on_branch = branch == index
-        if vertex_x.size == 0 or not on_branch.any():
-            continue
-        segment = np.hypot(np.diff(vertex_x), np.diff(vertex_y))
-        distance = np.concatenate(([0.0], np.cumsum(segment)))
-        if branch_length is not None and distance[-1] > 0:
-            length = float(branch_length[index])
-            if length > 0:
-                # Rescale the chord-distance axis to the branch's declared chainage, so a
-                # node's offset is placed at its fraction along the polyline.
-                distance = distance * (length / distance[-1])
-        here = offset[on_branch]
-        node_x[on_branch] = np.interp(here, distance, vertex_x)
-        node_y[on_branch] = np.interp(here, distance, vertex_y)
-    if np.isnan(node_x).any() or np.isnan(node_y).any():
-        return None
-    return node_x, node_y
 
 
 def _split(value) -> list:

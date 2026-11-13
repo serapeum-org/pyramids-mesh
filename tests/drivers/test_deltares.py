@@ -32,7 +32,6 @@ from pyramids_mesh.drivers.deltares import (
     _branch_offset_names,
     _DeltaresReader,
     _fill_value,
-    _interpolate_along_branches,
     _network_branch_geometry,
     _split,
     _string_attr,
@@ -65,11 +64,12 @@ def _parse(path, *, lazy=True):
 
 
 def _reconstructed_reference(path):
-    """Interpolate node x/y with shapely -- an oracle independent of the driver's helper.
+    """Interpolate node x/y with shapely -- an oracle independent of pyramids' primitive.
 
     Uses ``shapely.LineString.interpolate`` per branch rather than
-    ``_interpolate_along_branches``, so a match proves the driver's linear-referencing
-    math is correct, not merely self-consistent with itself.
+    ``pyramids.netcdf.ugrid.place_nodes_on_network`` (which the driver calls), so a match
+    proves the driver feeds the primitive correctly and the chainage math agrees, not
+    merely that the driver agrees with itself.
     """
     from shapely.geometry import LineString
 
@@ -477,57 +477,6 @@ def test_node_coordinates_raise_without_x_or_y():
         _reader()._node_coordinates(group, "mesh1d", topo)
 
 
-def test_interpolate_along_branches_linear_references_offsets():
-    """A node's x/y is the point at its offset along its branch's polyline.
-
-    One L-shaped branch of two segments (0->10 east, then 10->20 north) places a node at
-    offset 5 halfway along the first segment and a node at offset 15 halfway up the
-    second; offsets are measured as cumulative chord length from the branch start.
-    """
-    geom_x = np.array([0.0, 10.0, 10.0])
-    geom_y = np.array([0.0, 0.0, 10.0])
-    counts = np.array([3])
-    branch = np.array([0, 0, 0])
-    offset = np.array([0.0, 5.0, 15.0])
-    node_x, node_y = _interpolate_along_branches(branch, offset, geom_x, geom_y, counts)
-    assert np.allclose(node_x, [0.0, 5.0, 10.0])
-    assert np.allclose(node_y, [0.0, 0.0, 5.0])
-
-
-def test_interpolate_along_branches_clamps_an_offset_past_the_branch_end():
-    """An offset beyond a branch's length clamps to its last vertex (np.interp behaviour)."""
-    geom_x = np.array([0.0, 10.0])
-    geom_y = np.array([0.0, 0.0])
-    counts = np.array([2])
-    node_x, node_y = _interpolate_along_branches(
-        np.array([0]), np.array([15.0]), geom_x, geom_y, counts
-    )
-    assert node_x[0] == 10.0
-    assert node_y[0] == 0.0
-
-
-def test_interpolate_along_branches_degenerates_a_single_vertex_branch():
-    """A branch with one vertex places every node on it at that vertex, for any offset."""
-    geom_x = np.array([5.0])
-    geom_y = np.array([7.0])
-    counts = np.array([1])
-    node_x, node_y = _interpolate_along_branches(
-        np.array([0, 0]), np.array([0.0, 3.0]), geom_x, geom_y, counts
-    )
-    assert np.allclose(node_x, [5.0, 5.0])
-    assert np.allclose(node_y, [7.0, 7.0])
-
-
-def test_interpolate_along_branches_returns_none_for_a_branchless_node():
-    """A node on a branch that has no geometry yields ``None`` rather than ``nan``."""
-    geom_x = np.array([0.0, 1.0])
-    geom_y = np.array([0.0, 0.0])
-    counts = np.array([2, 0])  # branch 1 has no vertices
-    branch = np.array([0, 1])  # the second node sits on the empty branch
-    offset = np.array([0.0, 0.0])
-    assert _interpolate_along_branches(branch, offset, geom_x, geom_y, counts) is None
-
-
 def test_branch_offset_names_tells_branch_from_offset_by_dtype():
     """The integer entry is the branch index; the float entry is the offset."""
     group = _Group(
@@ -643,26 +592,31 @@ def test_network_branch_geometry_falls_back_to_positional_xy():
     assert edge_length is None  # this network declares no edge_length attribute
 
 
-def test_interpolate_along_branches_honours_declared_branch_length():
-    """A chainage offset is placed by fraction when the branch length differs from chord.
-
-    One straight branch of chord length 10 but declared length 20: a node at chainage 10
-    is halfway along the branch, so it must land at the polyline midpoint (5, 0), not at
-    chord-distance 10 (the branch end).
-    """
-    geom_x = np.array([0.0, 10.0])
-    geom_y = np.array([0.0, 0.0])
-    counts = np.array([2])
-    node_x, node_y = _interpolate_along_branches(
-        np.array([0]),
-        np.array([10.0]),
-        geom_x,
-        geom_y,
-        counts,
-        branch_length=np.array([20.0]),
+def test_network_branch_geometry_ignores_a_wrong_length_edge_length():
+    """An ``edge_length`` that is not one value per branch is ignored (``edge_length`` None)."""
+    network = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("edge_geometry", "geom"),
+            _Attr("edge_length", "el"),
+        ]
     )
-    assert np.allclose(node_x, [5.0])
-    assert np.allclose(node_y, [0.0])
+    group = _Group(
+        {
+            "network": network,
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),  # one branch
+            "el": _Array(value=np.array([10.0, 20.0, 30.0])),  # three lengths, not one
+        }
+    )
+    _, _, counts, edge_length = _network_branch_geometry(group, "network")
+    assert edge_length is None
+    assert counts.tolist() == [2]
 
 
 class _RaisingGroup(_Group):
@@ -837,22 +791,6 @@ def test_branch_offset_names_handles_the_alternate_spelling_by_name():
     )
     assert branch == "mesh1d_node_branch_id"
     assert offset == "mesh1d_node_branch_offset"
-
-
-def test_network_branch_geometry_none_on_count_vertex_mismatch():
-    """A ``node_count`` that does not sum to the vertex-list length yields ``None``."""
-    group = _Group(
-        {
-            "network": _net_topo("geom"),
-            "geom": _Array(
-                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
-            ),
-            "gx": _Array(value=np.array([0.0, 1.0, 2.0])),
-            "gy": _Array(value=np.array([0.0, 0.0, 0.0])),
-            "cnt": _Array(value=np.array([2])),  # sums to 2, but 3 vertices exist
-        }
-    )
-    assert _network_branch_geometry(group, "network") is None
 
 
 def test_edges_raise_without_edge_connectivity():
