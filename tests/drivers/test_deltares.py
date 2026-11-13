@@ -5,9 +5,13 @@ NetCDF: a ``network`` of branches and a ``mesh1d`` discretisation of computation
 with ``mesh1d_*`` results over time on a map file. The driver builds a ``Mesh1d`` from
 the ``mesh1d`` discretisation, finding both topologies by their ``cf_role`` attributes.
 
-Three genuine samples are committed under ``tests/data/deltares1d/``: a pure-1D topology
+Several genuine samples are committed under ``tests/data/deltares1d/``: a pure-1D topology
 (``korte-woerden``), a tiny combined 1D2D topology (``UGrid_1D2D``), and a pure-1D map
-file with 97 result steps (``Haskoning``). The tests read the committed bytes.
+file with 97 result steps (``Haskoning``). Three more exercise the branch+offset node
+geometry that most D-HYDRO files use instead of explicit x/y: ``dsd-demo`` (reconstructed
+from the branch geometry), ``magdalena`` (explicit ``mesh1d_node_x`` present but not
+referenced by the topology), and ``f101-boundary`` (the alternate ``branch_id`` /
+``branch_offset`` spelling, reconstructed). The tests read the committed bytes.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -15,7 +19,9 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pytest
+from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d
 
@@ -23,8 +29,10 @@ from pyramids_mesh.drivers.deltares import (
     DeltaresNetworkDriver,
     _as_str,
     _attr_map,
+    _branch_offset_names,
     _DeltaresReader,
     _fill_value,
+    _network_branch_geometry,
     _split,
     _string_attr,
     _topology_dimension,
@@ -34,6 +42,9 @@ _DATA = Path(__file__).parent.parent / "data" / "deltares1d"
 _KORTE = _DATA / "korte-woerden-1d_FlowFM_net.nc"
 _UGRID_1D2D = _DATA / "UGrid_1D2D_net.nc"
 _HASKONING = _DATA / "Haskoning_example_map.nc"
+_DSD = _DATA / "branchoffset_1d_minimal_no-hidden-xy__dsd-demo.nc"
+_MAGDALENA = _DATA / "branchoffset_1d_hidden-xy__magdalena.nc"
+_F101 = _DATA / "branchoffset-altnames_1d__f101-boundary.nc"
 _THREEDI = Path(__file__).parent.parent / "data" / "3di" / "results_3di.nc"
 
 
@@ -50,6 +61,80 @@ def _parse(path, *, lazy=True):
 
     driver = DeltaresNetworkDriver()
     return validate_and_normalise(driver._parse(str(path), lazy=lazy))
+
+
+def _reconstructed_reference(path):
+    """Interpolate node x/y with shapely -- an oracle independent of pyramids' primitive.
+
+    Uses ``shapely.LineString.interpolate`` per branch rather than
+    ``pyramids.netcdf.ugrid.place_nodes_on_network`` (which the driver calls), so a match
+    proves the driver feeds the primitive correctly and the chainage math agrees, not
+    merely that the driver agrees with itself.
+    """
+    from shapely.geometry import LineString
+
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        branch = np.asarray(group.OpenMDArray("mesh1d_node_branch").ReadAsArray())
+        branch = branch.astype(np.int64) - 1  # the sample is 1-based
+        offset = np.asarray(
+            group.OpenMDArray("mesh1d_node_offset").ReadAsArray(), np.float64
+        )
+        geom_x = np.asarray(
+            group.OpenMDArray("network1d_geom_x").ReadAsArray(), np.float64
+        )
+        geom_y = np.asarray(
+            group.OpenMDArray("network1d_geom_y").ReadAsArray(), np.float64
+        )
+        counts = np.asarray(
+            group.OpenMDArray("network1d_geom_node_count").ReadAsArray()
+        ).astype(np.int64)
+        edge_length = np.asarray(
+            group.OpenMDArray("network1d_edge_length").ReadAsArray(), np.float64
+        )
+    finally:
+        dataset.Close()
+    starts = np.concatenate(([0], np.cumsum(counts)))
+    node_x = np.empty(branch.shape[0], np.float64)
+    node_y = np.empty(branch.shape[0], np.float64)
+    for index, (branch_index, offset_value) in enumerate(zip(branch, offset)):
+        begin, end = int(starts[branch_index]), int(starts[branch_index + 1])
+        line = LineString(np.column_stack([geom_x[begin:end], geom_y[begin:end]]))
+        # offset is a chainage in [0, edge_length]; map it to chord distance for shapely.
+        length = float(edge_length[branch_index])
+        chord = offset_value if length <= 0 else offset_value * line.length / length
+        point = line.interpolate(float(chord))
+        node_x[index], node_y[index] = point.x, point.y
+    return node_x, node_y
+
+
+def _sibling_node_xy(path):
+    """Read a file's explicit ``mesh1d_node_x`` / ``mesh1d_node_y`` arrays."""
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        node_x = np.asarray(
+            group.OpenMDArray("mesh1d_node_x").ReadAsArray(), np.float64
+        )
+        node_y = np.asarray(
+            group.OpenMDArray("mesh1d_node_y").ReadAsArray(), np.float64
+        )
+    finally:
+        dataset.Close()
+    return node_x, node_y
+
+
+def _network_geometry_bounds(path):
+    """Return a file's network branch-geometry ``(x_min, x_max), (y_min, y_max)`` bounds."""
+    dataset = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        geom_x = np.asarray(group.OpenMDArray("network1d_geom_x").ReadAsArray(), float)
+        geom_y = np.asarray(group.OpenMDArray("network1d_geom_y").ReadAsArray(), float)
+    finally:
+        dataset.Close()
+    return (geom_x.min(), geom_x.max()), (geom_y.min(), geom_y.max())
 
 
 def test_pure_1d_network_reads_node_and_edge_counts():
@@ -105,6 +190,85 @@ def test_branch_and_offset_are_carried_as_node_variables():
     assert offset.shape == (86,)
     # they are static node data, carried eagerly rather than deferred
     assert branch.values is not None
+
+
+def test_branch_offset_only_file_is_read_by_reconstruction():
+    """A file whose nodes are branch+offset (no x/y) reconstructs node coordinates.
+
+    ``dsd-demo`` stores no ``mesh1d_node_x`` anywhere; the node x/y is rebuilt by linear
+    referencing each node's offset along its branch polyline. The reconstructed nodes land
+    inside the network's geometry bounds and are all finite.
+    """
+    network = _read(_DSD)
+    assert isinstance(network, Mesh1d)
+    assert (network.n_node, network.n_edge) == (12, 13)
+    assert np.isfinite(network.node_x).all()
+    assert np.isfinite(network.node_y).all()
+    # the reconstruction matches an independent shapely interpolation of the raw arrays
+    expected_x, expected_y = _reconstructed_reference(_DSD)
+    assert np.allclose(network.node_x, expected_x)
+    assert np.allclose(network.node_y, expected_y)
+    # and every node lands within the network's own geometry bounds
+    geom_x, geom_y = _network_geometry_bounds(_DSD)
+    assert geom_x[0] - 1e-6 <= network.node_x.min()
+    assert network.node_x.max() <= geom_x[1] + 1e-6
+    assert geom_y[0] - 1e-6 <= network.node_y.min()
+    assert network.node_y.max() <= geom_y[1] + 1e-6
+
+
+def test_reconstruction_reproduces_stored_coordinates_on_a_real_file():
+    """Reconstruction of the magdalena network reproduces its stored node x/y exactly.
+
+    ``magdalena`` carries both branch+offset geometry and authoritative
+    ``mesh1d_node_x`` / ``_node_y``. Reconstructing directly (bypassing the sibling-array
+    tier) and comparing to the stored arrays is a real 447-node ground truth for the
+    linear-referencing math -- they must agree to within floating-point tolerance.
+    """
+    dataset = gdal.OpenEx(str(_MAGDALENA), gdal.OF_MULTIDIM_RASTER)
+    try:
+        group = dataset.GetRootGroup()
+        reader = _DeltaresReader(str(_MAGDALENA), lazy=True)
+        _, topo = reader._discretisation(group)
+        names = _split(topo.get("node_coordinates"))
+        recon_x, recon_y = reader._reconstruct_node_coordinates(group, topo, names)
+    finally:
+        dataset.Close()
+    stored_x, stored_y = _sibling_node_xy(_MAGDALENA)
+    # rtol=0 so the atol is the real bound (projected coords ~5e5 would otherwise let the
+    # default rtol=1e-5 pass a ~5 m error); the residual is 0, so this tight check holds.
+    assert np.allclose(recon_x, stored_x, rtol=0, atol=1e-6)
+    assert np.allclose(recon_y, stored_y, rtol=0, atol=1e-6)
+
+
+def test_unreferenced_node_xy_arrays_are_preferred_over_reconstruction():
+    """Explicit ``mesh1d_node_x`` present but unlisted is used verbatim, not reconstructed.
+
+    ``magdalena`` lists only branch+offset in ``node_coordinates`` yet carries genuine
+    ``mesh1d_node_x`` / ``_node_y`` arrays; those authoritative values are returned
+    exactly, in preference to interpolating.
+    """
+    network = _read(_MAGDALENA)
+    assert network.n_node == 447
+    stored_x, stored_y = _sibling_node_xy(_MAGDALENA)
+    assert np.array_equal(network.node_x, stored_x)
+    assert np.array_equal(network.node_y, stored_y)
+
+
+def test_alternate_branch_offset_spelling_is_reconstructed():
+    """The ``branch_id`` / ``branch_offset`` spelling reconstructs the same way.
+
+    ``f101-boundary`` names its node geometry ``mesh1d_node_branch_id`` /
+    ``mesh1d_node_branch_offset``; the reader tells branch from offset by dtype, so the
+    spelling does not matter and the nodes reconstruct to finite coordinates.
+    """
+    network = _read(_F101)
+    assert network.n_node == 164
+    assert np.isfinite(network.node_x).all()
+    assert np.isfinite(network.node_y).all()
+    # the alternate-spelling arrays are still carried as node variables
+    parsed = _parse(_F101)
+    assert parsed.variables["mesh1d_node_branch_id"].location == "node"
+    assert parsed.variables["mesh1d_node_branch_offset"].location == "node"
 
 
 def test_result_variables_attach_over_time():
@@ -312,7 +476,514 @@ def test_node_coordinates_raise_without_x_or_y():
     )
     topo = {"node_coordinates": "a b"}
     with pytest.raises(FileFormatNotSupportedError, match="no x/y node coordinates"):
-        _reader()._node_coordinates(group, topo)
+        _reader()._node_coordinates(group, "mesh1d", topo)
+
+
+def test_branch_offset_names_tells_branch_from_offset_by_dtype():
+    """The integer entry is the branch index; the float entry is the offset."""
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1, 2], np.int32)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.5], np.float64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_reconstruct_returns_none_without_a_coordinate_space():
+    """Reconstruction declines when the topology names no coordinate-space network."""
+    group = _Group({})
+    result = _reader()._reconstruct_node_coordinates(group, {}, ["a", "b"])
+    assert result is None
+
+
+def test_branch_offset_names_ignores_a_non_numeric_entry():
+    """A ``node_coordinates`` entry that is neither integer nor float is skipped."""
+    group = _Group(
+        {
+            "label": _Array(value=np.array(["a", "b"], dtype=object)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.0], np.float64)),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["label", "mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_reconstruct_returns_none_without_a_branch_offset_pair():
+    """A coordinate space but no integer branch index declines reconstruction."""
+    group = _Group(
+        {
+            "x": _Array(value=np.array([0.0], np.float64)),
+            "y": _Array(value=np.array([0.0], np.float64)),
+        }
+    )
+    topo = {"coordinate_space": "network", "node_coordinates": "x y"}
+    assert _reader()._reconstruct_node_coordinates(group, topo, ["x", "y"]) is None
+
+
+def test_reconstruct_returns_none_when_network_has_no_geometry():
+    """A valid branch+offset pair but a geometry-less network declines reconstruction."""
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "network": _topo_array(1),
+        }
+    )
+    topo = {
+        "coordinate_space": "network",
+        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+    }
+    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
+    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
+def _net_topo(edge_geometry=None):
+    """Build a fake 1D network ``mesh_topology`` with an optional ``edge_geometry``."""
+    attrs = [_Attr("cf_role", "mesh_topology"), _Attr("topology_dimension", 1)]
+    if edge_geometry is not None:
+        attrs.append(_Attr("edge_geometry", edge_geometry))
+    return _Array(attrs=attrs)
+
+
+def test_network_branch_geometry_none_when_network_absent():
+    """No network topology of the given name yields ``None``."""
+    assert _network_branch_geometry(_Group({}), "network") is None
+
+
+def test_network_branch_geometry_none_without_edge_geometry():
+    """A network that declares no ``edge_geometry`` yields ``None``."""
+    group = _Group({"network": _net_topo()})
+    assert _network_branch_geometry(group, "network") is None
+
+
+def test_network_branch_geometry_none_without_full_geometry():
+    """A geometry container missing its vertex x/y or count yields ``None``."""
+    geometry = _Array(
+        attrs=[_Attr("node_coordinates", "only_x"), _Attr("node_count", None)]
+    )
+    group = _Group({"network": _net_topo("geom"), "geom": geometry})
+    assert _network_branch_geometry(group, "network") is None
+
+
+def test_network_branch_geometry_falls_back_to_positional_xy():
+    """Vertex x/y with no standard name are taken as the first two coordinate entries."""
+    group = _Group(
+        {
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    geom_x, geom_y, counts, edge_length = _network_branch_geometry(group, "network")
+    assert np.allclose(geom_x, [0.0, 1.0])
+    assert np.allclose(geom_y, [0.0, 0.0])
+    assert counts.tolist() == [2]
+    assert edge_length is None  # this network declares no edge_length attribute
+
+
+def test_network_branch_geometry_ignores_a_wrong_length_edge_length():
+    """An ``edge_length`` that is not one value per branch is ignored (``edge_length`` None)."""
+    network = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("edge_geometry", "geom"),
+            _Attr("edge_length", "el"),
+        ]
+    )
+    group = _Group(
+        {
+            "network": network,
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),  # one branch
+            "el": _Array(value=np.array([10.0, 20.0, 30.0])),  # three lengths, not one
+        }
+    )
+    _, _, counts, edge_length = _network_branch_geometry(group, "network")
+    assert edge_length is None
+    assert counts.tolist() == [2]
+
+
+def test_network_branch_geometry_declines_a_partial_standard_name_match():
+    """Only one geometry axis carrying a standard name declines, rather than risk a swap.
+
+    If ``geom_y`` is standard-named but ``geom_x`` is not, falling back to positional order
+    could silently swap x and y; the reader declines (``None``) instead.
+    """
+    group = _Group(
+        {
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 1.0])),  # no standard name
+            "gy": _Array(
+                value=np.array([2.0, 3.0]),
+                attrs=[_Attr("standard_name", "projection_y_coordinate")],
+            ),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    assert _network_branch_geometry(group, "network") is None
+
+
+class _RaisingGroup(_Group):
+    """A group whose ``OpenMDArray`` raises ``RuntimeError`` for one missing name."""
+
+    def __init__(self, arrays, missing):
+        super().__init__(arrays)
+        self._missing = missing
+
+    def OpenMDArray(self, name):
+        """Raise ``RuntimeError`` for the missing name, else defer to the base group."""
+        if name == self._missing:
+            raise RuntimeError(f"Array {name} does not exist")
+        return super().OpenMDArray(name)
+
+
+def test_reconstruct_declines_on_a_dangling_geometry_reference():
+    """A geometry container named but absent declines, not raises ``RuntimeError``.
+
+    ``build`` documents ``FileFormatNotSupportedError`` for a malformed file; a dangling
+    ``edge_geometry`` reference must therefore make reconstruction return ``None`` (the
+    caller then declines), never let GDAL's ``RuntimeError`` escape.
+    """
+    group = _RaisingGroup(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "network": _net_topo("geom"),
+        },
+        missing="geom",
+    )
+    topo = {
+        "coordinate_space": "network",
+        "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+    }
+    names = ["mesh1d_node_branch", "mesh1d_node_offset"]
+    assert _reader()._reconstruct_node_coordinates(group, topo, names) is None
+
+
+def _branch_offset_group(branch, offset):
+    """A fake group with a 2-vertex branch geometry and the given branch/offset arrays."""
+    return _Group(
+        {
+            "mesh1d_node_branch": _Array(value=branch),
+            "mesh1d_node_offset": _Array(value=offset),
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+
+
+_BRANCH_OFFSET_TOPO = {
+    "coordinate_space": "network",
+    "node_coordinates": "mesh1d_node_branch mesh1d_node_offset",
+}
+_BRANCH_OFFSET_NAMES = ["mesh1d_node_branch", "mesh1d_node_offset"]
+
+
+def test_reconstruct_raises_a_format_error_with_the_primitive_diagnosis():
+    """Malformed geometry raises FileFormatNotSupportedError chaining the primitive's reason.
+
+    A branch index and offset of different lengths make ``place_nodes_on_network`` raise a
+    ``ValueError``; the driver must re-raise it as a declining ``FileFormatNotSupportedError``
+    whose message carries the upstream cause, not swallow it into a bare ``None`` (and never
+    leak a raw ``IndexError``).
+    """
+    group = _branch_offset_group(np.array([0, 0, 1], np.int64), np.array([0.0, 5.0]))
+    reader = _reader()
+    with pytest.raises(
+        FileFormatNotSupportedError, match="could not be resolved"
+    ) as exc:
+        reader._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+    assert "shape" in str(exc.value), f"upstream diagnosis not chained: {exc.value}"
+    assert isinstance(exc.value.__cause__, ValueError), (
+        "ValueError not chained as cause"
+    )
+
+
+def test_reconstruct_declines_a_non_numeric_offset_array():
+    """A non-numeric offset array declines with the coercion cause chained, not a raw error.
+
+    A malformed file whose ``mesh1d_node_offset`` is non-numeric fails the driver's
+    ``np.asarray(..., float64)`` coercion; that is a format problem, so the driver declines
+    with ``FileFormatNotSupportedError`` (cause chained), never leaking a raw ``ValueError``.
+    """
+    group = _branch_offset_group(
+        np.array([0, 1], np.int64), np.array(["x", "y"], dtype=object)
+    )
+    reader = _reader()
+    with pytest.raises(
+        FileFormatNotSupportedError, match="could not be resolved"
+    ) as exc:
+        reader._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+    assert exc.value.__cause__ is not None, "coercion cause not chained"
+
+
+def test_reconstruct_rejects_a_fractional_branch_index():
+    """A fractional branch index declines rather than being silently truncated.
+
+    The driver no longer pre-casts the branch index to int, so ``place_nodes_on_network``'s
+    guard rejects a fractional index (``0.7``) instead of the driver truncating it to ``0``
+    and placing the node on the wrong branch.
+    """
+    group = _branch_offset_group(np.array([0.0, 0.7]), np.array([0.0, 5.0]))
+    reader = _reader()
+    with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
+        reader._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+
+
+def test_reconstruct_rebases_a_one_based_branch_index():
+    """A branch array with ``start_index=1`` is re-based to 0 before the primitive runs.
+
+    Branch ids ``[1, 1]`` on a single-branch network (index 0) would be out of range without
+    re-basing; with ``start_index=1`` they resolve to that branch's two endpoints.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_branch": _Array(
+                value=np.array([1, 1], np.int64), attrs=[_Attr("start_index", 1)]
+            ),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 10.0])),
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+        }
+    )
+    node_x, node_y = _reader()._reconstruct_node_coordinates(
+        group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+    )
+    assert np.allclose(node_x, [0.0, 10.0])
+    assert np.allclose(node_y, [0.0, 0.0])
+
+
+def test_reconstruct_leaves_a_zero_based_branch_index_unchanged():
+    """With no ``start_index`` attribute the branch index defaults to 0-based and is used as-is."""
+    group = _branch_offset_group(np.array([0, 0], np.int64), np.array([0.0, 10.0]))
+    node_x, node_y = _reader()._reconstruct_node_coordinates(
+        group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+    )
+    assert np.allclose(node_x, [0.0, 10.0])
+    assert np.allclose(node_y, [0.0, 0.0])
+
+
+def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
+    """A malformed branch+offset file declines from ``_parse`` with FileFormatNotSupportedError.
+
+    End to end (not just the private method): a file whose only node geometry is branch +
+    a non-numeric offset must leave ``_parse`` as the driver's documented decline type, never
+    a raw ``ValueError``.
+    """
+    from pyramids_mesh.drivers import deltares
+
+    mesh1d = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("coordinate_space", "network"),
+            _Attr("node_coordinates", "mesh1d_node_branch mesh1d_node_offset"),
+        ]
+    )
+    group = _Group(
+        {
+            "mesh1d": mesh1d,
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array(["x", "y"], dtype=object)),
+        }
+    )
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
+    with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
+        driver._parse("malformed.nc", lazy=True)
+
+
+class _FakeDataset:
+    """A stand-in GDAL dataset exposing a fixed root group and a no-op close."""
+
+    def __init__(self, group):
+        self._group = group
+
+    def GetRootGroup(self):
+        """Return the fixed root group."""
+        return self._group
+
+    def Close(self):
+        """Do nothing; the fake holds no resources."""
+
+
+def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
+    """A ``node_coordinates`` entry naming a missing array is declined, not raised raw.
+
+    ``build`` opens a file whose 1D topology references ``missing_x``; GDAL raises
+    ``RuntimeError`` on the dereference, which must surface as the documented
+    ``FileFormatNotSupportedError``.
+    """
+    from pyramids_mesh.drivers import deltares
+
+    topo = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("node_coordinates", "missing_x missing_y"),
+        ]
+    )
+    group = _RaisingGroup({"mesh1d": topo}, missing="missing_x")
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
+    with pytest.raises(FileFormatNotSupportedError, match="not a readable Deltares 1D"):
+        driver._parse("dangling.nc", lazy=True)
+
+
+def test_build_propagates_a_format_error_unwrapped(monkeypatch):
+    """A ``FileFormatNotSupportedError`` from inside build re-raises as itself."""
+    from pyramids_mesh.drivers import deltares
+
+    group = _Group({"mesh2d": _topo_array(2)})
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
+    with pytest.raises(FileFormatNotSupportedError, match="no 1D mesh_topology"):
+        driver._parse("no_1d.nc", lazy=True)
+
+
+def test_branch_offset_names_falls_back_to_dtype_when_names_are_unhelpful():
+    """Entries named neither ``offset`` nor ``branch`` are resolved by dtype."""
+    group = _Group(
+        {
+            "foo": _Array(value=np.array([0, 1], np.int64)),
+            "bar": _Array(value=np.array([0.0, 1.0], np.float64)),
+        }
+    )
+    assert _branch_offset_names(group, ["foo", "bar"]) == ("foo", "bar")
+
+
+def test_branch_offset_names_mixes_name_and_dtype_resolution():
+    """One entry matched by name, the other by dtype; the named one is skipped by dtype.
+
+    ``mesh1d_node_offset`` resolves by name; the branch index (named ``idx``) resolves by
+    its integer dtype, and the dtype loop skips the already-named offset entry.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "idx": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    assert _branch_offset_names(group, ["mesh1d_node_offset", "idx"]) == (
+        "idx",
+        "mesh1d_node_offset",
+    )
+
+
+def test_branch_offset_names_skips_the_dtype_loop_once_resolved_by_name():
+    """Resolving both by name skips the dtype loop, so an extra dangling entry is not read.
+
+    A third ``node_coordinates`` entry that would raise ``RuntimeError`` if opened must not
+    be touched once branch and offset are found by name, or a file with an unrelated
+    dangling entry would needlessly fail reconstruction.
+    """
+    group = _RaisingGroup(
+        {
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 1.0], np.float64)),
+        },
+        missing="extra",
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_branch", "mesh1d_node_offset", "extra"]
+    )
+    assert (branch, offset) == ("mesh1d_node_branch", "mesh1d_node_offset")
+
+
+def test_sibling_arrays_require_a_name_boundary():
+    """A sibling topology's node array (``mesh1d2d_node_x``) is not matched for ``mesh1d``."""
+    group = _Group(
+        {
+            "mesh1d2d_node_x": _Array(
+                value=np.array([0.0]),
+                attrs=[_Attr("standard_name", "projection_x_coordinate")],
+            ),
+            "mesh1d2d_node_y": _Array(
+                value=np.array([0.0]),
+                attrs=[_Attr("standard_name", "projection_y_coordinate")],
+            ),
+        }
+    )
+    assert _reader()._xy_from_sibling_arrays(group, "mesh1d") == (None, None)
+
+
+def test_branch_offset_names_prefers_names_over_an_unstandardised_xy():
+    """Name matching keeps a float x/y array from being mistaken for the offset.
+
+    With a float ``mesh1d_node_x`` listed first, a dtype-only rule would take it as the
+    offset; matching ``offset`` / ``branch`` by name selects the real arrays instead.
+    """
+    group = _Group(
+        {
+            "mesh1d_node_x": _Array(value=np.array([1.0, 2.0], np.float64)),
+            "mesh1d_node_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_x", "mesh1d_node_offset", "mesh1d_node_branch"]
+    )
+    assert branch == "mesh1d_node_branch"
+    assert offset == "mesh1d_node_offset"
+
+
+def test_branch_offset_names_handles_the_alternate_spelling_by_name():
+    """``..._branch_offset`` is the offset, not the branch, despite containing ``branch``."""
+    group = _Group(
+        {
+            "mesh1d_node_branch_id": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_branch_offset": _Array(value=np.array([0.0, 5.0], np.float64)),
+        }
+    )
+    branch, offset = _branch_offset_names(
+        group, ["mesh1d_node_branch_id", "mesh1d_node_branch_offset"]
+    )
+    assert branch == "mesh1d_node_branch_id"
+    assert offset == "mesh1d_node_branch_offset"
 
 
 def test_edges_raise_without_edge_connectivity():

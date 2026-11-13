@@ -32,14 +32,16 @@ requires-python = ">= 3.11, <4"
 # or pins a separate GDAL.
 dependencies = [
     # `pyramids-gis` was renamed to `pyramids-core` in 0.70.0; the import stays
-    # `pyramids`. The floor is 0.77.0: 0.75.0 renamed the mesh data model
+    # `pyramids`. The floor is 0.78.0: 0.75.0 renamed the mesh data model
     # (`UgridDataset`/`Network1d` -> `MeshDataset`/`Mesh1d`, which this package now
     # imports), 0.76.0 consolidated the netcdf selection surface (one sel/isel surface
-    # plus the `*_names` accessors), and 0.77.0 renamed more netcdf members (e.g.
+    # plus the `*_names` accessors), 0.77.0 renamed more netcdf members (e.g.
     # `MeshDataset.get_data` -> subscription `mesh[name]`, which the notebooks now use)
-    # and fixed the xarray-interop install hint. The example notebooks are built and
-    # validated against 0.77.0, so the floor stays >= 0.77.0.
-    "pyramids-core >=0.77.0",
+    # and fixed the xarray-interop install hint, and 0.78.0 added
+    # `place_nodes_on_network`, the linear-referencing primitive the deltares1d driver
+    # calls to resolve branch+offset node geometry (ADR-0005: that derivation is owned
+    # by pyramids, not duplicated here).
+    "pyramids-core >=0.78.0",
     "numpy >=2.0.0",
 ]
 # scipy, shapely and geopandas are deliberately NOT declared yet. The UGRID
