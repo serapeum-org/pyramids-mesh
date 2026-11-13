@@ -712,6 +712,27 @@ def _branch_offset_names(group, names: list):
         tuple[str | None, str | None]: The branch-index and offset array names, each
             ``None`` when neither the name nor the dtype identifies one.
     """
+    branch_name, offset_name = _branch_offset_by_name(names)
+    if branch_name is not None and offset_name is not None:
+        # Both resolved by name; skip the dtype pass so an unrelated extra entry (a
+        # dangling reference among them included) is never opened just to be discarded.
+        return branch_name, offset_name
+    return _branch_offset_by_dtype(group, names, branch_name, offset_name)
+
+
+def _branch_offset_by_name(names: list):
+    """Match the branch index and offset by name, testing ``offset`` before ``branch``.
+
+    ``offset`` is tested first so the alternate spelling's ``..._branch_offset`` is read as
+    the offset, not mistaken for the branch index.
+
+    Args:
+        names: The topology's ``node_coordinates`` entries.
+
+    Returns:
+        tuple[str | None, str | None]: The branch and offset names found by name, each
+            ``None`` when no entry's name identifies it.
+    """
     branch_name = offset_name = None
     for name in names:
         lowered = name.lower()
@@ -719,10 +740,22 @@ def _branch_offset_names(group, names: list):
             offset_name = name
         elif branch_name is None and "branch" in lowered:
             branch_name = name
-    if branch_name is not None and offset_name is not None:
-        # Both resolved by name; skip the dtype loop so an unrelated extra entry (a
-        # dangling reference among them included) is never opened just to be discarded.
-        return branch_name, offset_name
+    return branch_name, offset_name
+
+
+def _branch_offset_by_dtype(group, names: list, branch_name, offset_name):
+    """Fill any unresolved branch/offset name by dtype: integer is branch, float is offset.
+
+    Args:
+        group: The NetCDF root group.
+        names: The topology's ``node_coordinates`` entries.
+        branch_name: The branch name already found by name, or ``None``.
+        offset_name: The offset name already found by name, or ``None``.
+
+    Returns:
+        tuple[str | None, str | None]: The branch and offset names, each ``None`` when
+            neither name nor dtype identifies one.
+    """
     for name in names:
         if name in (branch_name, offset_name):
             continue
