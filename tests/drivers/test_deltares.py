@@ -689,10 +689,11 @@ def test_reconstruct_raises_a_format_error_with_the_primitive_diagnosis():
     leak a raw ``IndexError``).
     """
     group = _branch_offset_group(np.array([0, 0, 1], np.int64), np.array([0.0, 5.0]))
+    reader = _reader()
     with pytest.raises(
         FileFormatNotSupportedError, match="could not be resolved"
     ) as exc:
-        _reader()._reconstruct_node_coordinates(
+        reader._reconstruct_node_coordinates(
             group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
         )
     assert "shape" in str(exc.value), f"upstream diagnosis not chained: {exc.value}"
@@ -711,10 +712,11 @@ def test_reconstruct_declines_a_non_numeric_offset_array():
     group = _branch_offset_group(
         np.array([0, 1], np.int64), np.array(["x", "y"], dtype=object)
     )
+    reader = _reader()
     with pytest.raises(
         FileFormatNotSupportedError, match="could not be resolved"
     ) as exc:
-        _reader()._reconstruct_node_coordinates(
+        reader._reconstruct_node_coordinates(
             group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
         )
     assert exc.value.__cause__ is not None, "coercion cause not chained"
@@ -728,8 +730,9 @@ def test_reconstruct_rejects_a_fractional_branch_index():
     and placing the node on the wrong branch.
     """
     group = _branch_offset_group(np.array([0.0, 0.7]), np.array([0.0, 5.0]))
+    reader = _reader()
     with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
-        _reader()._reconstruct_node_coordinates(
+        reader._reconstruct_node_coordinates(
             group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
         )
 
@@ -804,8 +807,9 @@ def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
         }
     )
     monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
-        deltares.DeltaresNetworkDriver()._parse("malformed.nc", lazy=True)
+        driver._parse("malformed.nc", lazy=True)
 
 
 class _FakeDataset:
@@ -840,8 +844,9 @@ def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
     )
     group = _RaisingGroup({"mesh1d": topo}, missing="missing_x")
     monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="not a readable Deltares 1D"):
-        deltares.DeltaresNetworkDriver()._parse("dangling.nc", lazy=True)
+        driver._parse("dangling.nc", lazy=True)
 
 
 def test_build_propagates_a_format_error_unwrapped(monkeypatch):
@@ -850,8 +855,9 @@ def test_build_propagates_a_format_error_unwrapped(monkeypatch):
 
     group = _Group({"mesh2d": _topo_array(2)})
     monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = deltares.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="no 1D mesh_topology"):
-        deltares.DeltaresNetworkDriver()._parse("no_1d.nc", lazy=True)
+        driver._parse("no_1d.nc", lazy=True)
 
 
 def test_branch_offset_names_falls_back_to_dtype_when_names_are_unhelpful():
