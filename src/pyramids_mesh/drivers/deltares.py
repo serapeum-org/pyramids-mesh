@@ -449,11 +449,13 @@ class _DeltaresReader:
                 or no usable branch geometry (including a dangling array reference).
 
         Raises:
-            FileFormatNotSupportedError: The branch geometry is present but
-                :func:`~pyramids.netcdf.ugrid.place_nodes_on_network` rejects it as
-                malformed (mismatched branch/offset lengths, an out-of-range branch index,
-                a non-tiling vertex count, a non-finite value, ...). The primitive's own
-                diagnosis is chained so the real cause is not lost.
+            FileFormatNotSupportedError: The branch geometry is present but cannot be
+                resolved -- a non-numeric or mis-shaped branch/offset/geometry array, or
+                :func:`~pyramids.netcdf.ugrid.place_nodes_on_network` rejecting it
+                (mismatched lengths, an out-of-range or fractional branch index, a
+                non-tiling vertex count, a non-finite value, ...). The underlying cause is
+                chained so the real reason is not lost, and no raw ``ValueError`` /
+                ``TypeError`` escapes the driver's decline contract.
         """
         coordinate_space = _as_str(topo.get("coordinate_space"))
         if coordinate_space is None:
@@ -463,30 +465,37 @@ class _DeltaresReader:
             if branch_name is None or offset_name is None:
                 return None
             branch_array = group.OpenMDArray(branch_name)
-            branch = np.asarray(branch_array.ReadAsArray()).astype(np.int64, copy=False)
-            branch = branch - self._start_index(branch_array)
+            # No int cast here: the branch index is handed to place_nodes_on_network as
+            # read (minus the file's start_index), so its _coerce_branch_index_to_int64
+            # guard can reject a fractional/non-finite index rather than the driver
+            # silently truncating it to a wrong branch.
+            branch = np.asarray(branch_array.ReadAsArray()) - self._start_index(
+                branch_array
+            )
             offset = np.asarray(
                 group.OpenMDArray(offset_name).ReadAsArray(), np.float64
             )
             geometry = _network_branch_geometry(group, coordinate_space)
-        except RuntimeError:
-            # A dangling reference (an array named but absent) makes the file unreadable;
-            # decline so build() reports it. A ValueError is deliberately NOT caught here:
-            # a coercion failure in the driver's own array prep should surface, not be
-            # silently reclassified as "wrong format".
-            return None
-        if geometry is None:
-            return None
-        geom_x, geom_y, vertices_per_branch, edge_length = geometry
-        # The derivation itself is owned by pyramids (ADR-0005); the driver only reads the
-        # raw arrays and hands them to the linear-referencing primitive.
-        try:
+            if geometry is None:
+                return None
+            geom_x, geom_y, vertices_per_branch, edge_length = geometry
+            # The derivation is owned by pyramids (ADR-0005); the driver only reads the raw
+            # arrays and hands them to the linear-referencing primitive.
             return place_nodes_on_network(
                 branch, offset, geom_x, geom_y, vertices_per_branch, edge_length
             )
-        except ValueError as error:
-            # The branch geometry is present but the primitive rejects it as malformed;
-            # decline with its specific diagnosis rather than a bare, generic message.
+        except RuntimeError:
+            # A dangling reference (an array named but absent) makes the file unreadable;
+            # decline with the generic message so build() reports it.
+            return None
+        except (ValueError, TypeError) as error:
+            # Malformed branch+offset data: a non-numeric / mis-shaped coordinate array, or
+            # place_nodes_on_network rejecting the geometry. Decline with the cause chained
+            # rather than leaking a raw error, honouring the driver's decline contract.
+            # (place_nodes_on_network documents a ValueError-only contract for bad input;
+            # TypeError guards a non-numeric array that fails arithmetic before the
+            # primitive sees it. A future non-ValueError from the primitive would fall to
+            # the RuntimeError clause or escape, so this coupling is deliberate.)
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has branch+offset mesh1d geometry that could not be "
                 f"resolved to coordinates: {error}"

@@ -701,17 +701,34 @@ def test_reconstruct_raises_a_format_error_with_the_primitive_diagnosis():
     )
 
 
-def test_reconstruct_does_not_swallow_a_driver_side_value_error():
-    """A ValueError from the driver's own array prep surfaces; it is not a format decline.
+def test_reconstruct_declines_a_non_numeric_offset_array():
+    """A non-numeric offset array declines with the coercion cause chained, not a raw error.
 
-    The narrowed catch wraps only the GDAL reads (RuntimeError) and the primitive call
-    (ValueError); a coercion error raised preparing the arrays -- here a non-numeric offset
-    that ``np.asarray(..., float64)`` cannot convert -- must propagate, not be reclassified.
+    A malformed file whose ``mesh1d_node_offset`` is non-numeric fails the driver's
+    ``np.asarray(..., float64)`` coercion; that is a format problem, so the driver declines
+    with ``FileFormatNotSupportedError`` (cause chained), never leaking a raw ``ValueError``.
     """
     group = _branch_offset_group(
         np.array([0, 1], np.int64), np.array(["x", "y"], dtype=object)
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        FileFormatNotSupportedError, match="could not be resolved"
+    ) as exc:
+        _reader()._reconstruct_node_coordinates(
+            group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
+        )
+    assert exc.value.__cause__ is not None, "coercion cause not chained"
+
+
+def test_reconstruct_rejects_a_fractional_branch_index():
+    """A fractional branch index declines rather than being silently truncated.
+
+    The driver no longer pre-casts the branch index to int, so ``place_nodes_on_network``'s
+    guard rejects a fractional index (``0.7``) instead of the driver truncating it to ``0``
+    and placing the node on the wrong branch.
+    """
+    group = _branch_offset_group(np.array([0.0, 0.7]), np.array([0.0, 5.0]))
+    with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
         _reader()._reconstruct_node_coordinates(
             group, _BRANCH_OFFSET_TOPO, _BRANCH_OFFSET_NAMES
         )
@@ -753,6 +770,42 @@ def test_reconstruct_leaves_a_zero_based_branch_index_unchanged():
     )
     assert np.allclose(node_x, [0.0, 10.0])
     assert np.allclose(node_y, [0.0, 0.0])
+
+
+def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
+    """A malformed branch+offset file declines from ``_parse`` with FileFormatNotSupportedError.
+
+    End to end (not just the private method): a file whose only node geometry is branch +
+    a non-numeric offset must leave ``_parse`` as the driver's documented decline type, never
+    a raw ``ValueError``.
+    """
+    from pyramids_mesh.drivers import deltares
+
+    mesh1d = _Array(
+        attrs=[
+            _Attr("cf_role", "mesh_topology"),
+            _Attr("topology_dimension", 1),
+            _Attr("coordinate_space", "network"),
+            _Attr("node_coordinates", "mesh1d_node_branch mesh1d_node_offset"),
+        ]
+    )
+    group = _Group(
+        {
+            "mesh1d": mesh1d,
+            "network": _net_topo("geom"),
+            "geom": _Array(
+                attrs=[_Attr("node_coordinates", "gx gy"), _Attr("node_count", "cnt")]
+            ),
+            "gx": _Array(value=np.array([0.0, 10.0])),
+            "gy": _Array(value=np.array([0.0, 0.0])),
+            "cnt": _Array(value=np.array([2])),
+            "mesh1d_node_branch": _Array(value=np.array([0, 1], np.int64)),
+            "mesh1d_node_offset": _Array(value=np.array(["x", "y"], dtype=object)),
+        }
+    )
+    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
+        deltares.DeltaresNetworkDriver()._parse("malformed.nc", lazy=True)
 
 
 class _FakeDataset:
