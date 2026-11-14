@@ -85,6 +85,33 @@ def test_node_coordinates_are_read_from_scientific_notation():
     assert float(mesh.node_x[1]) == pytest.approx(0.5, abs=1e-12)
 
 
+def test_committed_face_connectivity_matches_square_e():
+    """The parsed faces carry exactly the node triples square.e declares (first 3 cols).
+
+    Compared as sorted sets so the check is independent of winding normalisation (which may
+    reverse a face's node order) and of face ordering.
+    """
+    expected = [
+        {8, 0, 1},
+        {9, 1, 2},
+        {10, 11, 8},
+        {10, 3, 4},
+        {10, 8, 9},
+        {11, 5, 6},
+        {8, 11, 7},
+        {8, 7, 0},
+        {9, 2, 3},
+        {8, 1, 9},
+        {10, 4, 5},
+        {9, 3, 10},
+        {11, 6, 7},
+        {10, 5, 11},
+    ]
+    data = _read(_NODE).mesh.face_node_connectivity.data
+    got = sorted(sorted(row) for row in data.tolist())
+    assert got == sorted(sorted(face) for face in expected)
+
+
 def test_faces_are_counter_clockwise_after_validation():
     """Every triangle comes back non-clockwise on the xy projection."""
     mesh = _read(_NODE).mesh
@@ -104,8 +131,11 @@ def test_read_dispatches_from_either_file_of_the_pair():
 
 
 def test_trailer_comment_lines_are_ignored():
-    """The two trailer lines Easymesh appends are never read as nodes or elements."""
-    # If the dashed rule or the `n:`/`e:` legend leaked in, the counts would exceed 12/14.
+    """A fixture that really ends with Easymesh's trailer lines still reads to its counts."""
+    node_raw = _NODE.read_text()
+    element_raw = _ELEMENT.read_text()
+    assert "----" in node_raw and "mark" in node_raw
+    assert "----" in element_raw
     mesh = _read(_NODE).mesh
     assert mesh.n_node == 12
     assert mesh.n_face == 14
