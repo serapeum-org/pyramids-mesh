@@ -60,7 +60,8 @@ class RiverFlow2dDriver(BaseDriver):
 
     Documented limitations:
         - **Triangles only.** A ``.FED`` is a triangulation; a line that does not carry
-          three node ids is refused rather than guessed.
+          three node ids is refused rather than guessed, and a face whose three vertices
+          are not distinct (a zero-area degenerate triangle) is refused too.
         - **Ids are 1-based and consecutive.** The format numbers nodes ``1..NNODES`` in
           order; a file that breaks that is refused rather than silently mis-wired. The
           base is recorded for a writer.
@@ -135,9 +136,10 @@ class RiverFlow2dDriver(BaseDriver):
 
         Raises:
             FileFormatNotSupportedError: On a missing or malformed header, a short or
-                non-numeric node/element line, a non-triangular element, non-consecutive
-                node ids, or a file declaring no elements.
-            ValueError: If an element references a node id outside ``1..NNODES``.
+                non-numeric node/element line, a non-triangular or degenerate element,
+                non-consecutive node ids, or a file declaring no elements.
+            ValueError: If an element vertex is not an integer, or references a node id
+                outside ``1..NNODES``.
         """
         return _FedReader(path).build()
 
@@ -159,9 +161,10 @@ class _FedReader:
         Raises:
             FileFormatNotSupportedError: On an empty file, a short or non-integer header,
                 a header that declares more nodes/elements than the file holds, a file
-                declaring no elements, a short or non-numeric node/element line, or
-                non-consecutive node ids.
-            ValueError: If an element references a node id outside ``1..NNODES``.
+                declaring no elements, a short or non-numeric node/element line,
+                non-consecutive node ids, or a degenerate (repeated-vertex) face.
+            ValueError: If an element vertex is not an integer, or references a node id
+                outside ``1..NNODES``.
         """
         rows = _significant_rows(self.path)
         if not rows:
@@ -274,9 +277,11 @@ class _FedReader:
                 and ``min_erode_elev`` columns.
 
         Raises:
-            FileFormatNotSupportedError: On an element line with fewer than eight fields
-                or a non-numeric Manning/WSE/erode field.
-            ValueError: If a vertex id is not an integer in ``1..NNODES``.
+            FileFormatNotSupportedError: On an element line with fewer than eight fields,
+                a non-numeric Manning/WSE/erode field, or a degenerate face whose three
+                vertices are not distinct.
+            ValueError: If a vertex token is not an integer, or is an integer outside
+                ``1..NNODES``.
         """
         faces = np.empty((len(elem_rows), _TRIANGLE), dtype=np.int64)
         manning = np.empty(len(elem_rows), dtype=np.float64)
@@ -290,12 +295,22 @@ class _FedReader:
                 )
             for column in range(_TRIANGLE):
                 vertex = _maybe_int(row[1 + column])
-                if vertex is None or not 1 <= vertex <= nnodes:
+                if vertex is None:
+                    raise ValueError(
+                        f"{self.path!r} element {index + 1} vertex {row[1 + column]!r} "
+                        f"is not an integer node id"
+                    )
+                if not 1 <= vertex <= nnodes:
                     raise ValueError(
                         f"{self.path!r} element {index + 1} references node id "
-                        f"{row[1 + column]!r}, outside 1..{nnodes}"
+                        f"{vertex}, outside 1..{nnodes}"
                     )
                 faces[index, column] = vertex
+            if len(set(faces[index])) != _TRIANGLE:
+                raise FileFormatNotSupportedError(
+                    f"{self.path!r} element {index + 1} repeats a vertex "
+                    f"{faces[index].tolist()}, so it is a degenerate (zero-area) face"
+                )
             manning[index] = self._float(row[4], "element")
             init_wse[index] = self._float(row[6], "element")
             min_erode[index] = self._float(row[7], "element")

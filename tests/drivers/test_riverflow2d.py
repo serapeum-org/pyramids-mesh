@@ -313,7 +313,21 @@ def test_read_rejects_non_integer_element_vertex(tmp_path):
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 x 0.03 1.0 0.0 -9999.0 0.0\n"
     )
-    with pytest.raises(ValueError, match="outside 1..3"):
+    with pytest.raises(ValueError, match="not an integer"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_degenerate_face(tmp_path):
+    """An element that repeats a vertex id is refused as a degenerate face.
+
+    Test scenario:
+        A triangle whose three node ids are not distinct (e.g. ``1 1 2``) has zero area;
+        it passes the per-vertex range check but is rejected as malformed topology.
+    """
+    text = _VALID.replace(
+        "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 1 2 0.03 1.0 0.0 -9999.0 0.0\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="repeats a vertex"):
         RiverFlow2dDriver().read(_write(tmp_path, text))
 
 
