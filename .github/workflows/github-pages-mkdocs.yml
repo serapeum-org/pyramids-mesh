@@ -92,6 +92,17 @@ jobs:
        && github.event.workflow_run.head_repository.fork == false)
     needs: build-strict
     runs-on: ubuntu-latest
+    # Collapse a double-fire: the workflow triggers on both `release: published` and the
+    # github-release `workflow_run`, and a release that does both would start two
+    # deploy-release runs that each now also prune, contending on gh-pages. A JOB-scoped
+    # group serialises them per released version -- safe where a WORKFLOW-level
+    # concurrency is not (see the deploy-main/deploy-release comment above: that would
+    # evict the build-strict gate). Queue rather than cancel so the first deploy+prune
+    # finishes before the duplicate runs (the prune is idempotent, floored on main + the
+    # released version + the five newest releases).
+    concurrency:
+      group: deploy-release-${{ github.event.release.tag_name || github.ref }}
+      cancel-in-progress: false
     steps:
     - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
