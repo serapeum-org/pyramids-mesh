@@ -23,6 +23,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
+from pyramids_mesh._crs import crs_from_esri_wkt
 
 # The 8-byte signature every HDF5 file opens with; the cheap half of the sniff.
 _HDF5_MAGIC = b"\x89HDF\r\n\x1a\n"
@@ -30,6 +31,7 @@ _HDF5_MAGIC = b"\x89HDF\r\n\x1a\n"
 # The geometry group tree and the per-area arrays that define a 2D flow-area mesh.
 _GEOMETRY = "Geometry"
 _AREAS = "2D Flow Areas"
+_PROJECTION = "Projection"  # root attribute: the model's coordinate system as WKT
 _CELL_INFO = "Cell Info"  # (n_area, 2) = [start, count] into Cell Points, per area
 _CELL_POINTS = "Cell Points"  # (n_cell_total, 2) cell-centre coords, areas concatenated
 _FACEPOINTS = "FacePoints Coordinate"  # (n_node, 2) the mesh nodes
@@ -73,7 +75,9 @@ class HecRasDriver(BaseDriver):
           ``*.timeseries.hdf`` companion, which cannot be paired into a single read here.
         - **Face velocities are not exposed.** They are edge-located (one per face, not per
           cell); this reader builds the cell mesh only.
-        - There is no CRS in the arrays read here, so ``crs`` is ``None``.
+        - **The CRS is read from the root ``Projection`` attribute** (an Esri-dialect WKT),
+          morphed to an OGC form: an authority code when named, else the normalised WKT,
+          and only when it parses to a real system -- never guessed (issue #77).
 
     Example:
         Read a HEC-RAS 2D plan file (shown, not run as a doctest -- it needs a real HDF5
@@ -202,6 +206,7 @@ class _HecRasReader:
                 faces = self._faces(flow_area, count)
                 face_x, face_y = self._centres(areas, start, count)
                 variables = self._summary_variables(dataset, area, count)
+                crs = self._read_crs(dataset)
             finally:
                 dataset.Close()
         return ParsedMesh(
@@ -213,12 +218,39 @@ class _HecRasReader:
             original_start_index=0,  # facepoint indices are already 0-based
             face_x=face_x,
             face_y=face_y,
-            crs=None,
+            crs=crs,
             variables=variables,
             global_attributes={"source": "HEC-RAS 2D", "flow_area": area},
             topology_dimension=2,
             mesh_name="mesh2d",
         )
+
+    def _read_crs(self, dataset):
+        """Return the model CRS from the root ``Projection`` attribute, or ``None``.
+
+        HEC-RAS stores the coordinate system as an Esri-dialect WKT string in the file's
+        root ``Projection`` attribute (for example ``NAD_1983_StatePlane_...``). Reading that
+        attribute is this driver's job; the shared
+        :func:`pyramids_mesh._crs.crs_from_esri_wkt` performs the morph -> authority-code-or-WKT
+        step (the same one the Esri TIN driver uses), and returns ``None`` for a missing,
+        blank, or unparseable projection rather than a guess.
+
+        Args:
+            dataset: The open multidimensional HDF5 dataset.
+
+        Returns:
+            int | str | None: An EPSG code, a normalised WKT string, or ``None``.
+        """
+        root = dataset.GetRootGroup()
+        wkt = next(
+            (
+                a.ReadAsString()
+                for a in root.GetAttributes()
+                if a.GetName() == _PROJECTION
+            ),
+            None,
+        )
+        return crs_from_esri_wkt(wkt)
 
     def _areas_group(self, dataset):
         """Return the ``Geometry/2D Flow Areas`` group, or refuse the file."""

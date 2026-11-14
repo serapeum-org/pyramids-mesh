@@ -1,8 +1,9 @@
 """Tests for the Esri TIN reader (D5), against real committed sample directories.
 
 An Esri TIN is a directory of big-endian ``.adf`` files. Two genuine TINs are committed
-under ``tests/data/esri_tin/``: ``dem`` (281 nodes, 528 surface triangles after masking)
-and ``dem_with_holes`` (527 nodes, 773 triangles). The tests read the committed bytes.
+under ``tests/data/esri_tin/``: ``dem`` (277 nodes, 528 surface triangles after masking and
+orphan-node removal) and ``dem_with_holes`` (518 nodes, 773 triangles). The tests read the
+committed bytes.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -16,7 +17,11 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.esri import EsriTinDriver, _EsriTinReader
+from pyramids_mesh.drivers.esri import (
+    EsriTinDriver,
+    _drop_unreferenced_nodes,
+    _EsriTinReader,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "esri_tin"
 _DEM = _DATA / "dem"
@@ -31,9 +36,9 @@ def _read(directory):
 
 
 def test_reads_nodes_and_masked_triangles():
-    """dem reads 281 nodes and the 528 unmasked surface triangles."""
+    """dem reads 277 nodes (orphan hull-frame nodes dropped) and 528 surface triangles."""
     mesh = _read(_DEM).mesh
-    assert mesh.n_node == 281
+    assert mesh.n_node == 277
     assert mesh.n_face == 528
     assert mesh.face_node_connectivity.data.shape == (528, 3)
 
@@ -51,15 +56,105 @@ def test_mask_selects_the_specific_surface_triangles_not_just_a_count():
     faces = np.ascontiguousarray(faces, dtype=np.int64)
     digest = hashlib.sha256(faces.tobytes()).hexdigest()
     assert digest == (
-        "66abfb8ce2e3841767171803a86d4d0ee3c78bcdb5c92d5f47702be796901937"
-    ), "Esri TIN mask/winding changed; if intended, regenerate the golden hash."
+        "1e51094af6b1a2def8edef397793bc60e53ea056b00904334f7fbff89aabc52d"
+    ), "Esri TIN mask/winding/reindex changed; if intended, regenerate the golden hash."
 
 
 def test_mask_drops_hull_frame_triangles():
     """dem_with_holes keeps 773 of its 1048 triangles; the frame triangles are dropped."""
     mesh = _read(_HOLES).mesh
-    assert mesh.n_node == 527
+    assert mesh.n_node == 518
     assert mesh.n_face == 773
+
+
+def test_no_orphan_nodes_after_frame_removal():
+    """Every node is referenced by a face: masked hull-frame nodes are dropped (issue #79)."""
+    for directory in (_DEM, _HOLES):
+        mesh = _read(directory).mesh
+        connectivity = np.asarray(mesh.face_node_connectivity.data)
+        referenced = np.unique(connectivity[connectivity >= 0]).size
+        assert referenced == mesh.n_node
+
+
+class TestDropUnreferencedNodes:
+    """Unit tests for the _drop_unreferenced_nodes helper (issue #79)."""
+
+    def test_removes_orphans_and_reindexes(self):
+        """Nodes no face references are dropped and the faces remap to the compact ids.
+
+        Test scenario:
+            Five nodes, a single face referencing ids 1/2/4 -- ids 0 and 3 are orphans and
+            must be removed, leaving the face as [0, 1, 2] over the three surviving nodes.
+        """
+        node_x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        node_y = np.array([5.0, 6.0, 7.0, 8.0, 9.0])
+        node_z = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        faces = np.array([[1, 2, 4]], dtype=np.int64)
+        new_x, new_y, new_z, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces
+        )
+        assert new_x.tolist() == [1.0, 2.0, 4.0], f"x not compacted: {new_x}"
+        assert new_y.tolist() == [6.0, 7.0, 9.0], f"y not compacted: {new_y}"
+        assert new_z.tolist() == [11.0, 12.0, 14.0], f"z not compacted: {new_z}"
+        assert new_faces.tolist() == [[0, 1, 2]], f"faces not reindexed: {new_faces}"
+
+    def test_preserves_fill_value_corner(self):
+        """A fill-value corner is kept as fill and never counts as a referenced node.
+
+        Test scenario:
+            A face [0, 2, -1] over three nodes: node 1 is an orphan, and the -1 fill corner
+            must survive the remap as -1 rather than aliasing a real node.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.array([[0, 2, -1]], dtype=np.int64)
+        new_x, _, _, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces, fill_value=-1
+        )
+        assert new_x.tolist() == [0.0, 2.0], f"orphan node 1 not dropped: {new_x}"
+        assert new_faces.tolist() == [[0, 1, -1]], f"fill not preserved: {new_faces}"
+
+    def test_orphan_node_zero_with_fill_corner(self):
+        """Node 0 orphaned beside a -1 fill corner: the clip(min=0) gather must not leak it.
+
+        Test scenario:
+            faces=[[1, 2, -1]] over three nodes leaves node 0 unreferenced; the -1 corner
+            clamps to index 0 for the gather, but np.where overwrites it with fill, so node 0
+            is dropped and the face reindexes to [[0, 1, -1]] -- the leak-safety the code
+            comment claims.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.array([[1, 2, -1]], dtype=np.int64)
+        new_x, _, _, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces, fill_value=-1
+        )
+        assert new_x.tolist() == [1.0, 2.0], f"orphan node 0 not dropped: {new_x}"
+        assert new_faces.tolist() == [[0, 1, -1]], (
+            f"fill corner leaked node 0: {new_faces}"
+        )
+
+    def test_all_masked_yields_empty_arrays(self):
+        """An empty face table (every triangle masked away) returns empty node arrays.
+
+        Test scenario:
+            With no surviving faces, no node is referenced, so every node is dropped and the
+            connectivity stays empty rather than raising on the degenerate input.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.empty((0, 3), dtype=np.int64)
+        new_x, new_y, new_z, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces
+        )
+        assert new_x.shape == (0,), f"expected no surviving nodes, got {new_x.shape}"
+        assert new_z.shape == (0,), f"node_z not compacted: {new_z.shape}"
+        assert new_faces.shape == (0, 3), (
+            f"empty connectivity changed shape: {new_faces.shape}"
+        )
 
 
 def test_triangle_indices_are_one_based_resolved_to_zero_based():
@@ -67,14 +162,14 @@ def test_triangle_indices_are_one_based_resolved_to_zero_based():
     connectivity = _read(_DEM).mesh.face_node_connectivity
     assert connectivity.original_start_index == 1
     assert int(connectivity.data.min()) >= 0
-    assert int(connectivity.data.max()) == 280
+    assert int(connectivity.data.max()) == 276
 
 
 def test_node_elevation_becomes_node_z():
     """tnz.adf becomes a node-located node_z variable."""
     node_z = _read(_DEM).get("node_z")
     assert node_z.location == "node"
-    assert node_z.shape == (281,)
+    assert node_z.shape == (277,)
 
 
 def test_projection_is_read_from_esri_wkt():

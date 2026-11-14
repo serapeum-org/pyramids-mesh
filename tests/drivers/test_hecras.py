@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh.drivers.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasReader
@@ -36,6 +37,104 @@ def test_reads_first_flow_area_mesh():
     mesh = _read().mesh
     assert mesh.n_node == 3937
     assert mesh.n_face == 3359
+
+
+def test_crs_is_read_from_projection_attribute():
+    """The root ``Projection`` attribute (Esri-dialect WKT) is read into the CRS (issue #77)."""
+    crs = _read().mesh.crs
+    assert crs is not None
+    assert "Pennsylvania North" in str(crs)
+
+
+class _FakeAttribute:
+    """A stand-in for an osgeo multidim attribute exposing name and string value."""
+
+    def __init__(self, name, value):
+        self._name = name
+        self._value = value
+
+    def GetName(self):
+        return self._name
+
+    def ReadAsString(self):
+        return self._value
+
+
+class _FakeRootGroup:
+    """A stand-in root group returning a fixed list of attributes."""
+
+    def __init__(self, attributes):
+        self._attributes = attributes
+
+    def GetAttributes(self):
+        return self._attributes
+
+
+class _FakeDataset:
+    """A stand-in gdal dataset whose root group carries the given attributes."""
+
+    def __init__(self, attributes):
+        self._root = _FakeRootGroup(attributes)
+
+    def GetRootGroup(self):
+        return self._root
+
+
+class TestReadCrs:
+    """Branch tests for ``_HecRasReader._read_crs`` (issue #77).
+
+    The reader is driven with a fake dataset so every path (absent attribute, blank value,
+    unparseable WKT, a WKT with an authority code) is exercised offline without an HDF file.
+    """
+
+    @staticmethod
+    def _reader():
+        """Return a lazy reader whose only exercised method here is ``_read_crs``."""
+        return _HecRasReader(str(_PLAN), lazy=True)
+
+    def test_returns_none_when_projection_absent(self):
+        """No ``Projection`` attribute yields ``None`` rather than raising.
+
+        Test scenario:
+            Root group with no attributes -> the ``next(..., None)`` default is None, which
+            the shared helper maps to None.
+        """
+        result = self._reader()._read_crs(_FakeDataset([]))
+        assert result is None, f"Expected None for missing Projection, got {result!r}"
+
+    def test_returns_none_for_blank_projection(self):
+        """A whitespace-only ``Projection`` value is treated as absent.
+
+        Test scenario:
+            ``Projection`` = "   " -> ``.strip()`` empties it -> the ``if not wkt`` guard -> None.
+        """
+        dataset = _FakeDataset([_FakeAttribute("Projection", "   ")])
+        result = self._reader()._read_crs(dataset)
+        assert result is None, f"Expected None for blank Projection, got {result!r}"
+
+    def test_returns_none_for_unparseable_wkt(self):
+        """An unparseable ``Projection`` string resolves to ``None``, never an exception.
+
+        Test scenario:
+            ``Projection`` = "not-a-wkt" -> ``ImportFromWkt`` fails (non-zero or RuntimeError),
+            both caught paths returning None.
+        """
+        dataset = _FakeDataset([_FakeAttribute("Projection", "not-a-wkt")])
+        result = self._reader()._read_crs(dataset)
+        assert result is None, f"Expected None for unparseable WKT, got {result!r}"
+
+    def test_returns_authority_code_when_wkt_names_one(self):
+        """A WKT carrying an EPSG authority returns that code as an int.
+
+        Test scenario:
+            EPSG:4326 exported to WKT carries ``AUTHORITY["EPSG","4326"]`` -> GetAuthorityCode
+            -> int 4326.
+        """
+        reference = osr.SpatialReference()
+        reference.ImportFromEPSG(4326)
+        dataset = _FakeDataset([_FakeAttribute("Projection", reference.ExportToWkt())])
+        result = self._reader()._read_crs(dataset)
+        assert result == 4326, f"Expected authority code 4326, got {result!r}"
 
 
 def test_cells_reconstructed_from_faces_are_padded_and_zero_based():
