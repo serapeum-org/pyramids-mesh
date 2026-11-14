@@ -96,7 +96,8 @@ class TestReadCrs:
         """No ``Projection`` attribute yields ``None`` rather than raising.
 
         Test scenario:
-            Root group with no attributes -> the ``next(..., "")`` default is empty -> None.
+            Root group with no attributes -> the ``next(..., None)`` default is None, which
+            the shared helper maps to None.
         """
         result = self._reader()._read_crs(_FakeDataset([]))
         assert result is None, f"Expected None for missing Projection, got {result!r}"

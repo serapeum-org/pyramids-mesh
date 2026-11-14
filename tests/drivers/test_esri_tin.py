@@ -115,6 +115,27 @@ class TestDropUnreferencedNodes:
         assert new_x.tolist() == [0.0, 2.0], f"orphan node 1 not dropped: {new_x}"
         assert new_faces.tolist() == [[0, 1, -1]], f"fill not preserved: {new_faces}"
 
+    def test_orphan_node_zero_with_fill_corner(self):
+        """Node 0 orphaned beside a -1 fill corner: the clip(min=0) gather must not leak it.
+
+        Test scenario:
+            faces=[[1, 2, -1]] over three nodes leaves node 0 unreferenced; the -1 corner
+            clamps to index 0 for the gather, but np.where overwrites it with fill, so node 0
+            is dropped and the face reindexes to [[0, 1, -1]] -- the leak-safety the code
+            comment claims.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.array([[1, 2, -1]], dtype=np.int64)
+        new_x, _, _, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces, fill_value=-1
+        )
+        assert new_x.tolist() == [1.0, 2.0], f"orphan node 0 not dropped: {new_x}"
+        assert new_faces.tolist() == [[0, 1, -1]], (
+            f"fill corner leaked node 0: {new_faces}"
+        )
+
     def test_all_masked_yields_empty_arrays(self):
         """An empty face table (every triangle masked away) returns empty node arrays.
 
