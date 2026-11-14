@@ -283,6 +283,18 @@ def test_read_rejects_zero_elements(tmp_path):
         RiverFlow2dDriver().read(_write(tmp_path, text))
 
 
+def test_read_rejects_non_positive_node_count(tmp_path):
+    """A header declaring a non-positive NNODES is a format error, not a slicing crash.
+
+    Test scenario:
+        A negative node count would otherwise drive negative-index block slicing and a
+        misleading downstream "outside 1..-3" error; it is rejected up front, symmetric
+        with the zero-element guard.
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="non-positive node count"):
+        RiverFlow2dDriver().read(_write(tmp_path, "1 -3 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+
+
 def test_read_rejects_short_node_line(tmp_path):
     """A node line with fewer than four fields is a format error.
 

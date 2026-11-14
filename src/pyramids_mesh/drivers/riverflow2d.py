@@ -160,10 +160,10 @@ class _FedReader:
 
         Raises:
             FileFormatNotSupportedError: On an empty file, a short or non-integer header,
-                a header that declares more nodes/elements than the file holds, a file
-                declaring no elements, a short or non-numeric node/element line, a
-                non-integer element vertex, non-consecutive node ids, or a degenerate
-                (repeated-vertex) face.
+                a header that declares more nodes/elements than the file holds, a
+                non-positive node or element count, a short or non-numeric node/element
+                line, a non-integer element vertex, non-consecutive node ids, or a
+                degenerate (repeated-vertex) face.
             ValueError: If an element references a node id outside ``1..NNODES``.
         """
         rows = _significant_rows(self.path)
@@ -172,6 +172,11 @@ class _FedReader:
                 f"{self.path!r} is empty, so it carries no RiverFlow2D mesh"
             )
         nelem, nnodes = self._header(rows[0])
+        if nnodes <= 0:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} declares a non-positive node count {nnodes}, "
+                f"so it carries no mesh"
+            )
         node_rows = rows[1 : 1 + nnodes]
         elem_rows = rows[1 + nnodes : 1 + nnodes + nelem]
         if len(node_rows) < nnodes or len(elem_rows) < nelem:
