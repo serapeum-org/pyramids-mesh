@@ -23,15 +23,48 @@ import os
 import warnings
 
 import numpy as np
-from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
+from pyramids_mesh._crs import crs_from_esri_wkt
 
 # The components that make a directory an Esri TIN; the mask and projection are optional.
 _REQUIRED = ("tnxy.adf", "tnz.adf", "tnod.adf")
 _TDENV = ("tdenv9.adf", "tdenv.adf")  # v9+ first, then the older name
+
+
+def _drop_unreferenced_nodes(
+    node_x: np.ndarray,
+    node_y: np.ndarray,
+    node_z: np.ndarray,
+    faces: np.ndarray,
+    fill_value: int = -1,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Keep only the nodes referenced by a face and reindex the faces to match.
+
+    Dropping the masked hull-frame triangles leaves the nodes they alone referenced in the
+    node table, unreferenced, which inflates the mesh extent and produces empty-looking
+    plots (issue #79). Removing those orphan nodes and remapping the connectivity makes the
+    mesh exactly the surface the TIN represents.
+
+    Args:
+        node_x: Node x coordinates.
+        node_y: Node y coordinates.
+        node_z: Node elevations.
+        faces: Face-node connectivity (0-based), ``fill_value`` marking absent corners.
+        fill_value: The sentinel for an absent corner; preserved in the output.
+
+    Returns:
+        tuple: The compacted ``(node_x, node_y, node_z, faces)`` with no orphan nodes.
+    """
+    used = np.unique(faces[faces != fill_value])
+    remap = np.full(node_x.shape[0], fill_value, dtype=np.int64)
+    remap[used] = np.arange(used.shape[0], dtype=np.int64)
+    # clip(min=0) only keeps the fill (-1) corners in bounds for the gather; np.where then
+    # discards those positions and writes fill_value back, so the clamp never leaks a node.
+    reindexed = np.where(faces != fill_value, remap[faces.clip(min=0)], fill_value)
+    return node_x[used], node_y[used], node_z[used], reindexed
 
 
 class EsriTinDriver(BaseDriver):
@@ -50,7 +83,8 @@ class EsriTinDriver(BaseDriver):
           GRID), whose directory has no triangle table, is declined.
         - **Masked triangles are dropped.** The hull-frame triangles flagged in
           ``tmsk.adf`` are excluded, so the mesh is the surface the TIN represents. The
-          frame nodes they referenced stay in the node list, unreferenced.
+          frame nodes they alone referenced are then dropped from the node table and the
+          connectivity reindexed, so no orphan nodes inflate the extent (issue #79).
         - **Triangle indices are 1-based.** They are resolved to 0-based and the base is
           recorded for a writer. Every face is a triangle.
         - **The projection is read from ``prj.adf`` only when it validates.** A missing or
@@ -162,6 +196,12 @@ class _EsriTinReader:
         triples = self._read_big_endian("tnod.adf", np.dtype(">i4")).reshape(-1, 3)
         keep = self._keep_mask(len(triples))
         faces = (triples[keep] - 1).astype(np.int64)  # 1-based -> 0-based
+        # The masked hull-frame triangles are gone, but the frame nodes they referenced
+        # still sit in the node table, unreferenced -- drop them and reindex so the extent
+        # is the surface, not the dropped frame (issue #79).
+        node_x, node_y, node_z, faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces
+        )
         crs = self._read_projection()
         return ParsedMesh(
             node_x=node_x,
@@ -236,9 +276,9 @@ class _EsriTinReader:
         """Return a CRS from ``prj.adf`` when it parses, else ``None``.
 
         ``prj.adf`` holds WKT in Esri's dialect (``GCS_WGS_1984``, ``D_WGS_1984``), which a
-        strict OGC validation rejects, so the WKT is morphed from Esri form first. When it
-        names an authority the EPSG code is returned; otherwise the normalised WKT, and
-        only if it parses to a real geographic or projected system -- never a guess.
+        strict OGC validation rejects. Decoding it is this driver's job; the shared
+        :func:`pyramids_mesh._crs.crs_from_esri_wkt` morph -> authority-code-or-WKT step is
+        the same one HEC-RAS uses.
         """
         projection = os.path.join(self.path, "prj.adf")
         if not os.path.isfile(projection):
@@ -246,19 +286,5 @@ class _EsriTinReader:
         with open(projection, "rb") as handle:
             # The whole file, not just the first line: a producer may wrap the WKT across
             # several lines, and OGR's parser tolerates the embedded whitespace.
-            wkt = handle.read().decode("latin-1").strip()
-        if not wkt:
-            return None
-        reference = osr.SpatialReference()
-        try:
-            if reference.ImportFromWkt(wkt) != 0:
-                return None
-            reference.MorphFromESRI()  # GCS_WGS_1984 -> an OGC-recognised name
-        except RuntimeError:
-            return None
-        code = reference.GetAuthorityCode(None)
-        if code:
-            return int(code)
-        if reference.IsGeographic() or reference.IsProjected():
-            return reference.ExportToWkt()
-        return None
+            wkt = handle.read().decode("latin-1")
+        return crs_from_esri_wkt(wkt)

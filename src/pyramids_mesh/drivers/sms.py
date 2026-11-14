@@ -428,7 +428,7 @@ class TwoDmDriver(BaseDriver):
         scan.run(path)
         return scan.build(path)
 
-    def write(self, dataset, path: str, **options) -> None:
+    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
         """Write a mesh back to a 2DM file.
 
         Emits ``MESH2D``, one ``ND`` per node and one ``E3T``/``E4Q``/``E6T`` per face,
@@ -726,7 +726,7 @@ class DatDriver(BaseDriver):
             variables = _DatOldScan(path, n_node=n_node).build()
         return self._build_data_variables(variables, dataset.mesh_name)
 
-    def write(self, dataset, path: str, **options) -> None:
+    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
         """Write the dataset's data variables as an SMS ASCII DAT results file.
 
         DAT is results-only -- the file carries no topology. ``to_file`` dispatches every
