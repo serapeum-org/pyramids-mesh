@@ -1,8 +1,9 @@
 """Tests for the Esri TIN reader (D5), against real committed sample directories.
 
 An Esri TIN is a directory of big-endian ``.adf`` files. Two genuine TINs are committed
-under ``tests/data/esri_tin/``: ``dem`` (281 nodes, 528 surface triangles after masking)
-and ``dem_with_holes`` (527 nodes, 773 triangles). The tests read the committed bytes.
+under ``tests/data/esri_tin/``: ``dem`` (277 nodes, 528 surface triangles after masking and
+orphan-node removal) and ``dem_with_holes`` (518 nodes, 773 triangles). The tests read the
+committed bytes.
 """
 
 import pyramids  # noqa: F401  # isort:skip
@@ -31,9 +32,9 @@ def _read(directory):
 
 
 def test_reads_nodes_and_masked_triangles():
-    """dem reads 281 nodes and the 528 unmasked surface triangles."""
+    """dem reads 277 nodes (orphan hull-frame nodes dropped) and 528 surface triangles."""
     mesh = _read(_DEM).mesh
-    assert mesh.n_node == 281
+    assert mesh.n_node == 277
     assert mesh.n_face == 528
     assert mesh.face_node_connectivity.data.shape == (528, 3)
 
@@ -51,15 +52,24 @@ def test_mask_selects_the_specific_surface_triangles_not_just_a_count():
     faces = np.ascontiguousarray(faces, dtype=np.int64)
     digest = hashlib.sha256(faces.tobytes()).hexdigest()
     assert digest == (
-        "66abfb8ce2e3841767171803a86d4d0ee3c78bcdb5c92d5f47702be796901937"
-    ), "Esri TIN mask/winding changed; if intended, regenerate the golden hash."
+        "1e51094af6b1a2def8edef397793bc60e53ea056b00904334f7fbff89aabc52d"
+    ), "Esri TIN mask/winding/reindex changed; if intended, regenerate the golden hash."
 
 
 def test_mask_drops_hull_frame_triangles():
     """dem_with_holes keeps 773 of its 1048 triangles; the frame triangles are dropped."""
     mesh = _read(_HOLES).mesh
-    assert mesh.n_node == 527
+    assert mesh.n_node == 518
     assert mesh.n_face == 773
+
+
+def test_no_orphan_nodes_after_frame_removal():
+    """Every node is referenced by a face: masked hull-frame nodes are dropped (issue #79)."""
+    for directory in (_DEM, _HOLES):
+        mesh = _read(directory).mesh
+        connectivity = np.asarray(mesh.face_node_connectivity.data)
+        referenced = np.unique(connectivity[connectivity >= 0]).size
+        assert referenced == mesh.n_node
 
 
 def test_triangle_indices_are_one_based_resolved_to_zero_based():
@@ -67,14 +77,14 @@ def test_triangle_indices_are_one_based_resolved_to_zero_based():
     connectivity = _read(_DEM).mesh.face_node_connectivity
     assert connectivity.original_start_index == 1
     assert int(connectivity.data.min()) >= 0
-    assert int(connectivity.data.max()) == 280
+    assert int(connectivity.data.max()) == 276
 
 
 def test_node_elevation_becomes_node_z():
     """tnz.adf becomes a node-located node_z variable."""
     node_z = _read(_DEM).get("node_z")
     assert node_z.location == "node"
-    assert node_z.shape == (281,)
+    assert node_z.shape == (277,)
 
 
 def test_projection_is_read_from_esri_wkt():
