@@ -283,6 +283,12 @@ class EasymeshDriver(BaseDriver):
             raise FileFormatNotSupportedError(
                 f"{element_path!r} declares {count} elements but holds {len(rows)}"
             )
+        # A short row would otherwise yield a ``(n, 2)`` face table rather than being
+        # declined; every element record must carry at least three node ids.
+        if any(len(fields) < _NODES_PER_FACE for _, fields in rows):
+            raise FileFormatNotSupportedError(
+                f"{element_path!r} has an element line with fewer than three node ids"
+            )
         try:
             return np.array(
                 [

@@ -289,10 +289,18 @@ def test_read_rejects_too_few_element_lines(tmp_path):
         EasymeshDriver().read(str(tmp_path / "m.n"))
 
 
-def test_read_rejects_an_element_line_without_three_node_ids(tmp_path):
-    """An .e element line without three integer node ids is a format error."""
-    element = "1\n   0:  0 X\n"
+def test_read_rejects_a_non_integer_element_node_id(tmp_path):
+    """An .e element line with a non-integer node id is a format error."""
+    element = "1\n   0:  0 1 X\n"
     (tmp_path / "m.n").write_text(_ONE_N)
     (tmp_path / "m.e").write_text(element)
     with pytest.raises(FileFormatNotSupportedError, match="three integer node ids"):
+        EasymeshDriver().read(str(tmp_path / "m.n"))
+
+
+def test_read_rejects_two_field_element_rows(tmp_path):
+    """Uniformly two-id element rows are declined, not read as an (n, 2) face table."""
+    (tmp_path / "m.n").write_text(_ONE_N)
+    (tmp_path / "m.e").write_text("1\n   0:  0 1\n")
+    with pytest.raises(FileFormatNotSupportedError, match="fewer than three node ids"):
         EasymeshDriver().read(str(tmp_path / "m.n"))
