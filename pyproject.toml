@@ -84,6 +84,11 @@ dev = [
     "jupyterlab",
     "notebook",
     "jupyter",
+    # Security pin of a transitive dep: the jupyter/notebook stack pulls tornado, and 6.6
+    # carries CVE-2026-126347 (an incomplete open-redirect fix); 6.6.1 is the fixed release.
+    # This forces the resolver off 6.6 so pip-audit (which audits the py311 env, and py311
+    # includes this `dev` group) reports clean.
+    "tornado >=6.6.1",
     "commitizen>=4.8.4",
     "mypy>=1.10.0",
     "types-PyYAML>=6.0.0",
@@ -110,6 +115,9 @@ docs = [
     "jupyter-contrib-nbextensions  >=0.7.0",
     "mkdocs-panzoom-plugin",
     "notebook<7.0",
+    # Same CVE-2026-126347 security pin as the dev group: the docs env has no `dev` feature,
+    # so it pulls tornado via its own notebook/mkdocs-jupyter stack and needs the floor too.
+    "tornado >=6.6.1",
 ]
 notebook = [
     # Layers on top of `dev`: every environment that enables the `notebook` feature also
