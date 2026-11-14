@@ -61,6 +61,8 @@ def _drop_unreferenced_nodes(
     used = np.unique(faces[faces != fill_value])
     remap = np.full(node_x.shape[0], fill_value, dtype=np.int64)
     remap[used] = np.arange(used.shape[0], dtype=np.int64)
+    # clip(min=0) only keeps the fill (-1) corners in bounds for the gather; np.where then
+    # discards those positions and writes fill_value back, so the clamp never leaks a node.
     reindexed = np.where(faces != fill_value, remap[faces.clip(min=0)], fill_value)
     return node_x[used], node_y[used], node_z[used], reindexed
 
