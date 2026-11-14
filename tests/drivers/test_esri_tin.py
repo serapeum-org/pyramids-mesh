@@ -17,7 +17,11 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.esri import EsriTinDriver, _EsriTinReader
+from pyramids_mesh.drivers.esri import (
+    EsriTinDriver,
+    _drop_unreferenced_nodes,
+    _EsriTinReader,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "esri_tin"
 _DEM = _DATA / "dem"
@@ -70,6 +74,46 @@ def test_no_orphan_nodes_after_frame_removal():
         connectivity = np.asarray(mesh.face_node_connectivity.data)
         referenced = np.unique(connectivity[connectivity >= 0]).size
         assert referenced == mesh.n_node
+
+
+class TestDropUnreferencedNodes:
+    """Unit tests for the _drop_unreferenced_nodes helper (issue #79)."""
+
+    def test_removes_orphans_and_reindexes(self):
+        """Nodes no face references are dropped and the faces remap to the compact ids.
+
+        Test scenario:
+            Five nodes, a single face referencing ids 1/2/4 -- ids 0 and 3 are orphans and
+            must be removed, leaving the face as [0, 1, 2] over the three surviving nodes.
+        """
+        node_x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        node_y = np.array([5.0, 6.0, 7.0, 8.0, 9.0])
+        node_z = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        faces = np.array([[1, 2, 4]], dtype=np.int64)
+        new_x, new_y, new_z, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces
+        )
+        assert new_x.tolist() == [1.0, 2.0, 4.0], f"x not compacted: {new_x}"
+        assert new_y.tolist() == [6.0, 7.0, 9.0], f"y not compacted: {new_y}"
+        assert new_z.tolist() == [11.0, 12.0, 14.0], f"z not compacted: {new_z}"
+        assert new_faces.tolist() == [[0, 1, 2]], f"faces not reindexed: {new_faces}"
+
+    def test_preserves_fill_value_corner(self):
+        """A fill-value corner is kept as fill and never counts as a referenced node.
+
+        Test scenario:
+            A face [0, 2, -1] over three nodes: node 1 is an orphan, and the -1 fill corner
+            must survive the remap as -1 rather than aliasing a real node.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.array([[0, 2, -1]], dtype=np.int64)
+        new_x, _, _, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces, fill_value=-1
+        )
+        assert new_x.tolist() == [0.0, 2.0], f"orphan node 1 not dropped: {new_x}"
+        assert new_faces.tolist() == [[0, 1, -1]], f"fill not preserved: {new_faces}"
 
 
 def test_triangle_indices_are_one_based_resolved_to_zero_based():
