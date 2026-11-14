@@ -171,10 +171,20 @@ jobs:
         # gh-pages, which makes mike's fast-forward push lose the race, and the
         # stale list computed against the old tip must not be reused.
         for attempt in 1 2 3; do
-          git fetch origin gh-pages
-          git branch -f gh-pages FETCH_HEAD
+          # The re-sync is part of the retried unit: GitHub runs this with `-eo pipefail`,
+          # so a transient `git fetch` or `mike list` would otherwise abort the whole step
+          # before the retry it exists for. Guard them and `continue` instead. `mike list`
+          # writes to a file first so its failure is caught here rather than swallowed by
+          # the `| awk` pipe.
+          if ! git fetch origin gh-pages \
+            || ! git branch -f gh-pages FETCH_HEAD \
+            || ! pixi run -e docs mike list > /tmp/mike-list-raw; then
+            echo "::warning::prune re-sync failed (attempt ${attempt}/3); retrying"
+            sleep $(( attempt * 3 ))
+            continue
+          fi
 
-          pixi run -e docs mike list | awk '{print $1}' | sort -u > /tmp/mike-all
+          awk '{print $1}' /tmp/mike-list-raw | sort -u > /tmp/mike-all
           # `sort -V` is load-bearing: a lexical sort ranks 0.9.0 above 0.11.0 and
           # would retain the wrong five. Only X.Y.Z entries count as releases, so an
           # alias-only row falls through to the delete set rather than consuming a slot.
