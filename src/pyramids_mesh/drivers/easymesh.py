@@ -63,9 +63,10 @@ class EasymeshDriver(BaseDriver):
         - **Triangles only.** Easymesh produces Delaunay triangulations; each element
           record's first three ids are read as a triangular face. Faces are normalised to
           counter-clockwise winding on the ``xy`` projection.
-        - **The index base is detected, not assumed.** Easymesh is 0-based (C-style), but
-          the base is read from the first node id rather than presumed, resolved to
-          0-based and recorded for a writer.
+        - **The index base is read from the first node id** -- Easymesh is 0-based
+          (C-style), but the base is taken from the first node rather than presumed (the
+          remaining ids are assumed contiguous from it, see below), resolved to 0-based
+          and recorded for a writer.
         - **Node markers, element neighbours, side ids, the circumcentre and the sign are
           ignored**, and no CRS is declared -- the format carries none, so ``crs`` is
           ``None`` rather than guessed.

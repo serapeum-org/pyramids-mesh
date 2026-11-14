@@ -46,8 +46,9 @@ Easymesh also writes a third `.s` sides file and closes each file with two trail
 - **Triangles only.** Easymesh produces Delaunay triangulations; each element's first three
   ids are read as a triangular face, normalised to counter-clockwise winding on the `xy`
   projection.
-- **The index base is detected, not assumed** — Easymesh is 0-based, but the base is read
-  from the first node id, resolved to 0-based and recorded for a writer.
+- **The index base is read from the first node id** — Easymesh is 0-based; the base is taken
+  from the first node (the remaining ids are assumed contiguous from it, see below), resolved
+  to 0-based and recorded for a writer.
 - **Node markers, element neighbours, side ids, the circumcentre and the sign are ignored**,
   and no CRS is declared — the format carries none, so `crs` is `None` rather than guessed.
 - **The `.e` suffix is shared with the [Exodus II](exodus.md) driver.** Dispatch resolves by
