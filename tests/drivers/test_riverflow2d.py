@@ -218,7 +218,9 @@ def test_read_rejects_non_integer_header(tmp_path):
         ``NELEM``/``NNODES`` must parse as ints; alphabetic counts are refused.
     """
     with pytest.raises(FileFormatNotSupportedError, match="not two integers"):
-        RiverFlow2dDriver().read(_write(tmp_path, "a b 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+        RiverFlow2dDriver().read(
+            _write(tmp_path, "a b 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
+        )
 
 
 def test_read_rejects_too_few_lines(tmp_path):
@@ -266,7 +268,9 @@ def test_read_rejects_non_numeric_node_field(tmp_path):
     Test scenario:
         The X column must parse as a float; a word in its place is refused.
     """
-    text = _VALID.replace("1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 x 0.0 1.0 0.0 -9999.0 0 0\n")
+    text = _VALID.replace(
+        "1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 x 0.0 1.0 0.0 -9999.0 0 0\n"
+    )
     with pytest.raises(FileFormatNotSupportedError, match="non-numeric field"):
         RiverFlow2dDriver().read(_write(tmp_path, text))
 
@@ -293,7 +297,9 @@ def test_read_rejects_non_numeric_element_field(tmp_path):
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 3 rough 1.0 0.0 -9999.0 0.0\n"
     )
-    with pytest.raises(FileFormatNotSupportedError, match="element line with a non-numeric"):
+    with pytest.raises(
+        FileFormatNotSupportedError, match="element line with a non-numeric"
+    ):
         RiverFlow2dDriver().read(_write(tmp_path, text))
 
 
@@ -358,7 +364,9 @@ def test_read_tolerates_blank_lines(tmp_path):
     """
     text = "\n" + _VALID.replace("\n", "\n\n")
     ds = RiverFlow2dDriver().read(_write(tmp_path, text))
-    assert ds.mesh.n_face == 1, f"blank lines should be ignored, got {ds.mesh.n_face} faces"
+    assert ds.mesh.n_face == 1, (
+        f"blank lines should be ignored, got {ds.mesh.n_face} faces"
+    )
 
 
 def test_carries_nonsentinel_face_values(tmp_path):
@@ -377,7 +385,9 @@ def test_carries_nonsentinel_face_values(tmp_path):
         "1 1 2 3 0.03 1.0 5.5 0.25 0.0\n"
     )
     ds = RiverFlow2dDriver().read(_write(tmp_path, text))
-    assert float(ds.get("init_wse").data[0]) == pytest.approx(5.5), "ELINITWSE not carried"
+    assert float(ds.get("init_wse").data[0]) == pytest.approx(5.5), (
+        "ELINITWSE not carried"
+    )
     assert float(ds.get("min_erode_elev").data[0]) == pytest.approx(0.25), (
         "ELMINERODELEV not carried"
     )

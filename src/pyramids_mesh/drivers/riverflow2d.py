@@ -32,8 +32,6 @@ from __future__ import annotations
 
 import pyramids  # noqa: F401  # isort:skip
 
-import warnings
-
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
@@ -101,6 +99,14 @@ class RiverFlow2dDriver(BaseDriver):
         (two positive integers) and the first node line is ``IN X Y ZB ...`` (an integer
         id followed by three floats). Never raises for a parse failure -- a malformed
         candidate simply fails one of the checks and is declined.
+
+        Args:
+            path: The ``.fed`` file to inspect; only its first two significant lines are
+                read.
+
+        Returns:
+            bool: ``True`` when the header and first node line are FED-shaped, else
+                ``False``.
         """
         rows = _first_rows(path, count=2)
         if len(rows) < 2:
@@ -143,7 +149,20 @@ class _FedReader:
         self.path = path
 
     def build(self) -> ParsedMesh:
-        """Parse the file and assemble the mesh with its face variables."""
+        """Parse the file and assemble the mesh with its face variables.
+
+        Returns:
+            ParsedMesh: Node coordinates, bed elevation (``node_z``), the 1-based
+                triangular connectivity, and the ``manning_n`` / ``init_wse`` /
+                ``min_erode_elev`` face variables.
+
+        Raises:
+            FileFormatNotSupportedError: On an empty file, a short or non-integer header,
+                a header that declares more nodes/elements than the file holds, a file
+                declaring no elements, a short or non-numeric node/element line, or
+                non-consecutive node ids.
+            ValueError: If an element references a node id outside ``1..NNODES``.
+        """
         rows = _significant_rows(self.path)
         if not rows:
             raise FileFormatNotSupportedError(
@@ -210,6 +229,17 @@ class _FedReader:
         The node ids must be consecutive ``1..NNODES`` -- the format's guarantee -- so
         the face connectivity can index node ``k`` at array position ``k - 1``. A file
         that breaks this is refused rather than silently mis-wired.
+
+        Args:
+            node_rows: The node block, each row already split into whitespace tokens.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray, np.ndarray]: The ``node_x``, ``node_y`` and
+                ``node_z`` (bed-elevation) arrays, each of length ``len(node_rows)``.
+
+        Raises:
+            FileFormatNotSupportedError: On a node line with fewer than four fields, a
+                non-numeric coordinate, or a node id that is not its 1-based position.
         """
         node_x = np.empty(len(node_rows), dtype=np.float64)
         node_y = np.empty(len(node_rows), dtype=np.float64)
@@ -232,7 +262,22 @@ class _FedReader:
         return node_x, node_y, node_z
 
     def _elements(self, elem_rows: list[list[str]], nnodes: int):
-        """Read the element block into connectivity and the three face-variable columns."""
+        """Read the element block into connectivity and the three face-variable columns.
+
+        Args:
+            elem_rows: The element block, each row already split into whitespace tokens.
+            nnodes: The node count, used to bound-check each vertex id.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The ``(n_elem, 3)``
+                1-based face connectivity and the per-element ``manning_n``, ``init_wse``
+                and ``min_erode_elev`` columns.
+
+        Raises:
+            FileFormatNotSupportedError: On an element line with fewer than eight fields
+                or a non-numeric Manning/WSE/erode field.
+            ValueError: If a vertex id is not an integer in ``1..NNODES``.
+        """
         faces = np.empty((len(elem_rows), _TRIANGLE), dtype=np.int64)
         manning = np.empty(len(elem_rows), dtype=np.float64)
         init_wse = np.empty(len(elem_rows), dtype=np.float64)
