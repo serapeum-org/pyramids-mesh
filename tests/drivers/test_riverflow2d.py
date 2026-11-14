@@ -167,3 +167,217 @@ def test_read_of_a_non_fed_path_is_a_format_error(tmp_path):
     other.write_text("", encoding="utf-8")
     with pytest.raises(FileFormatNotSupportedError):
         RiverFlow2dDriver().read(str(other))
+
+
+# -- parse-level error branches ---------------------------------------------------------
+# can_open/_sniff short-circuits before _parse in normal dispatch, so these drive read()
+# directly to exercise the _FedReader raise paths. A minimal valid 3-node, 1-triangle
+# file whose blocks are mutated one at a time.
+
+_VALID = (
+    "1 3 5 5\n"
+    "1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+    "2 1.0 0.0 1.0 0.0 -9999.0 0 0\n"
+    "3 0.0 1.0 1.0 0.0 -9999.0 0 0\n"
+    "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n"
+)
+
+
+def _write(tmp_path, text):
+    """Write ``text`` to a ``.fed`` under ``tmp_path`` and return its path string."""
+    path = tmp_path / "f.fed"
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
+def test_read_valid_three_node_file(tmp_path):
+    """The minimal 3-node, 1-triangle template reads as a one-face mesh.
+
+    Test scenario:
+        Confirms the template the error-path tests mutate is itself valid, so each later
+        failure is attributable to the single field it changes.
+    """
+    ds = RiverFlow2dDriver().read(_write(tmp_path, _VALID))
+    assert ds.mesh.n_face == 1, f"expected 1 face, got {ds.mesh.n_face}"
+
+
+def test_read_rejects_short_header(tmp_path):
+    """A header with fewer than two integers is a format error.
+
+    Test scenario:
+        A single-token header line cannot give NELEM and NNODES, so ``_header`` refuses it.
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="short header"):
+        RiverFlow2dDriver().read(_write(tmp_path, "4\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+
+
+def test_read_rejects_non_integer_header(tmp_path):
+    """A header whose first two fields are not integers is a format error.
+
+    Test scenario:
+        ``NELEM``/``NNODES`` must parse as ints; alphabetic counts are refused.
+    """
+    with pytest.raises(FileFormatNotSupportedError, match="not two integers"):
+        RiverFlow2dDriver().read(_write(tmp_path, "a b 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+
+
+def test_read_rejects_too_few_lines(tmp_path):
+    """A header promising more nodes/elements than the file holds is a format error.
+
+    Test scenario:
+        Header declares 3 nodes and 1 element but only one node line follows, so the
+        declared counts cannot be satisfied.
+    """
+    text = "1 3 5 5\n1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="header declares"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_zero_elements(tmp_path):
+    """A header declaring zero elements is a format error (no mesh).
+
+    Test scenario:
+        ``NELEM`` of 0 with its node block present carries no faces, so it is refused.
+    """
+    text = (
+        "0 3 5 5\n"
+        "1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+        "2 1.0 0.0 1.0 0.0 -9999.0 0 0\n"
+        "3 0.0 1.0 1.0 0.0 -9999.0 0 0\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="no elements"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_short_node_line(tmp_path):
+    """A node line with fewer than four fields is a format error.
+
+    Test scenario:
+        ``IN X Y ZB`` are the minimum a node line must carry; a three-token line is short.
+    """
+    text = _VALID.replace("1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 0.0 0.0\n")
+    with pytest.raises(FileFormatNotSupportedError, match="short node line"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_non_numeric_node_field(tmp_path):
+    """A non-numeric node coordinate is a format error.
+
+    Test scenario:
+        The X column must parse as a float; a word in its place is refused.
+    """
+    text = _VALID.replace("1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 x 0.0 1.0 0.0 -9999.0 0 0\n")
+    with pytest.raises(FileFormatNotSupportedError, match="non-numeric field"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_short_element_line(tmp_path):
+    """An element line with fewer than eight fields is a format error.
+
+    Test scenario:
+        An element needs its id, three node ids and the four named float columns; a
+        truncated line is refused.
+    """
+    text = _VALID.replace("1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 3\n")
+    with pytest.raises(FileFormatNotSupportedError, match="short element line"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_non_numeric_element_field(tmp_path):
+    """A non-numeric element field (Manning's n) is a format error.
+
+    Test scenario:
+        ``MANNINGN`` must parse as a float; a word in its place is refused, naming the
+        element record.
+    """
+    text = _VALID.replace(
+        "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 3 rough 1.0 0.0 -9999.0 0.0\n"
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="element line with a non-numeric"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_read_rejects_non_integer_element_vertex(tmp_path):
+    """A non-integer element vertex id is a ValueError.
+
+    Test scenario:
+        A vertex token that is not an integer cannot index a node, so it is refused the
+        same way an out-of-range id is.
+    """
+    text = _VALID.replace(
+        "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 x 0.03 1.0 0.0 -9999.0 0.0\n"
+    )
+    with pytest.raises(ValueError, match="outside 1..3"):
+        RiverFlow2dDriver().read(_write(tmp_path, text))
+
+
+def test_sniff_declines_single_line_file(tmp_path):
+    """can_open declines a one-line .fed (a header with no node block).
+
+    Test scenario:
+        The sniff needs a header and a first node line; a file with only one significant
+        line cannot be a mesh.
+    """
+    assert RiverFlow2dDriver().can_open(_write(tmp_path, "4 5 5 5\n")) is False, (
+        "a single-line .fed should be declined"
+    )
+
+
+def test_sniff_declines_non_numeric_node_coordinate(tmp_path):
+    """can_open declines a .fed whose first node line has a non-float coordinate.
+
+    Test scenario:
+        Header and node id are fine, but the X/Y/ZB triple must be floats; a word there
+        fails the sniff.
+    """
+    text = "4 5 5 5\n1 a b c 0.0 -9999.0 0 0\n"
+    assert RiverFlow2dDriver().can_open(_write(tmp_path, text)) is False, (
+        "a non-numeric node coordinate should be declined"
+    )
+
+
+def test_sniff_tolerates_leading_blank_line(tmp_path):
+    """can_open accepts a valid .fed whose first line(s) are blank.
+
+    Test scenario:
+        The sniff skips blank lines when locating the header and first node line, so a
+        leading blank line does not make a valid file look malformed.
+    """
+    text = "\n4 5 5 5\n1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+    assert RiverFlow2dDriver().can_open(_write(tmp_path, text)) is True, (
+        "a leading blank line should not break the sniff"
+    )
+
+
+def test_read_tolerates_blank_lines(tmp_path):
+    """Blank lines between records are skipped, not counted as nodes or elements.
+
+    Test scenario:
+        A valid file with blank lines inserted between the header and blocks still reads
+        as the same one-face mesh — only non-blank lines are significant.
+    """
+    text = "\n" + _VALID.replace("\n", "\n\n")
+    ds = RiverFlow2dDriver().read(_write(tmp_path, text))
+    assert ds.mesh.n_face == 1, f"blank lines should be ignored, got {ds.mesh.n_face} faces"
+
+
+def test_carries_nonsentinel_face_values(tmp_path):
+    """Non-sentinel ELINITWSE / ELMINERODELEV are carried onto the face variables.
+
+    Test scenario:
+        An element with a ponded initial WSE and a real erodible floor should surface
+        those exact values on ``init_wse`` and ``min_erode_elev`` (the minimal committed
+        fixture is all-sentinel, so this exercises the value-carrying path).
+    """
+    text = (
+        "1 3 5 5\n"
+        "1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+        "2 1.0 0.0 1.0 0.0 -9999.0 0 0\n"
+        "3 0.0 1.0 1.0 0.0 -9999.0 0 0\n"
+        "1 1 2 3 0.03 1.0 5.5 0.25 0.0\n"
+    )
+    ds = RiverFlow2dDriver().read(_write(tmp_path, text))
+    assert float(ds.get("init_wse").data[0]) == pytest.approx(5.5), "ELINITWSE not carried"
+    assert float(ds.get("min_erode_elev").data[0]) == pytest.approx(0.25), (
+        "ELMINERODELEV not carried"
+    )
