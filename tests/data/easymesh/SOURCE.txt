@@ -1,0 +1,29 @@
+SWAN Easymesh .n + .e -- generated fixture, original geometry.
+
+square.n / square.e were produced by running EasyMesh (Bojan Niceno's 2-D Delaunay mesh
+generator) on `square.d`, a unit-square domain authored for this package:
+
+    #=========
+    | POINTS |
+    =========#
+    4
+    0:   0.0   0.0   0.5   1
+    1:   1.0   0.0   0.5   1
+    2:   1.0   1.0   0.5   2
+    3:   0.0   1.0   0.5   2
+    #===========
+    | SEGMENTS |
+    ===========#
+    4
+    0:   0   1   1
+    1:   1   2   2
+    2:   2   3   3
+    3:   3   0   4
+
+    EasyMesh -m square            # -> square.n (12 nodes), square.e (14 triangles), square.s
+
+The input geometry is original to pyramids-mesh; EasyMesh (distributed as freeware for
+non-commercial use) only triangulated it. The files are kept verbatim as EasyMesh emits
+them -- scientific-notation coordinates, colon-suffixed ids, and the two trailer comment
+lines -- so they exercise the real on-disk format, including the trailer the reader must
+skip. Only .n and .e are needed by the driver; the .s sides file is not committed.

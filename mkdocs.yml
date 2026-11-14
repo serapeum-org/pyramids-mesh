@@ -143,6 +143,7 @@ nav:
     - ICON (NetCDF): reference/icon.md
     - FVCOM (native grid): reference/fvcom.md
     - Triangle / TetGen: reference/triangle.md
+    - SWAN Easymesh: reference/easymesh.md
     - Exodus II (.exo): reference/exodus.md
     - SU2 (.su2): reference/su2.md
     - SRH-2D: reference/srh2d.md
