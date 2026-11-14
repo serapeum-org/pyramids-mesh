@@ -20,6 +20,15 @@ from pyramids_mesh.drivers.riverflow2d import RiverFlow2dDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "riverflow2d"
 _MESH = _DATA / "minimal.fed"
+# The docs-facing example sample: a realistic 80-node / 120-triangle channel with two
+# Manning zones, an upstream pool and a mixed sentinel/real erodible floor.
+_CHANNEL = (
+    Path(__file__).parent.parent.parent
+    / "examples"
+    / "data"
+    / "riverflow2d"
+    / "channel.fed"
+)
 
 
 def _read(path=_MESH):
@@ -33,6 +42,29 @@ def test_reads_nodes_and_triangles():
     assert mesh.n_node == 5
     assert mesh.n_face == 4
     assert mesh.face_node_connectivity.data.shape == (4, 3)
+
+
+def test_reads_the_realistic_channel_example():
+    """The committed example channel.fed reads with its known shape and face values.
+
+    Test scenario:
+        The docs-facing 80-node / 120-triangle sample should parse to that size with the
+        connectivity re-based to 0..79, two Manning zones, and ``min_erode_elev`` carrying
+        the -9999 sentinel on its floodplain faces. Guards the example asset against the
+        reader or the committed data drifting out of sync.
+    """
+    ds = _read(_CHANNEL)
+    conn = ds.mesh.face_node_connectivity.data
+    assert ds.mesh.n_node == 80, f"expected 80 nodes, got {ds.mesh.n_node}"
+    assert ds.mesh.n_face == 120, f"expected 120 faces, got {ds.mesh.n_face}"
+    assert (int(conn.min()), int(conn.max())) == (0, 79), "connectivity not 0..79"
+    manning = ds.get("manning_n").data
+    assert set(np.round(manning, 3)) == {0.03, 0.075}, "expected two Manning zones"
+    min_erode = ds.get("min_erode_elev")
+    assert min_erode.nodata == -9999.0, "min_erode_elev nodata should be -9999"
+    sentinel = int((min_erode.data == -9999.0).sum())
+    assert sentinel == 60, f"expected 60 sentinel faces, got {sentinel}"
+    assert int((ds.get("init_wse").data > 0).sum()) == 32, "expected 32 ponded faces"
 
 
 def test_connectivity_is_one_based_resolved_to_zero_based():
