@@ -170,9 +170,10 @@ def test_dot_e_dispatches_to_easymesh_not_exodus():
     assert mesh.n_face == 14
     drivers = mesh_drivers()
     assert drivers["easymesh"].can_open(str(_ELEMENT)) is True
-    exodus = drivers.get("exodus")
-    if exodus is not None:
-        assert exodus.can_open(str(_ELEMENT)) is False
+    # exodus is dependency-free (test_registration requires it), so assert it directly
+    # rather than skipping silently -- declining this .e is the collision under test.
+    assert "exodus" in drivers
+    assert drivers["exodus"].can_open(str(_ELEMENT)) is False
 
 
 def test_can_open_declines_a_stray_file(tmp_path):
@@ -285,6 +286,16 @@ def test_read_rejects_a_zero_element_count(tmp_path):
     (tmp_path / "m.e").write_text("0\n----\n   e:  i j k\n")
     with pytest.raises(
         FileFormatNotSupportedError, match="non-positive elements count 0"
+    ):
+        EasymeshDriver().read(str(tmp_path / "m.n"))
+
+
+def test_read_rejects_a_negative_element_count(tmp_path):
+    """An .e declaring a negative element count is a clean format error."""
+    (tmp_path / "m.n").write_text(_ONE_N)
+    (tmp_path / "m.e").write_text("-3\n   0:  0 1 2  -1 -1 -1  0 1 2  0.5 0.5  -1\n")
+    with pytest.raises(
+        FileFormatNotSupportedError, match="non-positive elements count -3"
     ):
         EasymeshDriver().read(str(tmp_path / "m.n"))
 
