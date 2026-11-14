@@ -150,6 +150,18 @@ def test_can_open_declines_without_a_colon_tagged_id(tmp_path):
     assert EasymeshDriver().can_open(node) is False
 
 
+def test_can_open_declines_a_file_with_fewer_than_two_records(tmp_path):
+    """can_open declines a paired file holding only its count line (no records yet)."""
+    node = _pair(tmp_path, "1\n", "1\n   0:  0 1 2  -1 -1 -1  0 1 2  0.5 0.5  -1\n")
+    assert EasymeshDriver().can_open(node) is False
+
+
+def test_can_open_declines_a_non_integer_count(tmp_path):
+    """can_open declines a paired file whose first line is not a bare integer count."""
+    node = _pair(tmp_path, "foo\n   0:  0.0 0.0  1\n", _ONE_E)
+    assert EasymeshDriver().can_open(node) is False
+
+
 def test_can_open_swallows_a_sniff_that_raises(tmp_path):
     """can_open declines and warns when _sniff raises, never letting it escape."""
     node = _pair(tmp_path, _ONE_N, _ONE_E)
