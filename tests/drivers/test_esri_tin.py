@@ -115,6 +115,26 @@ class TestDropUnreferencedNodes:
         assert new_x.tolist() == [0.0, 2.0], f"orphan node 1 not dropped: {new_x}"
         assert new_faces.tolist() == [[0, 1, -1]], f"fill not preserved: {new_faces}"
 
+    def test_all_masked_yields_empty_arrays(self):
+        """An empty face table (every triangle masked away) returns empty node arrays.
+
+        Test scenario:
+            With no surviving faces, no node is referenced, so every node is dropped and the
+            connectivity stays empty rather than raising on the degenerate input.
+        """
+        node_x = np.array([0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 1.0, 2.0])
+        node_z = np.array([0.0, 1.0, 2.0])
+        faces = np.empty((0, 3), dtype=np.int64)
+        new_x, new_y, new_z, new_faces = _drop_unreferenced_nodes(
+            node_x, node_y, node_z, faces
+        )
+        assert new_x.shape == (0,), f"expected no surviving nodes, got {new_x.shape}"
+        assert new_z.shape == (0,), f"node_z not compacted: {new_z.shape}"
+        assert new_faces.shape == (0, 3), (
+            f"empty connectivity changed shape: {new_faces.shape}"
+        )
+
 
 def test_triangle_indices_are_one_based_resolved_to_zero_based():
     """The 1-based tnod table is resolved to 0-based, and the base recorded."""
