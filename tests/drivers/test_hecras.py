@@ -38,6 +38,13 @@ def test_reads_first_flow_area_mesh():
     assert mesh.n_face == 3359
 
 
+def test_crs_is_read_from_projection_attribute():
+    """The root ``Projection`` attribute (Esri-dialect WKT) is read into the CRS (issue #77)."""
+    crs = _read().mesh.crs
+    assert crs is not None
+    assert "Pennsylvania North" in str(crs)
+
+
 def test_cells_reconstructed_from_faces_are_padded_and_zero_based():
     """Cell polygons come back 0-based, padded to the widest ring with -1 fill."""
     connectivity = _read().mesh.face_node_connectivity

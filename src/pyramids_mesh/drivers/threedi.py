@@ -72,9 +72,10 @@ class ThreeDiDriver(BaseDriver):
           for; only per-cell (face) variables are read.
         - Values are lazy: the loader reopens the file per read and seeks to its array,
           closing over a path, never an open handle (design section 7).
-        - **No CRS is read.** This result carries no grid-mapping, and 3Di's CF
-          grid-mapping variant is not extracted without a real sample to verify it
-          against, so ``crs`` is ``None`` rather than guessed.
+        - **No CRS is read.** A 3Di result ``.nc`` carries no CF grid-mapping variable and
+          no ``grid_mapping`` reference on its data variables -- the coordinate system is
+          stored in the companion ``gridadmin.h5``, not this results file (verified against
+          real 3Di results; issue #77). ``crs`` is therefore ``None`` rather than guessed.
 
     Example:
         Read a 3Di result. It is reached through ``read_file``'s NetCDF fallback because
@@ -192,8 +193,11 @@ class _ThreeDiReader:
             original_start_index=0,
             face_x=face_x,
             face_y=face_y,
-            # No CRS: this result carries no grid-mapping, and 3Di's CF grid-mapping
-            # variant is not extracted without a real sample to verify it against.
+            # No CRS read here: a 3Di result `.nc` carries no CF grid-mapping variable and
+            # no `grid_mapping` reference on its data variables -- the coordinate system
+            # lives in the companion `gridadmin.h5`, not this results file (verified against
+            # real 3Di results; see issue #77). `crs` is therefore `None` rather than
+            # guessed; reading it would require the sibling `gridadmin.h5`.
             crs=None,
             variables=variables,
             global_attributes={"source": "3Di results"},
