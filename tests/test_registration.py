@@ -69,6 +69,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "stl",
     "off",
     "gid",
+    "riverflow2d",
 }
 
 # Drivers gated behind an optional extra; present only when the extra is installed.

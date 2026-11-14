@@ -166,6 +166,7 @@ nav:
     - STL: reference/stl.md
     - OFF (Object File Format): reference/off.md
     - GiD / Iber (.msh): reference/gid.md
+    - RiverFlow2D (.fed): reference/riverflow2d.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md
