@@ -1,9 +1,9 @@
 # RiverFlow2D — `.FED` mesh
 
-Reader for the **RiverFlow2D** (Hydronia) `.FED` triangular finite-element mesh (task C29,
+Reader for the **RiverFlow2D** (Hydronia) `.FED` triangular mesh (task C29,
 issue #67). A `.FED` is a single ASCII file: a count header, a node block, then a
 triangular element block. The layout below was confirmed against the 16 meshes shipped in
-Hydronia's public *ExampleProjects* package (Hoh River, Brumadinho tailings, DamBreach, …):
+Hydronia's *ExampleProjects* package (Hoh River, Brumadinho tailings, DamBreach, …):
 
 ```text
 NELEM NNODES 5 5                                                   # 4 integers

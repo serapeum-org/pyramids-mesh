@@ -1,7 +1,7 @@
 """RiverFlow2D ``.FED`` reader (task C29, issue #67).
 
-RiverFlow2D (Hydronia) stores its triangular finite-element mesh as a single ASCII
-``.FED`` file. The layout, confirmed against the 16 meshes shipped in Hydronia's public
+RiverFlow2D (Hydronia) stores its triangular mesh as a single ASCII
+``.FED`` file. The layout, confirmed against the 16 meshes shipped in Hydronia's
 ``ExampleProjects`` package (Hoh River, Brumadinho tailings, DamBreach, …), is::
 
     NELEM NNODES 5 5                                                   <- 4 integers
