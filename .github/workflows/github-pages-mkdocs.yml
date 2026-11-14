@@ -19,28 +19,56 @@ on:
     types: [completed]
 
 jobs:
-  deploy-pr:
-      if: github.event_name == 'pull_request'
-      runs-on: ubuntu-latest
-      steps:
+  # Gate every deploy on a warnings-as-errors build, and -- on a pull request -- build the
+  # site WITHOUT publishing it. The old `deploy-pr` job committed a full site build to the
+  # shared `gh-pages` branch on every PR; nothing pruned it, so the branch grew without
+  # bound (earthlens reached 9.7 GB, at which point GitHub Pages stopped building at all and
+  # the current release's docs were silently never published -- issue #81). `mkdocs build
+  # --strict` is the real PR gate (a broken nav entry or malformed docstring fails the run),
+  # and reviewers download the rendered site from the artifact instead of a published preview.
+  build-strict:
+    runs-on: ubuntu-latest
+    # Reads the tree only; the write scopes the workflow grants are for the deploy jobs, so a
+    # PR has no path to gh-pages at all.
+    permissions:
+      contents: read
+    steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # serapeum-org/github-actions is a monorepo: one commit carries the release tag for
       # every action in it, so 38c11108 is the dereferenced commit for mkdocs/v1.3.1,
-      # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike. Three different
-      # actions pinned to one SHA reads like a copy-paste error and is not; verify with
-      #   git ls-remote --tags https://github.com/serapeum-org/github-actions
-      - uses: serapeum-org/github-actions/actions/mkdocs-deploy@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # mkdocs/v1.3.1
+      # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike -- not a copy-paste
+      # slip. The same pixi setup the deploy jobs get internally, so the gate and the deploy
+      # share one environment rather than drifting.
+      - uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # pixi/v1.2.1
         with:
-          trigger: 'pull_request'
-          package-manager: 'pixi'
-          install-groups: 'docs'
-          deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+          environments: docs
+          activate-environment: docs
+          cache: true
+          version: v0.73.0
 
+      - name: Build docs with --strict
+        run: pixi run -e docs mkdocs build --strict --site-dir /tmp/site
+
+      # A pull request builds the site but no longer publishes it (#81): reviewers who want
+      # the rendered pages download them from here instead of a gh-pages preview.
+      - name: Upload the built site for review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: site-pr-${{ github.event.pull_request.number }}
+          path: /tmp/site
+          retention-days: 7
+
+  # deploy-main / deploy-release run un-serialised on purpose: mkdocs-deploy retries the
+  # shared gh-pages push (mike_push.sh), so each completes. Never add workflow-level
+  # concurrency here -- it would also evict the build-strict gate.
   deploy-main:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-strict
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -62,6 +90,7 @@ jobs:
       (github.event_name == 'workflow_run'
        && github.event.workflow_run.conclusion == 'success'
        && github.event.workflow_run.head_repository.fork == false)
+    needs: build-strict
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -80,6 +109,15 @@ jobs:
         VERSION=$(grep -m1 '^version' pyproject.toml | sed 's/.*"\(.*\)"/\1/')
         echo "tag=$VERSION" >> $GITHUB_OUTPUT
 
+    # The same pixi + docs env the deploy and the prune below both need; `mike`
+    # (invoked via `pixi run -e docs`) comes from the docs feature.
+    - uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # pixi/v1.2.1
+      with:
+        environments: docs
+        activate-environment: docs
+        cache: true
+        version: v0.73.0
+
     - uses: serapeum-org/github-actions/actions/mkdocs-deploy@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # mkdocs/v1.3.1
       with:
         trigger: 'release'
@@ -88,3 +126,53 @@ jobs:
         deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
         release-tag: ${{ github.event.release.tag_name || steps.version.outputs.tag }}
         mike-alias: 'latest'
+
+    # Retain `main` plus the RETAIN_RELEASES most recent releases and delete anything else,
+    # so version directories stop accumulating (#81). Each directory is a full site copy, so
+    # keeping every release is what took earthlens's gh-pages to 9.7 GB and broke Pages; five
+    # releases plus main sits well below that. `main` is always kept -- deploy-main
+    # republishes it on every push -- and the just-released KEEP_VERSION is pinned as a floor.
+    # Auth comes from the checkout above (contents: write); `mike` is run through `pixi run -e
+    # docs` so it resolves from the env set up above.
+    - name: Prune superseded documentation versions
+      env:
+        KEEP_VERSION: ${{ github.event.release.tag_name || steps.version.outputs.tag }}
+        RETAIN_RELEASES: '5'
+      run: |
+        if [ -z "$KEEP_VERSION" ]; then
+          echo "::error::no release version resolved; refusing to prune"
+          exit 1
+        fi
+        # Re-sync, recompute and retry as a unit: a concurrent main deploy moves
+        # gh-pages, which makes mike's fast-forward push lose the race, and the
+        # stale list computed against the old tip must not be reused.
+        for attempt in 1 2 3; do
+          git fetch origin gh-pages
+          git branch -f gh-pages FETCH_HEAD
+
+          pixi run -e docs mike list | awk '{print $1}' | sort -u > /tmp/mike-all
+          # `sort -V` is load-bearing: a lexical sort ranks 0.9.0 above 0.11.0 and
+          # would retain the wrong five. Only X.Y.Z entries count as releases, so an
+          # alias-only row falls through to the delete set rather than consuming a slot.
+          grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' /tmp/mike-all \
+            | sort -rV | head -n "$RETAIN_RELEASES" > /tmp/mike-keep-releases
+          # KEEP_VERSION is listed explicitly as a floor: the release just deployed
+          # must survive even if it somehow sorts outside the top RETAIN_RELEASES.
+          { echo main; echo "$KEEP_VERSION"; cat /tmp/mike-keep-releases; } \
+            | grep -v '^$' | sort -u > /tmp/mike-keep
+          stale=$(comm -23 /tmp/mike-all /tmp/mike-keep | tr '\n' ' ')
+
+          if [ -z "$stale" ]; then
+            echo "nothing to prune; retaining $(tr '\n' ' ' < /tmp/mike-keep)"
+            exit 0
+          fi
+          echo "retaining $(tr '\n' ' ' < /tmp/mike-keep)"
+          echo "deleting: $stale"
+          if pixi run -e docs mike delete --push $stale; then
+            exit 0
+          fi
+          echo "::warning::prune lost a gh-pages push race (attempt ${attempt}/3); retrying"
+          sleep $(( attempt * 3 ))
+        done
+        echo "::error::could not prune superseded documentation versions after 3 attempts"
+        exit 1
