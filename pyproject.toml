@@ -340,7 +340,9 @@ test-all = { cmd = "pytest -vvv --cov=src/pyramids_mesh -sv --cov-report=xml --c
 # dfsu.ipynb is ignored here: it can only read a DFSU file with mikeio, which lives only
 # in the `dhi` environment. The `dhi` feature overrides this task (below) to run the full
 # set including dfsu; the mikeio-less matrix envs (py311-py314, dev) run everything else.
-notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples --ignore=docs/examples/dfsu.ipynb", description = "check notebooks (excludes dfsu; see the dhi override)" }
+# docs/examples/real-data/ is ignored in BOTH tasks: those notebooks read the large,
+# local-only sample files under examples/data/real-data/ (gitignored), which CI never has.
+notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples --ignore=docs/examples/dfsu.ipynb --ignore=docs/examples/real-data", description = "check notebooks (excludes dfsu and the local-only real-data demos; see the dhi override)" }
 build-dist = { cmd = "python -m build", description = "Build sdist and wheel for PyPI" }
 publish-pypi = { cmd = "twine upload --non-interactive --repository pypi dist/*", depends-on = ["build-dist"], description = "Build and upload package to PyPI" }
 cz-changelog = { cmd = "cz changelog", description = "Generate the changelog with commitizen" }
@@ -351,7 +353,7 @@ cz-bump = { cmd = "cz bump", description = "Bump the version with commitizen" }
 # execute `dfsu.ipynb`. Override `notebooks` here to run the full example set (including
 # dfsu); the default `notebooks` task (above) ignores dfsu for the mikeio-less matrix
 # environments. CI runs `pixi run -e dhi notebooks`, which resolves to this override.
-notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples", description = "check notebooks (full set incl. DFSU, needs mikeio)" }
+notebooks = { cmd = "pytest --nbval --nbval-lax --verbose docs/examples --ignore=docs/examples/real-data", description = "check notebooks (full set incl. DFSU; excludes local-only real-data demos; needs mikeio)" }
 
 [tool.pixi.environments]
 # The `notebook` feature (the PEP 735 `notebook` dependency-group: ipykernel + jupyter)
