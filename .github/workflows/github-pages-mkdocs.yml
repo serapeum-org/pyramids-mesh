@@ -102,6 +102,13 @@ jobs:
         # the pre-bump tree. The fork guard in `if:` above keeps this from
         # checking out untrusted code. Same choice as pypi-release.yml.
         ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+        # Persist ACTIONS_DEPLOY_TOKEN (not the default GITHUB_TOKEN) so the prune
+        # step's `mike delete --push` authenticates to gh-pages with the SAME
+        # credential the deploy's own push uses. The default token may be blocked
+        # from pushing to gh-pages (and its pushes do not trigger a Pages rebuild),
+        # so letting the prune fall back to it would fail the job after a clean
+        # deploy. The mkdocs-deploy step still takes its own deploy-token input.
+        token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
     - name: Extract version from pyproject.toml
       id: version
@@ -132,8 +139,10 @@ jobs:
     # keeping every release is what took earthlens's gh-pages to 9.7 GB and broke Pages; five
     # releases plus main sits well below that. `main` is always kept -- deploy-main
     # republishes it on every push -- and the just-released KEEP_VERSION is pinned as a floor.
-    # Auth comes from the checkout above (contents: write); `mike` is run through `pixi run -e
-    # docs` so it resolves from the env set up above.
+    # Auth comes from the checkout above, which persists ACTIONS_DEPLOY_TOKEN -- the same
+    # credential the deploy's push uses -- so the `mike delete --push` here is not weaker
+    # than the deploy it follows. `mike` is run through `pixi run -e docs` so it resolves
+    # from the env set up above.
     - name: Prune superseded documentation versions
       env:
         KEEP_VERSION: ${{ github.event.release.tag_name || steps.version.outputs.tag }}
