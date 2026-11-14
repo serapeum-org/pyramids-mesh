@@ -75,7 +75,7 @@ Every one of these is deliberate; none is a silent approximation.
   survives as a node-located `node_z` variable. Anything consuming the mesh *geometry* sees the
   planar projection.
 - **A 1D read cannot carry `z`, variables or global attributes at all.**
-  [`Mesh1d`][pyramids.netcdf.ugrid.Mesh1d] holds a topology and a CRS and has no parameter
+  `Mesh1d` holds a topology and a CRS and has no parameter
   for data, so reading the network half of a file reports each of those by name in a warning and
   returns without them. This is a `pyramids-core` limitation, not a decision of this driver: it
   will be carried properly once `Mesh1d` has somewhere to put it.
