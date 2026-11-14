@@ -18,11 +18,12 @@ import pyramids  # noqa: F401  # isort:skip
 import warnings
 
 import numpy as np
-from osgeo import gdal, osr
+from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
+from pyramids_mesh._crs import crs_from_esri_wkt
 
 # The 8-byte signature every HDF5 file opens with; the cheap half of the sniff.
 _HDF5_MAGIC = b"\x89HDF\r\n\x1a\n"
@@ -228,11 +229,11 @@ class _HecRasReader:
         """Return the model CRS from the root ``Projection`` attribute, or ``None``.
 
         HEC-RAS stores the coordinate system as an Esri-dialect WKT string in the file's
-        root ``Projection`` attribute (for example ``NAD_1983_StatePlane_...``). The dialect
-        is morphed to an OGC form first; an authority code is returned when the morph names
-        one, otherwise the normalised WKT, and only when it parses to a real geographic or
-        projected system -- never a guess. A missing or unparseable projection leaves ``crs``
-        ``None`` rather than guessed.
+        root ``Projection`` attribute (for example ``NAD_1983_StatePlane_...``). Reading that
+        attribute is this driver's job; the shared
+        :func:`pyramids_mesh._crs.crs_from_esri_wkt` performs the morph -> authority-code-or-WKT
+        step (the same one the Esri TIN driver uses), and returns ``None`` for a missing,
+        blank, or unparseable projection rather than a guess.
 
         Args:
             dataset: The open multidimensional HDF5 dataset.
@@ -242,24 +243,14 @@ class _HecRasReader:
         """
         root = dataset.GetRootGroup()
         wkt = next(
-            (a.ReadAsString() for a in root.GetAttributes() if a.GetName() == _PROJECTION),
-            "",
-        ).strip()
-        if not wkt:
-            return None
-        reference = osr.SpatialReference()
-        try:
-            if reference.ImportFromWkt(wkt) != 0:
-                return None
-            reference.MorphFromESRI()  # NAD_1983_StatePlane_... -> an OGC-recognised name
-        except RuntimeError:
-            return None
-        code = reference.GetAuthorityCode(None)
-        if code:
-            return int(code)
-        if reference.IsGeographic() or reference.IsProjected():
-            return reference.ExportToWkt()
-        return None
+            (
+                a.ReadAsString()
+                for a in root.GetAttributes()
+                if a.GetName() == _PROJECTION
+            ),
+            None,
+        )
+        return crs_from_esri_wkt(wkt)
 
     def _areas_group(self, dataset):
         """Return the ``Geometry/2D Flow Areas`` group, or refuse the file."""

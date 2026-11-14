@@ -23,11 +23,11 @@ import os
 import warnings
 
 import numpy as np
-from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
+from pyramids_mesh._crs import crs_from_esri_wkt
 
 # The components that make a directory an Esri TIN; the mask and projection are optional.
 _REQUIRED = ("tnxy.adf", "tnz.adf", "tnod.adf")
@@ -274,9 +274,9 @@ class _EsriTinReader:
         """Return a CRS from ``prj.adf`` when it parses, else ``None``.
 
         ``prj.adf`` holds WKT in Esri's dialect (``GCS_WGS_1984``, ``D_WGS_1984``), which a
-        strict OGC validation rejects, so the WKT is morphed from Esri form first. When it
-        names an authority the EPSG code is returned; otherwise the normalised WKT, and
-        only if it parses to a real geographic or projected system -- never a guess.
+        strict OGC validation rejects. Decoding it is this driver's job; the shared
+        :func:`pyramids_mesh._crs.crs_from_esri_wkt` morph -> authority-code-or-WKT step is
+        the same one HEC-RAS uses.
         """
         projection = os.path.join(self.path, "prj.adf")
         if not os.path.isfile(projection):
@@ -284,19 +284,5 @@ class _EsriTinReader:
         with open(projection, "rb") as handle:
             # The whole file, not just the first line: a producer may wrap the WKT across
             # several lines, and OGR's parser tolerates the embedded whitespace.
-            wkt = handle.read().decode("latin-1").strip()
-        if not wkt:
-            return None
-        reference = osr.SpatialReference()
-        try:
-            if reference.ImportFromWkt(wkt) != 0:
-                return None
-            reference.MorphFromESRI()  # GCS_WGS_1984 -> an OGC-recognised name
-        except RuntimeError:
-            return None
-        code = reference.GetAuthorityCode(None)
-        if code:
-            return int(code)
-        if reference.IsGeographic() or reference.IsProjected():
-            return reference.ExportToWkt()
-        return None
+            wkt = handle.read().decode("latin-1")
+        return crs_from_esri_wkt(wkt)
