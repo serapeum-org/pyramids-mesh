@@ -136,10 +136,10 @@ class RiverFlow2dDriver(BaseDriver):
 
         Raises:
             FileFormatNotSupportedError: On a missing or malformed header, a short or
-                non-numeric node/element line, a non-triangular or degenerate element,
-                non-consecutive node ids, or a file declaring no elements.
-            ValueError: If an element vertex is not an integer, or references a node id
-                outside ``1..NNODES``.
+                non-numeric node/element line, a non-integer element vertex, a
+                non-triangular or degenerate element, non-consecutive node ids, or a file
+                declaring no elements.
+            ValueError: If an element references a node id outside ``1..NNODES``.
         """
         return _FedReader(path).build()
 
@@ -161,10 +161,10 @@ class _FedReader:
         Raises:
             FileFormatNotSupportedError: On an empty file, a short or non-integer header,
                 a header that declares more nodes/elements than the file holds, a file
-                declaring no elements, a short or non-numeric node/element line,
-                non-consecutive node ids, or a degenerate (repeated-vertex) face.
-            ValueError: If an element vertex is not an integer, or references a node id
-                outside ``1..NNODES``.
+                declaring no elements, a short or non-numeric node/element line, a
+                non-integer element vertex, non-consecutive node ids, or a degenerate
+                (repeated-vertex) face.
+            ValueError: If an element references a node id outside ``1..NNODES``.
         """
         rows = _significant_rows(self.path)
         if not rows:
@@ -278,10 +278,10 @@ class _FedReader:
 
         Raises:
             FileFormatNotSupportedError: On an element line with fewer than eight fields,
-                a non-numeric Manning/WSE/erode field, or a degenerate face whose three
-                vertices are not distinct.
-            ValueError: If a vertex token is not an integer, or is an integer outside
-                ``1..NNODES``.
+                a non-integer vertex token, a non-numeric Manning/WSE/erode field, or a
+                degenerate face whose three vertices are not distinct.
+            ValueError: If a vertex id is an integer outside ``1..NNODES`` -- a referential
+                error, matching the sibling drivers' convention.
         """
         faces = np.empty((len(elem_rows), _TRIANGLE), dtype=np.int64)
         manning = np.empty(len(elem_rows), dtype=np.float64)
@@ -296,7 +296,7 @@ class _FedReader:
             for column in range(_TRIANGLE):
                 vertex = _maybe_int(row[1 + column])
                 if vertex is None:
-                    raise ValueError(
+                    raise FileFormatNotSupportedError(
                         f"{self.path!r} element {index + 1} vertex {row[1 + column]!r} "
                         f"is not an integer node id"
                     )

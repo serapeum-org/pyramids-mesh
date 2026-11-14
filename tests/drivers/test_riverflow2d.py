@@ -336,16 +336,17 @@ def test_read_rejects_non_numeric_element_field(tmp_path):
 
 
 def test_read_rejects_non_integer_element_vertex(tmp_path):
-    """A non-integer element vertex id is a ValueError.
+    """A non-integer element vertex token is a FileFormatNotSupportedError.
 
     Test scenario:
-        A vertex token that is not an integer cannot index a node, so it is refused the
-        same way an out-of-range id is.
+        A garbage vertex token is a syntactic corruption, refused the same way as a
+        non-numeric coordinate -- distinct from a well-formed id that is merely out of
+        range (which is a referential ValueError).
     """
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 x 0.03 1.0 0.0 -9999.0 0.0\n"
     )
-    with pytest.raises(ValueError, match="not an integer"):
+    with pytest.raises(FileFormatNotSupportedError, match="not an integer"):
         RiverFlow2dDriver().read(_write(tmp_path, text))
 
 
