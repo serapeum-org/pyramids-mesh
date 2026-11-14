@@ -298,11 +298,13 @@ class EasymeshDriver(BaseDriver):
             noun: What the count counts (``"nodes"`` or ``"elements"``), for messages.
 
         Returns:
-            int: The declared count.
+            int: The declared count, guaranteed ``>= 1``.
 
         Raises:
-            FileFormatNotSupportedError: When the file is empty or its first line is not
-                a bare integer count.
+            FileFormatNotSupportedError: When the file is empty, its first line is not a
+                bare integer count, or that count is not positive (a zero or negative
+                count is degenerate -- Easymesh never writes one -- and left unchecked a
+                zero count would dereference an empty row list).
         """
         if not records:
             raise FileFormatNotSupportedError(
@@ -314,11 +316,16 @@ class EasymeshDriver(BaseDriver):
                 f"{path!r} header {keyword!r} is not a bare {noun} count"
             )
         try:
-            return int(keyword)
+            count = int(keyword)
         except ValueError as error:
             raise FileFormatNotSupportedError(
                 f"{path!r} has a non-integer {noun} count {keyword!r}"
             ) from error
+        if count < 1:
+            raise FileFormatNotSupportedError(
+                f"{path!r} declares a non-positive {noun} count {count}"
+            )
+        return count
 
     @staticmethod
     def _node_id(token: str, path: str) -> int:

@@ -215,6 +215,32 @@ def test_read_rejects_a_header_with_extra_fields(tmp_path):
         EasymeshDriver().read(node)
 
 
+def test_read_rejects_a_zero_node_count(tmp_path):
+    """A .n declaring zero nodes is a clean format error, not an IndexError."""
+    node = _pair(tmp_path, "0\n----\n   n:  x y mark\n", _ONE_E)
+    with pytest.raises(FileFormatNotSupportedError, match="non-positive nodes count 0"):
+        EasymeshDriver().read(node)
+
+
+def test_read_rejects_a_negative_node_count(tmp_path):
+    """A .n declaring a negative node count is a clean format error."""
+    node = _pair(tmp_path, "-5\n   0:  0.0 0.0  1\n", _ONE_E)
+    with pytest.raises(
+        FileFormatNotSupportedError, match="non-positive nodes count -5"
+    ):
+        EasymeshDriver().read(node)
+
+
+def test_read_rejects_a_zero_element_count(tmp_path):
+    """An .e declaring zero elements is a clean format error, not an empty mesh."""
+    (tmp_path / "m.n").write_text(_ONE_N)
+    (tmp_path / "m.e").write_text("0\n----\n   e:  i j k\n")
+    with pytest.raises(
+        FileFormatNotSupportedError, match="non-positive elements count 0"
+    ):
+        EasymeshDriver().read(str(tmp_path / "m.n"))
+
+
 def test_read_rejects_too_few_node_lines(tmp_path):
     """A .n file declaring more nodes than it holds is a format error."""
     node = _pair(tmp_path, "3\n   0:  0.0 0.0  1\n", _ONE_E)
