@@ -1,0 +1,13 @@
+RiverFlow2D .FED (channel.fed) -- authored, license-clean synthetic sample (not Hydronia data).
+
+RiverFlow2D is commercial and ships no openly-licensed .FED; its sample meshes live only inside the
+SMS/Hydronia ExampleProjects install. This file is hand-generated from the published .FED layout
+(RiverFlow2D Reference Manual section 9.2.1), cross-checked to be byte-structurally identical to the
+real ExampleProjects meshes (same column widths, 1-based consecutive ids, counter-clockwise
+triangles, -9999 sentinel). The geometry and values are invented.
+
+Contents: an 80-node, 120-triangle straight channel on a UTM-like grid -- a downstream-sloping bed
+with a channel cross-section, two Manning zones (channel 0.030, floodplain 0.075), an upstream
+initial pool (init_wse) and an erodible floor in the channel (min_erode_elev); the rest carry the
+-9999 "no value" sentinel. A file format is not copyrightable, so this authored instance is free to
+license with the repository. See issue #67.
