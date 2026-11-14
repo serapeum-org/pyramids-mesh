@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3418,7 +3418,7 @@ dataset.mesh.n_node, dataset.mesh.n_face
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">        """</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="k">return</span> <span class="n">_Mike21Scan</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="w">        </span><span class="sd">"""Write a mesh frame back to a Mike21 ``.mesh`` file.</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">        Emits the header line, one ``id x y z boundary`` record per node and one</span>
@@ -4589,6 +4589,7 @@ projection field, else the DHI-internal <code>LONG/LAT</code> placeholder.</p>
                 <code>dataset</code>
             </td>
             <td>
+                  <code><span title="pyramids.netcdf.ugrid.MeshDataset">MeshDataset</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4620,6 +4621,7 @@ projection field, else the DHI-internal <code>LONG/LAT</code> placeholder.</p>
                 <code>**options</code>
             </td>
             <td>
+                  <code><span title="object">object</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4730,7 +4732,7 @@ element types).</p>
 <span class="normal"><a href="#__codelineno-0-311">311</a></span>
 <span class="normal"><a href="#__codelineno-0-312">312</a></span>
 <span class="normal"><a href="#__codelineno-0-313">313</a></span>
-<span class="normal"><a href="#__codelineno-0-314">314</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-314">314</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">MeshDataset</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="w">    </span><span class="sd">"""Write a mesh frame back to a Mike21 ``.mesh`` file.</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">    Emits the header line, one ``id x y z boundary`` record per node and one</span>
