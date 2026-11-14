@@ -292,7 +292,9 @@ def test_read_rejects_non_positive_node_count(tmp_path):
         with the zero-element guard.
     """
     with pytest.raises(FileFormatNotSupportedError, match="non-positive node count"):
-        RiverFlow2dDriver().read(_write(tmp_path, "1 -3 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+        RiverFlow2dDriver().read(
+            _write(tmp_path, "1 -3 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
+        )
 
 
 def test_read_rejects_short_node_line(tmp_path):
