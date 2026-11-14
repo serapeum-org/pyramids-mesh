@@ -69,6 +69,15 @@ class EasymeshDriver(BaseDriver):
         - **Node markers, element neighbours, side ids, the circumcentre and the sign are
           ignored**, and no CRS is declared -- the format carries none, so ``crs`` is
           ``None`` rather than guessed.
+        - **The ``.e`` suffix is shared with the Exodus driver.** Dispatch resolves by
+          content, not registration order: an Exodus ``.e`` is binary NetCDF (whose sniff
+          declines an ASCII file) and this driver requires a sibling ``.n``, which an
+          Exodus ``.e`` never has -- so each real file resolves to exactly one driver.
+        - **Node ids are assumed dense and contiguous from the base**, read in file order
+          with the ``.e`` references sharing the ``.n`` base; a gapped or renumbered ``.n``
+          is out of scope (Easymesh always writes a dense 0-based block). An ``.e`` that
+          references a node id outside the ``.n`` range is left for pyramids' validation to
+          reject, not range-checked here.
 
     Example:
         Read an Easymesh pair by either of its files (shown, not run as a doctest -- it

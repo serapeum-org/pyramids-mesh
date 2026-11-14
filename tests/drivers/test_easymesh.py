@@ -127,6 +127,24 @@ def test_can_open_accepts_either_file_of_a_pair():
     assert driver.can_open(str(_ELEMENT)) is True
 
 
+def test_dot_e_dispatches_to_easymesh_not_exodus():
+    """The .e suffix is shared with exodus, but content/sibling sniffing resolves it here.
+
+    Exodus `.e` is binary NetCDF (its sniff declines an ASCII file) and this driver needs a
+    sibling `.n`, so a real EasyMesh `.e` resolves to easymesh and an Exodus `.e` does not.
+    """
+    from pyramids.netcdf.ugrid import MeshDataset, mesh_drivers
+
+    mesh = MeshDataset.read_file(str(_ELEMENT)).mesh
+    assert mesh.n_node == 12
+    assert mesh.n_face == 14
+    drivers = mesh_drivers()
+    assert drivers["easymesh"].can_open(str(_ELEMENT)) is True
+    exodus = drivers.get("exodus")
+    if exodus is not None:
+        assert exodus.can_open(str(_ELEMENT)) is False
+
+
 def test_can_open_declines_a_stray_file(tmp_path):
     """can_open declines a lone .n with no sibling, and a foreign file."""
     driver = EasymeshDriver()

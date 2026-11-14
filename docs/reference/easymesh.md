@@ -50,6 +50,14 @@ Easymesh also writes a third `.s` sides file and closes each file with two trail
   from the first node id, resolved to 0-based and recorded for a writer.
 - **Node markers, element neighbours, side ids, the circumcentre and the sign are ignored**,
   and no CRS is declared — the format carries none, so `crs` is `None` rather than guessed.
+- **The `.e` suffix is shared with the [Exodus II](exodus.md) driver.** Dispatch resolves by
+  content, not registration order: an Exodus `.e` is binary NetCDF (its sniff declines an ASCII
+  file) and this driver requires a sibling `.n`, which an Exodus `.e` never has — so each real
+  file resolves to exactly one driver.
+- **Node ids are assumed dense and contiguous from the base.** They are read in file order with
+  the `.e` references sharing the `.n` base; a gapped or renumbered `.n` is out of scope. An `.e`
+  referencing a node id outside the `.n` range is left for pyramids' validation to reject, not
+  range-checked in the driver.
 
 ## API
 
