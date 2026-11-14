@@ -19,7 +19,7 @@ import pyramids  # noqa: F401  # isort:skip
 import numpy as np
 from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
 from pyramids_mesh._text import native_id_map
@@ -242,7 +242,7 @@ class Mike21Driver(BaseDriver):
         """
         return _Mike21Scan(path).build()
 
-    def write(self, dataset, path: str, **options) -> None:
+    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
         """Write a mesh frame back to a Mike21 ``.mesh`` file.
 
         Emits the header line, one ``id x y z boundary`` record per node and one

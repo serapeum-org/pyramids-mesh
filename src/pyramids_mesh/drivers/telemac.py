@@ -20,7 +20,7 @@ import warnings
 
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh._binary import (
@@ -192,7 +192,7 @@ class SelafinDriver(BaseDriver):
         """
         return _SelafinReader(path, lazy=lazy).build()
 
-    def write(self, dataset, path: str, **options) -> None:
+    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
         """Write a mesh and its node-located results back to a Selafin file.
 
         Emits the same Fortran-record layout the reader parses, through

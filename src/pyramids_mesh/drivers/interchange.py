@@ -21,7 +21,7 @@ from collections.abc import Iterator
 
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, MeshDataset
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 from pyramids_mesh._text import iter_records
@@ -178,7 +178,7 @@ class PlyDriver(BaseDriver):
         """
         return _PlyReader(path).build()
 
-    def write(self, dataset, path: str, **options) -> None:
+    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
         """Write a mesh back to a PLY file.
 
         Emits a ``vertex`` element of ``double x/y/z`` and a ``face`` element of a
