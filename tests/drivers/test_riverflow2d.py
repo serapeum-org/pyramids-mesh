@@ -239,8 +239,9 @@ def test_read_rejects_short_header(tmp_path):
     Test scenario:
         A single-token header line cannot give NELEM and NNODES, so ``_header`` refuses it.
     """
+    path = _write(tmp_path, "4\n1 0.0 0.0 1.0 0 -9999 0 0\n")
     with pytest.raises(FileFormatNotSupportedError, match="short header"):
-        RiverFlow2dDriver().read(_write(tmp_path, "4\n1 0.0 0.0 1.0 0 -9999 0 0\n"))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_non_integer_header(tmp_path):
@@ -249,10 +250,9 @@ def test_read_rejects_non_integer_header(tmp_path):
     Test scenario:
         ``NELEM``/``NNODES`` must parse as ints; alphabetic counts are refused.
     """
+    path = _write(tmp_path, "a b 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
     with pytest.raises(FileFormatNotSupportedError, match="not two integers"):
-        RiverFlow2dDriver().read(
-            _write(tmp_path, "a b 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
-        )
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_too_few_lines(tmp_path):
@@ -263,8 +263,9 @@ def test_read_rejects_too_few_lines(tmp_path):
         declared counts cannot be satisfied.
     """
     text = "1 3 5 5\n1 0.0 0.0 1.0 0.0 -9999.0 0 0\n"
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="header declares"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_zero_elements(tmp_path):
@@ -279,8 +280,9 @@ def test_read_rejects_zero_elements(tmp_path):
         "2 1.0 0.0 1.0 0.0 -9999.0 0 0\n"
         "3 0.0 1.0 1.0 0.0 -9999.0 0 0\n"
     )
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="no elements"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_non_positive_node_count(tmp_path):
@@ -291,10 +293,9 @@ def test_read_rejects_non_positive_node_count(tmp_path):
         misleading downstream "outside 1..-3" error; it is rejected up front, symmetric
         with the zero-element guard.
     """
+    path = _write(tmp_path, "1 -3 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
     with pytest.raises(FileFormatNotSupportedError, match="non-positive node count"):
-        RiverFlow2dDriver().read(
-            _write(tmp_path, "1 -3 5 5\n1 0.0 0.0 1.0 0 -9999 0 0\n")
-        )
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_short_node_line(tmp_path):
@@ -304,8 +305,9 @@ def test_read_rejects_short_node_line(tmp_path):
         ``IN X Y ZB`` are the minimum a node line must carry; a three-token line is short.
     """
     text = _VALID.replace("1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 0.0 0.0\n")
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="short node line"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_non_numeric_node_field(tmp_path):
@@ -317,8 +319,9 @@ def test_read_rejects_non_numeric_node_field(tmp_path):
     text = _VALID.replace(
         "1 0.0 0.0 1.0 0.0 -9999.0 0 0\n", "1 x 0.0 1.0 0.0 -9999.0 0 0\n"
     )
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="non-numeric field"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_short_element_line(tmp_path):
@@ -329,8 +332,9 @@ def test_read_rejects_short_element_line(tmp_path):
         truncated line is refused.
     """
     text = _VALID.replace("1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 3\n")
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="short element line"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_non_numeric_element_field(tmp_path):
@@ -343,10 +347,11 @@ def test_read_rejects_non_numeric_element_field(tmp_path):
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 3 rough 1.0 0.0 -9999.0 0.0\n"
     )
+    path = _write(tmp_path, text)
     with pytest.raises(
         FileFormatNotSupportedError, match="element line with a non-numeric"
     ):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_non_integer_element_vertex(tmp_path):
@@ -360,8 +365,9 @@ def test_read_rejects_non_integer_element_vertex(tmp_path):
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 2 x 0.03 1.0 0.0 -9999.0 0.0\n"
     )
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="not an integer"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_read_rejects_degenerate_face(tmp_path):
@@ -374,8 +380,9 @@ def test_read_rejects_degenerate_face(tmp_path):
     text = _VALID.replace(
         "1 1 2 3 0.03 1.0 0.0 -9999.0 0.0\n", "1 1 1 2 0.03 1.0 0.0 -9999.0 0.0\n"
     )
+    path = _write(tmp_path, text)
     with pytest.raises(FileFormatNotSupportedError, match="repeats a vertex"):
-        RiverFlow2dDriver().read(_write(tmp_path, text))
+        RiverFlow2dDriver().read(path)
 
 
 def test_sniff_declines_single_line_file(tmp_path):
