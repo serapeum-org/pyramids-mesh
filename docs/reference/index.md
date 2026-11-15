@@ -44,6 +44,7 @@ its suffixes, capabilities and documented limitations:
 | `icon` | ICON icosahedral grid (NetCDF) | [ICON (NetCDF)](icon.md) |
 | `fvcom` | FVCOM native `*_grd.dat` (ASCII) | [FVCOM (native grid)](fvcom.md) |
 | `triangle` | Triangle/TetGen `.node`+`.ele` | [Triangle / TetGen](triangle.md) |
+| `easymesh` | SWAN Easymesh `.n`+`.e` | [SWAN Easymesh](easymesh.md) |
 | `exodus` | Exodus II (NetCDF-based FEM) | [Exodus II (.exo)](exodus.md) |
 | `su2` | SU2 `.su2` (ASCII FEM) | [SU2 (.su2)](su2.md) |
 | `srh2d` | SRH-2D (`.srhgeom`+`.srhhydro`) | [SRH-2D](srh2d.md) |

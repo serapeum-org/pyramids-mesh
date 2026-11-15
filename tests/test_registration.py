@@ -46,6 +46,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "icon",
     "fvcom",
     "triangle",
+    "easymesh",
     "exodus",
     "su2",
     "srh2d",
