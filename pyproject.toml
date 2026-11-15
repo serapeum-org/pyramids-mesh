@@ -191,6 +191,7 @@ obj = "pyramids_mesh.drivers.obj:ObjDriver"
 stl = "pyramids_mesh.drivers.stl:StlDriver"
 off = "pyramids_mesh.drivers.off:OffDriver"
 gid = "pyramids_mesh.drivers.gid:GidDriver"
+riverflow2d = "pyramids_mesh.drivers.riverflow2d:RiverFlow2dDriver"
 
 
 [project.urls]
