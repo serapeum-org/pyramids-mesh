@@ -210,3 +210,22 @@ def test_read_rejects_too_few_element_lines(tmp_path):
     )
     with pytest.raises(FileFormatNotSupportedError, match="declares 2 elements"):
         TriangleDriver().read(node)
+
+
+@pytest.mark.parametrize("count", [0, -1, -3])
+@pytest.mark.parametrize("extension, noun", [("node", "vertex"), ("ele", "element")])
+def test_nonpositive_counts_are_format_errors(tmp_path, count, extension, noun):
+    """Reject invalid declared counts even when the files contain data records."""
+    node = tmp_path / "tri.node"
+    ele = tmp_path / "tri.ele"
+    node.write_text("3 2 0 0\n1 0.0 0.0\n2 1.0 0.0\n3 0.0 1.0\n")
+    ele.write_text("1 3 0\n1 1 2 3\n")
+    path = node if extension == "node" else ele
+    text = path.read_text()
+    path.write_text(str(count) + text[text.index(" ") :])
+
+    with pytest.raises(
+        FileFormatNotSupportedError, match=rf"non-positive {noun} count {count}"
+    ) as exc:
+        TriangleDriver()._parse(str(node), lazy=False)
+    assert str(path) in str(exc.value)

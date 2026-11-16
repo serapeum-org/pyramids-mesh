@@ -219,6 +219,10 @@ class TriangleDriver(BaseDriver):
         """
         records = list(iter_records(node_path))
         count, dim = self._dimensions(records, node_path)
+        if count < 1:
+            raise FileFormatNotSupportedError(
+                f"{node_path!r} declares a non-positive vertex count {count}"
+            )
         rows = records[1 : 1 + count]
         if len(rows) < count:
             raise FileFormatNotSupportedError(
@@ -274,6 +278,10 @@ class TriangleDriver(BaseDriver):
                 f"{ele_path!r} has no '<#elts> <nodes-per-elt>' header"
             )
         count, per_element = header[0], header[1]
+        if count < 1:
+            raise FileFormatNotSupportedError(
+                f"{ele_path!r} declares a non-positive element count {count}"
+            )
         rows = records[1 : 1 + count]
         if len(rows) < count:
             raise FileFormatNotSupportedError(
