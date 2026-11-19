@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.flac3d import Flac3dDriver
+from pyramids_mesh.drivers.engineering.flac3d import Flac3dDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "flac3d"
 _MESH = _DATA / "flac3d_mesh_ex.f3grid"

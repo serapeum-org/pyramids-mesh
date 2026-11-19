@@ -48,7 +48,7 @@ dispatcher that probes candidate files still recognises the mesh.
 
 ## API
 
-::: pyramids_mesh.drivers.openfoam.OpenFoamDriver
+::: pyramids_mesh.drivers.engineering.openfoam.OpenFoamDriver
     options:
         show_root_heading: true
         show_source: true

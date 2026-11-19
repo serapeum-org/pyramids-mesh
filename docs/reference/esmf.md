@@ -45,7 +45,7 @@ mesh.mesh.n_face          # the ESMF elements
 
 ## API
 
-::: pyramids_mesh.drivers.esmf.EsmfDriver
+::: pyramids_mesh.drivers.earth_system.esmf.EsmfDriver
     options:
         show_root_heading: true
         show_source: true

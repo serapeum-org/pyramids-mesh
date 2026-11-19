@@ -16,8 +16,8 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
 from pyramids_mesh._validate import _area_tolerance
-from pyramids_mesh.drivers import interchange
-from pyramids_mesh.drivers.interchange import (
+from pyramids_mesh.drivers.generic import interchange
+from pyramids_mesh.drivers.generic.interchange import (
     PlyDriver,
     XmsTinDriver,
     build_minimal_fixture_ply,

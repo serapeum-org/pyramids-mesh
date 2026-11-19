@@ -37,7 +37,7 @@ real ArcGIS TIN directory is available.
 
 ## API
 
-::: pyramids_mesh.drivers.interchange.XmsTinDriver
+::: pyramids_mesh.drivers.generic.interchange.XmsTinDriver
     options:
         show_root_heading: true
         show_source: true

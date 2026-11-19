@@ -53,7 +53,7 @@ elevation), `time`, and per-timestep node results such as `stage`, `xmomentum`,
 
 ## API
 
-::: pyramids_mesh.drivers.anuga.SwwDriver
+::: pyramids_mesh.drivers.coastal_ocean.anuga.SwwDriver
     options:
         show_root_heading: true
         show_source: true

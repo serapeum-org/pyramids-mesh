@@ -21,7 +21,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.nastran import NastranDriver, _parse_real
+from pyramids_mesh.drivers.engineering.nastran import NastranDriver, _parse_real
 
 _DATA = Path(__file__).parent.parent / "data"
 _CYLINDER = _DATA / "nastran" / "cylinder.fem"

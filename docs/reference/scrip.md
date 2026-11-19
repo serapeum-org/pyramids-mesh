@@ -47,7 +47,7 @@ mesh.mesh.n_face                               # the SCRIP cells
 
 ## API
 
-::: pyramids_mesh.drivers.scrip.ScripDriver
+::: pyramids_mesh.drivers.earth_system.scrip.ScripDriver
     options:
         show_root_heading: true
         show_source: true

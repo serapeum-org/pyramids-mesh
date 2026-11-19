@@ -71,7 +71,7 @@ class OffDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.off import OffDriver
+            >>> from pyramids_mesh.drivers.generic.off import OffDriver
             >>> lines = (
             ...     "OFF",
             ...     "3 1 0",

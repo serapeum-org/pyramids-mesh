@@ -37,7 +37,7 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
 ## API
 
-::: pyramids_mesh.drivers.exodus.ExodusDriver
+::: pyramids_mesh.drivers.engineering.exodus.ExodusDriver
     options:
         show_root_heading: true
         show_source: true

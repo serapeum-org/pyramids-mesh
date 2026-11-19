@@ -46,7 +46,7 @@ area = mesh.get("cell_area")   # face-located cell areas
 
 ## API
 
-::: pyramids_mesh.drivers.icon.IconDriver
+::: pyramids_mesh.drivers.earth_system.icon.IconDriver
     options:
         show_root_heading: true
         show_source: true

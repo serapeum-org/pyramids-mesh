@@ -47,7 +47,7 @@ The formats:
 
 ## API
 
-::: pyramids_mesh.drivers.triangle.TriangleDriver
+::: pyramids_mesh.drivers.generic.triangle.TriangleDriver
     options:
         show_root_heading: true
         show_source: true

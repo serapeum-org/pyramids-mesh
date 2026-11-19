@@ -15,7 +15,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.telemac import SelafinDriver
+from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
 
 _SLF = Path(__file__).parent.parent / "data" / "minimal.slf"
 

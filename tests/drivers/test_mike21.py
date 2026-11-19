@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers import misc
-from pyramids_mesh.drivers.misc import Mike21Driver, build_minimal_fixture_mike21
+from pyramids_mesh.drivers.river_hydraulics import misc
+from pyramids_mesh.drivers.river_hydraulics.misc import Mike21Driver, build_minimal_fixture_mike21
 
 _UNIT_SQUARE = """100079 1000 4 LONG/LAT
 1 0.0 0.0 0.0 1

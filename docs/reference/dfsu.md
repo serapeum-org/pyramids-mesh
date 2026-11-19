@@ -35,7 +35,7 @@ level = mesh.get("Surface elevation")   # face-located, over time
 
 ## API
 
-::: pyramids_mesh.drivers.dhi.DfsuDriver
+::: pyramids_mesh.drivers.coastal_ocean.dhi.DfsuDriver
     options:
         show_root_heading: true
         show_source: true

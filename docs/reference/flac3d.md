@@ -38,7 +38,7 @@ past and ignored.
 
 ## API
 
-::: pyramids_mesh.drivers.flac3d.Flac3dDriver
+::: pyramids_mesh.drivers.engineering.flac3d.Flac3dDriver
     options:
         show_root_heading: true
         show_source: true

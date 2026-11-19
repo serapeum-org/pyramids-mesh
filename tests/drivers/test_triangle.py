@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.triangle import TriangleDriver
+from pyramids_mesh.drivers.generic.triangle import TriangleDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "triangle"
 _NODE = _DATA / "mesh.node"

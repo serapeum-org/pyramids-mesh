@@ -72,7 +72,7 @@ surface = mesh.mesh      # the finite-element mesh
 
 ## API
 
-::: pyramids_mesh.drivers.feflow.FeflowDriver
+::: pyramids_mesh.drivers.subsurface.feflow.FeflowDriver
     options:
         show_root_heading: true
         show_source: true

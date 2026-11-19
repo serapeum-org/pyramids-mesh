@@ -18,8 +18,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers._gr3 import read_gr3_grid
-from pyramids_mesh.drivers.schism import SchismDriver, _read_boundary_group
+from pyramids_mesh.drivers.coastal_ocean._gr3 import read_gr3_grid
+from pyramids_mesh.drivers.coastal_ocean.schism import SchismDriver, _read_boundary_group
 
 _DATA = Path(__file__).parent.parent / "data" / "schism"
 _GRID = _DATA / "hgrid.gr3"

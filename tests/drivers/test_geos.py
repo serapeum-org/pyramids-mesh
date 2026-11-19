@@ -17,9 +17,9 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.esmf import EsmfDriver
-from pyramids_mesh.drivers.geos import GeosDriver
-from pyramids_mesh.drivers.scrip import ScripDriver
+from pyramids_mesh.drivers.earth_system.esmf import EsmfDriver
+from pyramids_mesh.drivers.earth_system.geos import GeosDriver
+from pyramids_mesh.drivers.earth_system.scrip import ScripDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _GRID = _DATA / "geos" / "test-c12.native.nc4"
@@ -116,7 +116,7 @@ def test_declares_read_mesh_only():
 
 def test_faces_helper_computes_quads_by_index_arithmetic():
     """A single 2x2-corner panel yields one quad of its four ravelled corners."""
-    from pyramids_mesh.drivers.geos import _GeosReader
+    from pyramids_mesh.drivers.earth_system.geos import _GeosReader
 
     faces = _GeosReader._faces((1, 2, 2))
     assert faces.tolist() == [[0, 1, 3, 2]]
@@ -124,7 +124,7 @@ def test_faces_helper_computes_quads_by_index_arithmetic():
 
 def test_require_refuses_a_missing_corner_array():
     """``_require`` raises when a defining corner array is absent from the file."""
-    from pyramids_mesh.drivers.geos import _GeosReader
+    from pyramids_mesh.drivers.earth_system.geos import _GeosReader
 
     with pytest.raises(FileFormatNotSupportedError, match="not a GEOS grid"):
         _GeosReader("absent.nc4")._require(set())
@@ -132,7 +132,7 @@ def test_require_refuses_a_missing_corner_array():
 
 def test_face_centres_absent_without_both_arrays():
     """Only one of the centre arrays yields no centres rather than a half pair."""
-    from pyramids_mesh.drivers.geos import _GeosReader
+    from pyramids_mesh.drivers.earth_system.geos import _GeosReader
 
     face_x, face_y = _GeosReader._face_centres(None, {"corner_lons"})
     assert face_x is None

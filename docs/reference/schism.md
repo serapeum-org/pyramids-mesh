@@ -44,7 +44,7 @@ land = mesh.global_attributes["land_boundary_nodes"]
 
 ## API
 
-::: pyramids_mesh.drivers.schism.SchismDriver
+::: pyramids_mesh.drivers.coastal_ocean.schism.SchismDriver
     options:
         show_root_heading: true
         show_source: true

@@ -22,7 +22,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
-from pyramids_mesh.drivers.threedi import _ThreeDiLoader  # reopen-per-read lazy loader
+from pyramids_mesh.drivers.coastal_ocean.threedi import _ThreeDiLoader  # reopen-per-read lazy loader
 
 _NODE_X = "node_X"
 _NODE_Y = "node_Y"

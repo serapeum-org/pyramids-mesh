@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.kratos import KratosDriver
+from pyramids_mesh.drivers.engineering.kratos import KratosDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "kratos"
 _CUBE = _DATA / "small_cube.mdpa"

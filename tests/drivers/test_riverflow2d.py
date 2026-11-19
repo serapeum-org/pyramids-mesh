@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.riverflow2d import RiverFlow2dDriver
+from pyramids_mesh.drivers.river_hydraulics.riverflow2d import RiverFlow2dDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "riverflow2d"
 _MESH = _DATA / "minimal.fed"

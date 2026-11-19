@@ -46,7 +46,7 @@ faces = mesh.mesh.face_node_connectivity   # triangles and quadrilaterals
 
 ## API
 
-::: pyramids_mesh.drivers.gmsh.GmshDriver
+::: pyramids_mesh.drivers.engineering.gmsh.GmshDriver
     options:
         show_root_heading: true
         show_source: true

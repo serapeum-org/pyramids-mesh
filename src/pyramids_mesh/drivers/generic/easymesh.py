@@ -3,7 +3,7 @@
 SWAN defines no native unstructured grid of its own: ``READGRID UNSTRUCTURED``
 delegates to one of three external mesh generators -- ADCIRC (``fort.14``), Triangle
 (``.node``/``.ele``) or Easymesh (``.n``/``.e``). The first two are read by
-:mod:`pyramids_mesh.drivers.adcirc` and :mod:`pyramids_mesh.drivers.triangle`; this
+:mod:`pyramids_mesh.drivers.coastal_ocean.adcirc` and :mod:`pyramids_mesh.drivers.generic.triangle`; this
 driver adds the third, Easymesh, so all three SWAN unstructured routes are covered.
 
 Easymesh (Bojan Niceno) writes a triangulation across three sibling ASCII files that

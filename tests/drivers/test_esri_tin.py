@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.esri import (
+from pyramids_mesh.drivers.river_hydraulics.esri import (
     EsriTinDriver,
     _drop_unreferenced_nodes,
     _EsriTinReader,

@@ -45,7 +45,7 @@ depth = mesh.get("node_z")
 
 ## API
 
-::: pyramids_mesh.drivers.fvcom.FvcomDriver
+::: pyramids_mesh.drivers.coastal_ocean.fvcom.FvcomDriver
     options:
         show_root_heading: true
         show_source: true

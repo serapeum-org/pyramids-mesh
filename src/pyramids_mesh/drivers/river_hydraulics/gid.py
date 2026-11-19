@@ -27,7 +27,7 @@ the CGNS and MED readers. ``Line``/``Point`` scaffolding is dropped; a volumetri
 ``Tetrahedra``/``Hexahedra`` block maps its node list to a face row verbatim, as the
 Exodus reader does, rather than returning an empty mesh.
 
-The ``.msh`` suffix is shared with the Gmsh reader (:mod:`pyramids_mesh.drivers.gmsh`),
+The ``.msh`` suffix is shared with the Gmsh reader (:mod:`pyramids_mesh.drivers.engineering.gmsh`),
 which opens with ``$MeshFormat``; ``can_open`` requires the GiD signature (a first
 significant line starting with ``MESH`` and carrying ``dimension`` and ``ElemType``), so
 the two never both claim a file.
@@ -164,7 +164,7 @@ class GidDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.gid import GidDriver
+            >>> from pyramids_mesh.drivers.river_hydraulics.gid import GidDriver
             >>> text = '''MESH dimension 2 ElemType Triangle Nnode 3
             ... Coordinates
             ... 1 0.0 0.0
@@ -190,7 +190,7 @@ class GidDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.gid import GidDriver
+            >>> from pyramids_mesh.drivers.river_hydraulics.gid import GidDriver
             >>> gmsh_text = '''$MeshFormat
             ... 2.2 0 8
             ... $EndMeshFormat

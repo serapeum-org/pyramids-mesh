@@ -104,7 +104,7 @@ variable name.
 
 ## API
 
-::: pyramids_mesh.drivers.sms.DatDriver
+::: pyramids_mesh.drivers.river_hydraulics.sms.DatDriver
     options:
         show_root_heading: true
         show_source: true

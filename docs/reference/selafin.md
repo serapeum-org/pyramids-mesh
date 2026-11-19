@@ -76,7 +76,7 @@ base), the variable names and units, and the time steps.
 
 ## API
 
-::: pyramids_mesh.drivers.telemac.SelafinDriver
+::: pyramids_mesh.drivers.coastal_ocean.telemac.SelafinDriver
     options:
         show_root_heading: true
         show_source: true

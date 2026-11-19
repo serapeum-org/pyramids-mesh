@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers import anuga
-from pyramids_mesh.drivers.anuga import (
+from pyramids_mesh.drivers.coastal_ocean import anuga
+from pyramids_mesh.drivers.coastal_ocean.anuga import (
     SwwDriver,
     build_minimal_fixture_sww,
     write_sww,

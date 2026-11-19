@@ -25,7 +25,7 @@ from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d
 
-from pyramids_mesh.drivers.deltares import (
+from pyramids_mesh.drivers.river_hydraulics.deltares import (
     DeltaresNetworkDriver,
     _as_str,
     _attr_map,
@@ -807,7 +807,7 @@ def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
     a non-numeric offset must leave ``_parse`` as the driver's documented decline type, never
     a raw ``ValueError``.
     """
-    from pyramids_mesh.drivers import deltares
+    from pyramids_mesh.drivers.river_hydraulics import deltares
 
     mesh1d = _Array(
         attrs=[
@@ -858,7 +858,7 @@ def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
     ``RuntimeError`` on the dereference, which must surface as the documented
     ``FileFormatNotSupportedError``.
     """
-    from pyramids_mesh.drivers import deltares
+    from pyramids_mesh.drivers.river_hydraulics import deltares
 
     topo = _Array(
         attrs=[
@@ -876,7 +876,7 @@ def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
 
 def test_build_propagates_a_format_error_unwrapped(monkeypatch):
     """A ``FileFormatNotSupportedError`` from inside build re-raises as itself."""
-    from pyramids_mesh.drivers import deltares
+    from pyramids_mesh.drivers.river_hydraulics import deltares
 
     group = _Group({"mesh2d": _topo_array(2)})
     monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))

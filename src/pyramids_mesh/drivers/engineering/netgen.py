@@ -94,7 +94,7 @@ class NetgenDriver(BaseDriver):
           1-based connectivity arriving 0-based and the file's base recorded for a writer.
           (Shown, not run as a doctest -- it reads a committed data file.)::
 
-            from pyramids_mesh.drivers.netgen import NetgenDriver
+            from pyramids_mesh.drivers.engineering.netgen import NetgenDriver
 
             dataset = NetgenDriver().read("tests/data/netgen/periodic_3d.vol")
             dataset.mesh.n_node, dataset.mesh.n_face              # (65, 108)

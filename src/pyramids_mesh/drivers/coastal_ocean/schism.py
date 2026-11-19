@@ -4,7 +4,7 @@ SCHISM is an unstructured-grid hydrodynamic model. Its horizontal grid is the AS
 ``hgrid.gr3`` -- a node list ``(id, x, y, depth)``, a mixed triangle/quad element table
 ``(id, i34, n1, n2, n3[, n4])`` and open/land boundary sections. The layout is the one
 ADCIRC's ``fort.14`` uses, so the node- and element-block parser is shared through
-:mod:`pyramids_mesh.drivers._gr3`; the two differences this driver adds are quad elements
+:mod:`pyramids_mesh.drivers.coastal_ocean._gr3`; the two differences this driver adds are quad elements
 (``i34 == 4``) and the boundary node-id lists, which are carried as metadata.
 """
 
@@ -18,7 +18,7 @@ import numpy as np
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh
-from pyramids_mesh.drivers._gr3 import read_gr3_grid, sniff_gr3
+from pyramids_mesh.drivers.coastal_ocean._gr3 import read_gr3_grid, sniff_gr3
 
 
 class SchismDriver(BaseDriver):
@@ -64,7 +64,7 @@ class SchismDriver(BaseDriver):
     def _sniff(self, path: str) -> bool:
         """Report whether the file opens as a ``.gr3`` grid.
 
-        Shares :func:`pyramids_mesh.drivers._gr3.sniff_gr3` with the ADCIRC reader, since
+        Shares :func:`pyramids_mesh.drivers.coastal_ocean._gr3.sniff_gr3` with the ADCIRC reader, since
         the header and first node line are identical between the two formats.
 
         Args:

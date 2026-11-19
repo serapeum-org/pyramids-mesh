@@ -37,7 +37,7 @@ wet = mesh.get("stat")     # per-step wet/dry status
 
 ## API
 
-::: pyramids_mesh.drivers.tuflowfv.TuflowFvDriver
+::: pyramids_mesh.drivers.coastal_ocean.tuflowfv.TuflowFvDriver
     options:
         show_root_heading: true
         show_source: true

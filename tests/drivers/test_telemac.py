@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers import telemac
-from pyramids_mesh.drivers.telemac import (
+from pyramids_mesh.drivers.coastal_ocean import telemac
+from pyramids_mesh.drivers.coastal_ocean.telemac import (
     SelafinDriver,
     build_minimal_fixture_selafin,
     write_selafin,
@@ -363,7 +363,7 @@ def test_selafin_lazy_loader_translates_a_short_read(tmp_path):
     hit when the caller touches .data, and it must surface as FileFormatNotSupportedError
     rather than the helper's bare ValueError.
     """
-    from pyramids_mesh.drivers.telemac import _SelafinLoader
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _SelafinLoader
 
     path = tmp_path / "tiny.slf"
     path.write_bytes(b"\x00" * 8)

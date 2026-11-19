@@ -16,7 +16,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.icon import IconDriver, _orient_faces
+from pyramids_mesh.drivers.earth_system.icon import IconDriver, _orient_faces
 
 _GRID = Path(__file__).parent.parent / "data" / "icon" / "icon_grid_R02B04_subset.nc"
 
@@ -223,7 +223,7 @@ class _FakeGroup:
 
 def test_convention_reads_the_conventions_attribute():
     """_convention returns the ``Conventions`` global attribute when it reads cleanly."""
-    from pyramids_mesh.drivers.icon import _convention
+    from pyramids_mesh.drivers.earth_system.icon import _convention
 
     group = _FakeGroup(
         attributes=[
@@ -236,7 +236,7 @@ def test_convention_reads_the_conventions_attribute():
 
 def test_convention_is_empty_when_the_attribute_read_raises():
     """A ``Conventions`` attribute whose Read raises yields an empty string, not an error."""
-    from pyramids_mesh.drivers.icon import _convention
+    from pyramids_mesh.drivers.earth_system.icon import _convention
 
     group = _FakeGroup(attributes=[_FakeAttribute("Conventions", raises=True)])
     assert _convention(group) == ""
@@ -244,7 +244,7 @@ def test_convention_is_empty_when_the_attribute_read_raises():
 
 def test_is_icon_declines_the_mpas_vertex_array():
     """A group carrying MPAS's ``verticesOnCell`` array is not claimed as ICON."""
-    from pyramids_mesh.drivers.icon import _is_icon
+    from pyramids_mesh.drivers.earth_system.icon import _is_icon
 
     group = _FakeGroup(names=["vertex_of_cell", "clon", "vlon", "verticesOnCell"])
     assert _is_icon(group) is False
@@ -252,7 +252,7 @@ def test_is_icon_declines_the_mpas_vertex_array():
 
 def test_is_icon_declines_the_mpas_convention():
     """A group declaring the MPAS convention is declined even without the MPAS array."""
-    from pyramids_mesh.drivers.icon import _is_icon
+    from pyramids_mesh.drivers.earth_system.icon import _is_icon
 
     group = _FakeGroup(
         names=["vertex_of_cell", "clon", "vlon"],

@@ -97,7 +97,7 @@ class AbaqusDriver(BaseDriver):
         An Abaqus deck opens with a keyword line (``*HEADING``, ``*NODE``, ...), so
         the first line that is neither blank nor a ``**`` comment must start with a
         single ``*``. This is deliberately the inverse of
-        :meth:`~pyramids_mesh.drivers.avsucd.AvsUcdDriver._sniff`, whose first
+        :meth:`~pyramids_mesh.drivers.engineering.avsucd.AvsUcdDriver._sniff`, whose first
         significant line is five integers, so the two ``.inp`` drivers never both
         accept one file.
 

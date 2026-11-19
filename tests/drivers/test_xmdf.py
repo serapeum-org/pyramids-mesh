@@ -18,7 +18,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.xmdf import _GROUPTYPE, XmdfDriver, _XmdfReader
+from pyramids_mesh.drivers.river_hydraulics.xmdf import _GROUPTYPE, XmdfDriver, _XmdfReader
 
 _DATA = Path(__file__).parent.parent / "data" / "xmdf"
 _MESH = _DATA / "minimal.2dm"

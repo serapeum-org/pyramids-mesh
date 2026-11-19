@@ -56,7 +56,7 @@ node ids. Only the trailing ids are kept.
 
 ## API
 
-::: pyramids_mesh.drivers.netgen.NetgenDriver
+::: pyramids_mesh.drivers.engineering.netgen.NetgenDriver
     options:
         show_root_heading: true
         show_source: true

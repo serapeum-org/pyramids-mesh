@@ -55,7 +55,7 @@ faces = mesh.mesh.face_node_connectivity   # triangles and quadrilaterals
 
 ## API
 
-::: pyramids_mesh.drivers.gid.GidDriver
+::: pyramids_mesh.drivers.river_hydraulics.gid.GidDriver
     options:
         show_root_heading: true
         show_source: true

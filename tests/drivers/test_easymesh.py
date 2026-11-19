@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.easymesh import EasymeshDriver
+from pyramids_mesh.drivers.generic.easymesh import EasymeshDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "easymesh"
 _NODE = _DATA / "square.n"

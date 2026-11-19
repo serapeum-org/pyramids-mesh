@@ -47,7 +47,7 @@ bed = mesh.get("node_z")      # ADCIRC bathymetric depth
 
 ## API
 
-::: pyramids_mesh.drivers.adcirc.AdcircDriver
+::: pyramids_mesh.drivers.coastal_ocean.adcirc.AdcircDriver
     options:
         show_root_heading: true
         show_source: true

@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.srh2d import Srh2dDriver, _Srh2dReader
+from pyramids_mesh.drivers.river_hydraulics.srh2d import Srh2dDriver, _Srh2dReader
 
 _DATA = Path(__file__).parent.parent / "data" / "srh2d"
 _GEOM = _DATA / "Muncie.srhgeom"

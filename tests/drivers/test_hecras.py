@@ -17,7 +17,7 @@ import pytest
 from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasReader
+from pyramids_mesh.drivers.river_hydraulics.hecras import _SUMMARY_PATH, HecRasDriver, _HecRasReader
 
 _DATA = Path(__file__).parent.parent / "data" / "hecras"
 _PLAN = _DATA / "BaldEagleDamBrk.p18.hdf"

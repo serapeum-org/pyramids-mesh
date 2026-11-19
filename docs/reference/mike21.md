@@ -53,7 +53,7 @@ A triangle in a quad mesh is padded with a trailing `0` node id. Since ids are 1
 
 ## API
 
-::: pyramids_mesh.drivers.misc.Mike21Driver
+::: pyramids_mesh.drivers.river_hydraulics.misc.Mike21Driver
     options:
         show_root_heading: true
         show_source: true

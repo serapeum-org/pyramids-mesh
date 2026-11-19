@@ -38,7 +38,7 @@ node-data and cell-data sections are discarded — this is a geometry reader.
 
 ## API
 
-::: pyramids_mesh.drivers.avsucd.AvsUcdDriver
+::: pyramids_mesh.drivers.engineering.avsucd.AvsUcdDriver
     options:
         show_root_heading: true
         show_source: true

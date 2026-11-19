@@ -72,7 +72,7 @@ footprint = mesh.mesh      # NODES polygons, one horizontal footprint
 
 ## API
 
-::: pyramids_mesh.drivers.modflow.Modflow6DisuDriver
+::: pyramids_mesh.drivers.subsurface.modflow.Modflow6DisuDriver
     options:
         show_root_heading: true
         show_source: true

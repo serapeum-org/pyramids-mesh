@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.abaqus import AbaqusDriver
-from pyramids_mesh.drivers.avsucd import AvsUcdDriver
+from pyramids_mesh.drivers.engineering.abaqus import AbaqusDriver
+from pyramids_mesh.drivers.engineering.avsucd import AvsUcdDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _ABAQUS = _DATA / "abaqus" / "nle1xf3c.inp"

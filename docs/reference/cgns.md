@@ -49,7 +49,7 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
 ## API
 
-::: pyramids_mesh.drivers.cgns.CgnsDriver
+::: pyramids_mesh.drivers.generic.cgns.CgnsDriver
     options:
         show_root_heading: true
         show_source: true

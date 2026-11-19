@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.scrip import ScripDriver, _array_units, _ScripReader
+from pyramids_mesh.drivers.earth_system.scrip import ScripDriver, _array_units, _ScripReader
 
 _DATA = Path(__file__).parent.parent / "data"
 _GRID = _DATA / "scrip" / "outCSne8.nc"
@@ -124,7 +124,7 @@ def test_declares_read_mesh_only():
 
 def test_radian_corners_are_converted_to_degrees():
     """A ``units`` of radians is honoured, so the corner read comes back in degrees."""
-    from pyramids_mesh.drivers.scrip import _to_degrees
+    from pyramids_mesh.drivers.earth_system.scrip import _to_degrees
 
     radians = np.array([0.0, np.pi / 2, np.pi])
     assert np.allclose(_to_degrees(radians, "radians"), [0.0, 90.0, 180.0])

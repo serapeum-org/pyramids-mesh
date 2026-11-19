@@ -27,7 +27,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
-from pyramids_mesh.drivers._gr3 import read_gr3_grid, sniff_gr3
+from pyramids_mesh.drivers.coastal_ocean._gr3 import read_gr3_grid, sniff_gr3
 
 _GRID_NAME = "fort.14"
 _RESULT_NAMES = ("fort.63.nc",)  # the NetCDF elevation series read here
@@ -122,7 +122,7 @@ class AdcircDriver(BaseDriver):
 
         Cheap and discriminating: line 2 is the ``NE NP`` count pair (two positive ints)
         and the first node line is ``id x y depth`` (one int then three floats). Shared
-        with the SCHISM reader through :func:`pyramids_mesh.drivers._gr3.sniff_gr3`, since
+        with the SCHISM reader through :func:`pyramids_mesh.drivers.coastal_ocean._gr3.sniff_gr3`, since
         ``fort.14`` and ``.gr3`` open identically.
         """
         return sniff_gr3(path)

@@ -48,7 +48,7 @@ layout.
 
 ## API
 
-::: pyramids_mesh.drivers.xmdf.XmdfDriver
+::: pyramids_mesh.drivers.river_hydraulics.xmdf.XmdfDriver
     options:
         show_root_heading: true
         show_source: true

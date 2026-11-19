@@ -82,7 +82,7 @@ class VtkDriver(BaseDriver):
             >>> import os
             >>> import tempfile
             >>> import warnings
-            >>> from pyramids_mesh.drivers.vtk import VtkDriver
+            >>> from pyramids_mesh.drivers.generic.vtk import VtkDriver
             >>> text = '''# vtk DataFile Version 3.0
             ... example
             ... ASCII
@@ -112,7 +112,7 @@ class VtkDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.vtk import VtkDriver
+            >>> from pyramids_mesh.drivers.generic.vtk import VtkDriver
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "junk.vtk")
             ...     with open(path, "w", encoding="utf-8") as handle:

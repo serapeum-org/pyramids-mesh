@@ -81,7 +81,7 @@ The reader turns the 2D surface sections into faces and drops the rest:
 
 ## API
 
-::: pyramids_mesh.drivers.medit.MeditDriver
+::: pyramids_mesh.drivers.engineering.medit.MeditDriver
     options:
         show_root_heading: true
         show_source: true

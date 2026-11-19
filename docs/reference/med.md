@@ -46,7 +46,7 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
 ## API
 
-::: pyramids_mesh.drivers.med.MedDriver
+::: pyramids_mesh.drivers.engineering.med.MedDriver
     options:
         show_root_heading: true
         show_source: true

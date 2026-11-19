@@ -22,8 +22,8 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.gid import GidDriver, _as_float, _as_int
-from pyramids_mesh.drivers.gmsh import GmshDriver
+from pyramids_mesh.drivers.river_hydraulics.gid import GidDriver, _as_float, _as_int
+from pyramids_mesh.drivers.engineering.gmsh import GmshDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _GID = str(_DATA / "gid" / "tube_2D_spline.GiD.msh")

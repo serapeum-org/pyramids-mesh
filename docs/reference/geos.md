@@ -43,7 +43,7 @@ mesh.mesh.n_face          # the cubed-sphere cells
 
 ## API
 
-::: pyramids_mesh.drivers.geos.GeosDriver
+::: pyramids_mesh.drivers.earth_system.geos.GeosDriver
     options:
         show_root_heading: true
         show_source: true

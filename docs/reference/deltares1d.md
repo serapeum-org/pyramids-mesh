@@ -48,7 +48,7 @@ print(network.n_node, network.n_edge)
 
 ## API
 
-::: pyramids_mesh.drivers.deltares.DeltaresNetworkDriver
+::: pyramids_mesh.drivers.river_hydraulics.deltares.DeltaresNetworkDriver
     options:
         show_root_heading: true
         show_source: true

@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.stl import StlDriver
+from pyramids_mesh.drivers.generic.stl import StlDriver
 
 _SAMPLE = Path(__file__).parent.parent / "data" / "stl" / "Cube.stl"
 

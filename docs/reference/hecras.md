@@ -48,7 +48,7 @@ HDF5 is read through the GDAL multidimensional API over the GDAL vendored in `py
 
 ## API
 
-::: pyramids_mesh.drivers.hecras.HecRasDriver
+::: pyramids_mesh.drivers.river_hydraulics.hecras.HecRasDriver
     options:
         show_root_heading: true
         show_source: true

@@ -59,7 +59,7 @@ n = mesh.get("manning_n")       # face-located Manning's n (MANNINGN)
 
 ## API
 
-::: pyramids_mesh.drivers.riverflow2d.RiverFlow2dDriver
+::: pyramids_mesh.drivers.river_hydraulics.riverflow2d.RiverFlow2dDriver
     options:
         show_root_heading: true
         show_source: true

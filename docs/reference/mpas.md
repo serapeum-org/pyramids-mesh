@@ -53,7 +53,7 @@ table carries both 5- and 6-node rows.
 
 ## API
 
-::: pyramids_mesh.drivers.mpas.MpasDriver
+::: pyramids_mesh.drivers.earth_system.mpas.MpasDriver
     options:
         show_root_heading: true
         show_source: true

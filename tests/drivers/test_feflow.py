@@ -20,7 +20,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.feflow import FeflowDriver, _FeflowReader
+from pyramids_mesh.drivers.subsurface.feflow import FeflowDriver, _FeflowReader
 
 _DATA = Path(__file__).parent.parent / "data"
 _FEM = _DATA / "feflow" / "disv_nodes.fem"

@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.openfoam import (
+from pyramids_mesh.drivers.engineering.openfoam import (
     OpenFoamDriver,
     _foam_list,
     _OpenFoamReader,

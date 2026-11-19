@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.adcirc import AdcircDriver
+from pyramids_mesh.drivers.coastal_ocean.adcirc import AdcircDriver
 
 _DATA = Path(__file__).parent.parent / "data" / "adcirc"
 _GRID = _DATA / "fort.14"
@@ -193,7 +193,7 @@ def test_can_open_declines_when_sniff_raises(tmp_path, monkeypatch):
 
 def test_read_attr_returns_none_on_runtime_error():
     """_read_attr swallows a GDAL RuntimeError raised by Read() and returns None."""
-    from pyramids_mesh.drivers.adcirc import _read_attr
+    from pyramids_mesh.drivers.coastal_ocean.adcirc import _read_attr
 
     class _Attr:
         def GetName(self):

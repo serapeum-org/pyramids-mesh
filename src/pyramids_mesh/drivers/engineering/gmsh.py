@@ -294,7 +294,7 @@ class GmshDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.gmsh import GmshDriver
+            >>> from pyramids_mesh.drivers.engineering.gmsh import GmshDriver
             >>> text = '''$MeshFormat
             ... 2.2 0 8
             ... $EndMeshFormat
@@ -327,7 +327,7 @@ class GmshDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.gmsh import GmshDriver
+            >>> from pyramids_mesh.drivers.engineering.gmsh import GmshDriver
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "junk.msh")
             ...     with open(path, "w", encoding="utf-8") as handle:

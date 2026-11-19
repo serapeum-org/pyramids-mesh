@@ -107,7 +107,7 @@ class SelafinDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.telemac import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
             ...     SelafinDriver,
             ...     build_minimal_fixture_selafin,
             ... )
@@ -127,7 +127,7 @@ class SelafinDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.telemac import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
             ...     SelafinDriver,
             ...     build_minimal_fixture_selafin,
             ... )
@@ -351,7 +351,7 @@ def build_minimal_fixture_selafin(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.telemac import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
             ...     SelafinDriver,
             ...     build_minimal_fixture_selafin,
             ... )

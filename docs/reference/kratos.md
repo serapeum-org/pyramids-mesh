@@ -37,7 +37,7 @@ leading `elem_id` and `prop_id` columns are dropped; `Conditions`, `Properties` 
 
 ## API
 
-::: pyramids_mesh.drivers.kratos.KratosDriver
+::: pyramids_mesh.drivers.engineering.kratos.KratosDriver
     options:
         show_root_heading: true
         show_source: true

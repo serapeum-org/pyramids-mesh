@@ -85,7 +85,7 @@ class SwwDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.anuga import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.anuga import (
             ...     SwwDriver,
             ...     build_minimal_fixture_sww,
             ... )
@@ -107,7 +107,7 @@ class SwwDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.anuga import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.anuga import (
             ...     SwwDriver,
             ...     build_minimal_fixture_sww,
             ... )
@@ -190,7 +190,7 @@ def build_minimal_fixture_sww(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.anuga import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.anuga import (
             ...     SwwDriver,
             ...     build_minimal_fixture_sww,
             ... )

@@ -44,7 +44,7 @@ elevation = mesh.get("node_z")
 
 ## API
 
-::: pyramids_mesh.drivers.esri.EsriTinDriver
+::: pyramids_mesh.drivers.river_hydraulics.esri.EsriTinDriver
     options:
         show_root_heading: true
         show_source: true

@@ -53,7 +53,7 @@ A fixed-field real may embed its exponent sign without an `E` — `-2.45-16` mea
 
 ## API
 
-::: pyramids_mesh.drivers.nastran.NastranDriver
+::: pyramids_mesh.drivers.engineering.nastran.NastranDriver
     options:
         show_root_heading: true
         show_source: true

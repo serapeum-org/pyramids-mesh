@@ -16,7 +16,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.gmsh import GmshDriver, _as_float, _as_int
+from pyramids_mesh.drivers.engineering.gmsh import GmshDriver, _as_float, _as_int
 
 _DATA = Path(__file__).parent.parent / "data" / "gmsh"
 _V22 = str(_DATA / "insulated-2.2.msh")

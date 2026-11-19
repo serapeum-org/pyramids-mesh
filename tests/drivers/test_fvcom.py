@@ -16,7 +16,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, mesh_drivers
 
-from pyramids_mesh.drivers.fvcom import FvcomDriver, _header_count
+from pyramids_mesh.drivers.coastal_ocean.fvcom import FvcomDriver, _header_count
 
 _DATA = Path(__file__).parent.parent / "data" / "fvcom"
 _GRD = _DATA / "chn_grd.dat"
