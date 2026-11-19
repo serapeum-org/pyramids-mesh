@@ -73,8 +73,8 @@ company**.
 | `med`           | `salome`      | SALOME / code_aster | `engineering`   | EDF/CEA simulation platform                              | MED-file (`.med`)                                  |
 | `medit`         | `medit`       | Medit (INRIA)       | `engineering`   | INRIA mesh viewer                                        | Medit mesh (`.mesh`)                               |
 | `netgen`        | `netgen`      | Netgen              | `engineering`   | Open-source mesh generator                               | Netgen volume mesh (`.vol`, `.vol.gz`)             |
-| `su2`           | `su2`         | SU2                 | `engineering`   | Open-source CFD / multiphysics suite                     | SU2 native mesh (`.su2`)                           |
-| `openfoam`      | `openfoam`    | OpenFOAM            | `engineering`   | Open-source CFD toolbox                                  | OpenFOAM polyMesh (`.foam`)                        |
+| `su2`           | `su2`         | SU2                 | `cfd`           | Open-source CFD / multiphysics suite                     | SU2 native mesh (`.su2`)                           |
+| `openfoam`      | `openfoam`    | OpenFOAM            | `cfd`           | Open-source CFD toolbox                                  | OpenFOAM polyMesh (`.foam`)                        |
 | `kratos`        | `kratos`      | Kratos Multiphysics | `engineering`   | Open-source multiphysics FEM framework                   | Kratos model part (`.mdpa`)                        |
 | `flac3d`        | `flac3d`      | FLAC3D              | `engineering`   | Itasca geomechanics solver                               | FLAC3D grid (`.f3grid`)                            |
 | `tecplot`       | `tecplot`     | Tecplot             | `engineering`   | CFD / engineering visualization                          | Tecplot FE ASCII (`.dat`, `.tec`)                  |

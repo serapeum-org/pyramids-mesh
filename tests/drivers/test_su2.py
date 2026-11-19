@@ -20,7 +20,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.engineering.su2 import Su2Driver
+from pyramids_mesh.drivers.cfd.su2 import Su2Driver
 
 _DATA = Path(__file__).parent.parent / "data" / "su2"
 _QUADS = _DATA / "5x5Mesh.su2"

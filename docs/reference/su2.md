@@ -58,7 +58,7 @@ The VTK cell codes are triangle `5`, quadrilateral `9`, line `3`, tetra `10` and
 
 ## API
 
-::: pyramids_mesh.drivers.engineering.su2.Su2Driver
+::: pyramids_mesh.drivers.cfd.su2.Su2Driver
     options:
         show_root_heading: true
         show_source: true

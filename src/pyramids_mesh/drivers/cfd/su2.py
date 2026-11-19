@@ -96,7 +96,7 @@ class Su2Driver(BaseDriver):
           0-based connectivity preserved and the boundary markers recorded as metadata.
           (Shown, not run as a doctest -- it reads a committed data file.)::
 
-            from pyramids_mesh.drivers.engineering.su2 import Su2Driver
+            from pyramids_mesh.drivers.cfd.su2 import Su2Driver
 
             dataset = Su2Driver().read("tests/data/su2/5x5Mesh.su2")
             dataset.mesh.n_node, dataset.mesh.n_face          # (36, 25)
