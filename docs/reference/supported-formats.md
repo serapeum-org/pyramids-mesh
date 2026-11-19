@@ -45,7 +45,7 @@ company**.
 | `sww`           | `anuga`       | ANUGA               | `coastal_ocean` | Shallow-water flood & tsunami model                      | SWW, NetCDF (`.sww`)                               |
 | `tuflowfv`      | `tuflowfv`    | TUFLOW FV           | `coastal_ocean` | Flexible-mesh flood/coastal hydrodynamic solver          | TUFLOW FV results, NetCDF (`.nc`)                  |
 | `dfsu`          | `mike`        | DHI MIKE            | `coastal_ocean` | DHI's coastal/estuarine hydrodynamic suite               | DFSU, needs `dhi` extra (`.dfsu`)                  |
-| `mike21`        | `misc`        | DHI MIKE 21         | `coastal_ocean` | DHI's 2D coastal/estuarine hydrodynamic model            | MIKE 21 mesh (`.mesh`)                             |
+| `mike21`        | `mike21`      | DHI MIKE 21         | `coastal_ocean` | DHI's 2D coastal/estuarine hydrodynamic model            | MIKE 21 mesh (`.mesh`)                             |
 | `3di`           | `threedi`     | 3Di                 | `coastal_ocean` | Urban/rural flood-modelling platform                     | 3Di results, NetCDF (`.nc`)                        |
 | `hecras`        | `hecras`      | HEC-RAS             | `river_flood`   | USACE river hydraulics & flood model                     | HEC-RAS HDF5 plan file (`.hdf`, `.hdf5`)           |
 | `flo2d`         | `flo2d`       | FLO-2D              | `river_flood`   | Flood-routing / overland-flow model                      | FLO-2D (`.out`)                                    |

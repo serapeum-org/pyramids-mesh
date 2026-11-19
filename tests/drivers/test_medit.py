@@ -25,7 +25,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.coastal_ocean.misc import Mike21Driver
+from pyramids_mesh.drivers.coastal_ocean.mike21 import Mike21Driver
 from pyramids_mesh.drivers.engineering.medit import MeditDriver
 
 _DATA = Path(__file__).parent.parent / "data"

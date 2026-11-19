@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.coastal_ocean import misc
-from pyramids_mesh.drivers.coastal_ocean.misc import (
+from pyramids_mesh.drivers.coastal_ocean import mike21
+from pyramids_mesh.drivers.coastal_ocean.mike21 import (
     Mike21Driver,
     build_minimal_fixture_mike21,
 )
@@ -280,7 +280,7 @@ def test_mike21_empty_projection_maps_to_none():
     The Mike21 header always carries a projection token, so the empty case is reached
     only by calling the mapper directly; it is covered here rather than left dark.
     """
-    assert misc._projection_to_crs("") is None
+    assert mike21._projection_to_crs("") is None
 
 
 def test_mike21_unrecognised_header_is_refused(tmp_path):
@@ -660,7 +660,7 @@ class TestIsInt:
             Unsigned base-10 digit runs (including zero) are True; signed, grouped
             (``1_000``), float, exponent, name and empty forms are False.
         """
-        assert misc._is_int(value) is expected, f"_is_int({value!r}) != {expected}"
+        assert mike21._is_int(value) is expected, f"_is_int({value!r}) != {expected}"
 
 
 class TestClassifyHeader:
@@ -700,7 +700,7 @@ class TestClassifyHeader:
             negative). A legacy projection beginning with two integers is the documented
             ambiguous case -- it is read as EUM ``(456, 3)`` rather than refused.
         """
-        assert misc._classify_header(tokens) == expected, (
+        assert mike21._classify_header(tokens) == expected, (
             f"_classify_header({tokens!r}) != {expected}"
         )
 

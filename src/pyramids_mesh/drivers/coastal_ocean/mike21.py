@@ -1,10 +1,8 @@
-"""One-off drivers with no shared parser: Mike21, with H2i and ADCIRC still to come.
+"""DHI MIKE 21 ``.mesh`` reader.
 
-Mike21 ``.mesh`` is plain text despite the DHI name, so it needs no extra and lives in
-phase 2 next to 2DM rather than with the DFS drivers. H2i and ADCIRC have no
-driver-table entry in the reference landscape, so their support there is unstated --
-verify against a real file before implementing. Tasks D4 and D12; see
-``planning/design.md`` section 20.1.
+MIKE 21's ``.mesh`` is plain text despite the DHI name, so it needs no optional extra
+(unlike the DFSU driver) and lives in ``coastal_ocean`` beside the other DHI MIKE driver.
+Task D4; see ``planning/design.md`` section 20.1.
 
 The Mike21 structure here was first read from the format specification and is now
 validated against DHI's published sample meshes in both header layouts, which read back
@@ -104,7 +102,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.mike21 import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -124,7 +122,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.mike21 import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -142,7 +140,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.mike21 import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -160,7 +158,7 @@ class Mike21Driver(BaseDriver):
             >>> import os
             >>> import tempfile
             >>> from pathlib import Path
-            >>> from pyramids_mesh.drivers.coastal_ocean.misc import Mike21Driver
+            >>> from pyramids_mesh.drivers.coastal_ocean.mike21 import Mike21Driver
             >>> legacy = (
             ...     "4 UTM-33\n"
             ...     "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
@@ -352,7 +350,7 @@ def build_minimal_fixture_mike21(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.coastal_ocean.misc import build_minimal_fixture_mike21
+            >>> from pyramids_mesh.drivers.coastal_ocean.mike21 import build_minimal_fixture_mike21
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.mesh")
             ...     build_minimal_fixture_mike21(path)
