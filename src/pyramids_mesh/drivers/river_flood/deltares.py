@@ -163,8 +163,8 @@ class DeltaresNetworkDriver(BaseDriver):
             print(network.n_node, network.n_edge)
     """
 
-    name = "deltares1d"
-    long_name = "Deltares 1D network (Delft3D FM / D-HYDRO)"
+    name = "delft3d-1d"
+    long_name = "Delft3D FM / D-HYDRO 1D network"
     suffixes = (".nc",)
     api_version = MESH_DRIVER_API_VERSION
     capabilities = frozenset({"read_mesh", "read_data", "lazy_data"})
@@ -257,6 +257,19 @@ def _as_str(value):
     if isinstance(value, (list, tuple)):
         return str(value[0]) if value else None
     return str(value)
+
+
+class DHydro1dDriver(DeltaresNetworkDriver):
+    """The same Delft3D FM 1D reader, registered under the D-HYDRO name.
+
+    Delft3D FM and the D-HYDRO Suite are the same software under two names, both of which
+    write this 1D-network UGRID file, so the reader is exposed under both ``delft3d-1d``
+    (the base class) and ``dhydro-1d`` (this alias). Behaviour is identical; only the
+    ``name`` a caller passes to ``driver=`` differs.
+    """
+
+    name = "dhydro-1d"
+    long_name = "D-HYDRO / Delft3D FM 1D network"
 
 
 class _DeltaresReader:

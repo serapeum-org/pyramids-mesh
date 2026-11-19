@@ -9,7 +9,7 @@ cell layer as a surface mesh.
 
 | | |
 |---|---|
-| **Driver name** | `modflow6_disv` |
+| **Driver name** | `modflow6-disv` |
 | **Suffixes** | `.disv` (the ASCII grid input of a MODFLOW 6 model) |
 | **Capabilities** | `read_mesh` |
 
@@ -45,7 +45,7 @@ rather than only matching the name:
 ```python
 from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
+mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6-disv")
 footprint = mesh.mesh      # NCPL polygons, one horizontal layer
 ```
 

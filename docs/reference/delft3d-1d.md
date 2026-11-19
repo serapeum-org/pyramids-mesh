@@ -1,19 +1,23 @@
-# Deltares 1D network — Delft3D FM / D-HYDRO UGRID NetCDF
+# Delft3D FM / D-HYDRO 1D network — UGRID NetCDF
 
-The Deltares 1D reader, building a `Mesh1d` from the **`mesh1d` discretisation** of a
-Delft3D FM / D-HYDRO UGRID-1.0 + Deltares-extension file: the computational nodes along
-the branches and their edge connectivity. Read through the vendored GDAL multidimensional
-API (no declared dependency).
+The Delft3D FM / D-HYDRO 1D reader, building a `Mesh1d` from the **`mesh1d` discretisation**
+of a UGRID-1.0 + Deltares-extension file: the computational nodes along the branches and
+their edge connectivity. Read through the vendored GDAL multidimensional API (no declared
+dependency).
+
+Delft3D FM and the D-HYDRO Suite are the same software under two names, so the reader is
+registered under both — `delft3d-1d` and its alias `dhydro-1d`. Either resolves to the same
+`Mesh1d`; pick whichever name you call the software.
 
 | | |
 |---|---|
-| Driver name | `deltares1d` |
+| Driver names | `delft3d-1d`, `dhydro-1d` (aliases) |
 | Suffixes | `.nc` |
 | Capabilities | `read_mesh`, `read_data`, `lazy_data` |
 | Extra required | none |
 | Returns | `Mesh1d` |
 
-A Deltares 1D file carries two one-dimensional topologies — a `network` of branches and a
+A Delft3D FM / D-HYDRO 1D file carries two one-dimensional topologies — a `network` of branches and a
 `mesh1d` discretisation — plus `mesh1d_*` results over `time` on a map file. Both are
 found by their `cf_role` attributes (`mesh_topology`, `edge_node_connectivity`), never by
 a hard-coded name, so the two spellings in the wild (`network`/`mesh1d` and

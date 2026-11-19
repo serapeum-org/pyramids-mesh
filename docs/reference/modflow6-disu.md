@@ -10,7 +10,7 @@ block-parsing helpers and refuses a connectivity-only DISU, which carries no geo
 
 | | |
 |---|---|
-| **Driver name** | `modflow6_disu` |
+| **Driver name** | `modflow6-disu` |
 | **Suffixes** | `.disu` (the ASCII grid input of a MODFLOW 6 model) |
 | **Capabilities** | `read_mesh` |
 | **Returns** | `MeshDataset` |
@@ -49,7 +49,7 @@ A `.disu` file dispatches by its suffix; `can_open` confirms the DISU `DIMENSION
 ```python
 from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6_disu")
+mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6-disu")
 footprint = mesh.mesh      # NODES polygons, one horizontal footprint
 ```
 

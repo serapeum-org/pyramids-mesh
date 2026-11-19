@@ -112,11 +112,11 @@ class Modflow6DisvDriver(BaseDriver):
 
             from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6_disv")
+            mesh = MeshDataset.read_file("model/tri_model.disv", driver="modflow6-disv")
             footprint = mesh.mesh      # NCPL polygons, one horizontal layer
     """
 
-    name = "modflow6_disv"
+    name = "modflow6-disv"
     long_name = "MODFLOW 6 DISV"
     suffixes = (".disv",)
     api_version = MESH_DRIVER_API_VERSION
@@ -439,11 +439,11 @@ class Modflow6DisuDriver(BaseDriver):
 
             from pyramids.netcdf.ugrid import MeshDataset
 
-            mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6_disu")
+            mesh = MeshDataset.read_file("model/keating.disu", driver="modflow6-disu")
             footprint = mesh.mesh      # NODES polygons, one horizontal footprint
     """
 
-    name = "modflow6_disu"
+    name = "modflow6-disu"
     long_name = "MODFLOW 6 DISU"
     suffixes = (".disu",)
     api_version = MESH_DRIVER_API_VERSION

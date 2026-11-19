@@ -111,11 +111,11 @@ def test_dispatch_through_read_file_by_driver_name():
     original = _drivers._CACHE
     try:
         registry = dict(original or {})
-        registry["modflow6_disv"] = Modflow6DisvDriver()
+        registry["modflow6-disv"] = Modflow6DisvDriver()
         _drivers._CACHE = registry
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            dataset = MeshDataset.read_file(str(_DISV), driver="modflow6_disv")
+            dataset = MeshDataset.read_file(str(_DISV), driver="modflow6-disv")
     finally:
         _drivers._CACHE = original
     assert dataset.mesh.n_face == 200

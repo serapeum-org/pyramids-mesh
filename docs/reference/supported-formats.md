@@ -12,7 +12,7 @@ Two naming axes are at work (see the per-format pages for detail):
 - the **driver name** is the *format or model handle* a user asks for — the format name where it has a
   well-known one (`2dm`, `dfsu`, `selafin`), the model name where the file is that model's native
   output (`hecras`, `adcirc`, `3di`), or a vendor + variant where disambiguation is needed
-  (`deltares1d`, `modflow6_disv`).
+  (`modflow6-disv`, `modflow6-disu`).
 
 ## coastal_ocean — coastal, estuarine and ocean circulation
 
@@ -39,7 +39,8 @@ Two naming axes are at work (see the per-format pages for detail):
 | `2dm` | `.2dm` | SMS / TUFLOW 2DM mesh |
 | `dat` | `.dat` | SMS ASCII DAT results |
 | `xmdf` | `.xmdf`, `.h5` | XMDF HDF5 results |
-| `deltares1d` | `.nc` | Deltares 1D network (Delft3D FM / D-HYDRO) |
+| `delft3d-1d` | `.nc` | Delft3D FM / D-HYDRO 1D network |
+| `dhydro-1d` | `.nc` | Alias of `delft3d-1d` (same reader, D-HYDRO name) |
 | `gid` | `.msh` | GiD / CIMNE ASCII mesh (Iber) |
 
 ## earth_system — global atmosphere/ocean grids and remapping weights
@@ -56,8 +57,8 @@ Two naming axes are at work (see the per-format pages for detail):
 
 | Driver | Suffix(es) | Format / model |
 |---|---|---|
-| `modflow6_disv` | `.disv` | MODFLOW 6 DISV (discretization by vertices) |
-| `modflow6_disu` | `.disu` | MODFLOW 6 DISU (unstructured discretization) |
+| `modflow6-disv` | `.disv` | MODFLOW 6 DISV (discretization by vertices) |
+| `modflow6-disu` | `.disu` | MODFLOW 6 DISU (unstructured discretization) |
 | `feflow` | `.fem` | DHI FEFLOW (classic ASCII) |
 
 ## engineering — FEM / CAE and CFD solver meshes
@@ -90,7 +91,7 @@ Two naming axes are at work (see the per-format pages for detail):
 | `off` | `.off` | Object File Format |
 | `ply` | `.ply` | Stanford PLY |
 | `xmstin` | `.tin` | XMS / SMS TIN |
-| `esri_tin` | `.adf` | Esri TIN (directory of `.adf` files) |
+| `esri-tin` | `.adf` | Esri TIN (directory of `.adf` files) |
 | `triangle` | `.node`, `.ele` | Triangle / TetGen |
 | `easymesh` | `.n`, `.e` | SWAN Easymesh |
 
@@ -100,7 +101,7 @@ Several extensions are claimed by more than one driver, so the suffix alone cann
 
 | Suffix | Claimed by |
 |---|---|
-| `.nc` | `3di`, `tuflowfv`, `deltares1d`, `mpas`, `icon`, `geos`, `esmf`, `scrip` |
+| `.nc` | `3di`, `tuflowfv`, `delft3d-1d`, `dhydro-1d`, `mpas`, `icon`, `geos`, `esmf`, `scrip` |
 | `.dat` | `dat`, `fvcom`, `tecplot` |
 | `.inp` | `abaqus`, `avsucd` |
 | `.msh` | `gmsh`, `gid` |
@@ -113,5 +114,5 @@ For an ambiguous suffix, name the driver explicitly:
 ```python
 from pyramids.netcdf.ugrid import MeshDataset
 
-mesh = MeshDataset.read_file("model.nc", driver="deltares1d")
+mesh = MeshDataset.read_file("model.nc", driver="delft3d-1d")
 ```

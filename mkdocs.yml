@@ -135,7 +135,7 @@ nav:
     - FLO-2D (flood): reference/flo2d.md
     - HEC-RAS 2D: reference/hecras.md
     - ADCIRC: reference/adcirc.md
-    - Deltares 1D (D-Flow FM): reference/deltares1d.md
+    - Delft3D FM / D-HYDRO 1D: reference/delft3d-1d.md
     - SCHISM (.gr3): reference/schism.md
     - Gmsh (.msh): reference/gmsh.md
     - VTK / VTU: reference/vtk.md
@@ -148,7 +148,7 @@ nav:
     - Exodus II (.exo): reference/exodus.md
     - SU2 (.su2): reference/su2.md
     - SRH-2D: reference/srh2d.md
-    - MODFLOW 6 DISU: reference/modflow6_disu.md
+    - MODFLOW 6 DISU: reference/modflow6-disu.md
     - FEFLOW (.fem): reference/feflow.md
     - SCRIP grid: reference/scrip.md
     - ESMF mesh: reference/esmf.md

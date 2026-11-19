@@ -28,18 +28,19 @@ its suffixes, capabilities and documented limitations:
 | `3di` | 3Di results (NetCDF) | [3Di](3di.md) |
 | `tuflowfv` | TUFLOW FV results (NetCDF, 2D) | [TUFLOW FV](tuflowfv.md) |
 | `dfsu` | DHI MIKE DFSU (needs `dhi`) | [DFSU](dfsu.md) |
-| `esri_tin` | Esri TIN (directory of `.adf`) | [Esri TIN](esri-tin.md) |
+| `esri-tin` | Esri TIN (directory of `.adf`) | [Esri TIN](esri-tin.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
 | `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
 | `xdmf` | XDMF (XML index over HDF5) | [XDMF](xdmf.md) |
 | `flo2d` | FLO-2D (directory of files) | [FLO-2D](flo2d.md) |
 | `hecras` | HEC-RAS 2D (HDF5 plan file) | [HEC-RAS 2D](hecras.md) |
 | `adcirc` | ADCIRC (`fort.14` + `fort.63.nc`) | [ADCIRC](adcirc.md) |
-| `deltares1d` | Deltares 1D network (NetCDF, `Mesh1d`) | [Deltares 1D (D-Flow FM)](deltares1d.md) |
+| `delft3d-1d` | Delft3D FM / D-HYDRO 1D network (NetCDF, `Mesh1d`) | [Delft3D FM / D-HYDRO 1D](delft3d-1d.md) |
+| `dhydro-1d` | Alias of `delft3d-1d` (same reader, D-HYDRO name) | [Delft3D FM / D-HYDRO 1D](delft3d-1d.md) |
 | `schism` | SCHISM hgrid.gr3 (ASCII) | [SCHISM (.gr3)](schism.md) |
 | `gmsh` | Gmsh .msh (v2.2 + v4.1) | [Gmsh (.msh)](gmsh.md) |
 | `vtk` | VTK / VTU unstructured grid | [VTK / VTU](vtk.md) |
-| `modflow6_disv` | MODFLOW 6 DISV (groundwater vertex grid) | [MODFLOW 6 DISV](modflow6.md) |
+| `modflow6-disv` | MODFLOW 6 DISV (groundwater vertex grid) | [MODFLOW 6 DISV](modflow6.md) |
 | `mpas` | MPAS Voronoi mesh (NetCDF) | [MPAS (NetCDF)](mpas.md) |
 | `icon` | ICON icosahedral grid (NetCDF) | [ICON (NetCDF)](icon.md) |
 | `fvcom` | FVCOM native `*_grd.dat` (ASCII) | [FVCOM (native grid)](fvcom.md) |
@@ -48,7 +49,7 @@ its suffixes, capabilities and documented limitations:
 | `exodus` | Exodus II (NetCDF-based FEM) | [Exodus II (.exo)](exodus.md) |
 | `su2` | SU2 `.su2` (ASCII FEM) | [SU2 (.su2)](su2.md) |
 | `srh2d` | SRH-2D (`.srhgeom`+`.srhhydro`) | [SRH-2D](srh2d.md) |
-| `modflow6_disu` | MODFLOW 6 DISU (groundwater, unstructured) | [MODFLOW 6 DISU](modflow6_disu.md) |
+| `modflow6-disu` | MODFLOW 6 DISU (groundwater, unstructured) | [MODFLOW 6 DISU](modflow6-disu.md) |
 | `feflow` | FEFLOW `.fem` (groundwater FEM) | [FEFLOW (.fem)](feflow.md) |
 | `scrip` | SCRIP remap grid (NetCDF) | [SCRIP grid](scrip.md) |
 | `esmf` | ESMF unstructured mesh (NetCDF) | [ESMF mesh](esmf.md) |

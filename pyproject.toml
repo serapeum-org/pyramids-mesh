@@ -38,7 +38,7 @@ dependencies = [
     # plus the `*_names` accessors), 0.77.0 renamed more netcdf members (e.g.
     # `MeshDataset.get_data` -> subscription `mesh[name]`, which the notebooks now use)
     # and fixed the xarray-interop install hint, and 0.78.0 added
-    # `place_nodes_on_network`, the linear-referencing primitive the deltares1d driver
+    # `place_nodes_on_network`, the linear-referencing primitive the delft3d-1d driver
     # calls to resolve branch+offset node geometry (ADR-0005: that derivation is owned
     # by pyramids, not duplicated here).
     "pyramids-core >=0.78.0",
@@ -153,16 +153,17 @@ xmdf = "pyramids_mesh.drivers.river_flood.xmdf:XmdfDriver"
 3di = "pyramids_mesh.drivers.coastal_ocean.threedi:ThreeDiDriver"
 tuflowfv = "pyramids_mesh.drivers.coastal_ocean.tuflowfv:TuflowFvDriver"
 dfsu = "pyramids_mesh.drivers.coastal_ocean.dhi:DfsuDriver"
-esri_tin = "pyramids_mesh.drivers.generic.esri:EsriTinDriver"
+esri-tin = "pyramids_mesh.drivers.generic.esri:EsriTinDriver"
 xdmf = "pyramids_mesh.drivers.generic.xdmf:XdmfDriver"
 flo2d = "pyramids_mesh.drivers.river_flood.flo2d:Flo2dDriver"
 hecras = "pyramids_mesh.drivers.river_flood.hecras:HecRasDriver"
 adcirc = "pyramids_mesh.drivers.coastal_ocean.adcirc:AdcircDriver"
-deltares1d = "pyramids_mesh.drivers.river_flood.deltares:DeltaresNetworkDriver"
+delft3d-1d = "pyramids_mesh.drivers.river_flood.deltares:DeltaresNetworkDriver"
+dhydro-1d = "pyramids_mesh.drivers.river_flood.deltares:DHydro1dDriver"
 schism = "pyramids_mesh.drivers.coastal_ocean.schism:SchismDriver"
 gmsh = "pyramids_mesh.drivers.engineering.gmsh:GmshDriver"
 vtk = "pyramids_mesh.drivers.generic.vtk:VtkDriver"
-modflow6_disv = "pyramids_mesh.drivers.subsurface.modflow:Modflow6DisvDriver"
+modflow6-disv = "pyramids_mesh.drivers.subsurface.modflow:Modflow6DisvDriver"
 mpas = "pyramids_mesh.drivers.earth_system.mpas:MpasDriver"
 icon = "pyramids_mesh.drivers.earth_system.icon:IconDriver"
 fvcom = "pyramids_mesh.drivers.coastal_ocean.fvcom:FvcomDriver"
@@ -171,7 +172,7 @@ easymesh = "pyramids_mesh.drivers.generic.easymesh:EasymeshDriver"
 exodus = "pyramids_mesh.drivers.engineering.exodus:ExodusDriver"
 su2 = "pyramids_mesh.drivers.engineering.su2:Su2Driver"
 srh2d = "pyramids_mesh.drivers.river_flood.srh2d:Srh2dDriver"
-modflow6_disu = "pyramids_mesh.drivers.subsurface.modflow:Modflow6DisuDriver"
+modflow6-disu = "pyramids_mesh.drivers.subsurface.modflow:Modflow6DisuDriver"
 feflow = "pyramids_mesh.drivers.subsurface.feflow:FeflowDriver"
 scrip = "pyramids_mesh.drivers.earth_system.scrip:ScripDriver"
 esmf = "pyramids_mesh.drivers.earth_system.esmf:EsmfDriver"
