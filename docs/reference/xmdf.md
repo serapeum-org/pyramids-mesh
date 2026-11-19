@@ -48,7 +48,7 @@ layout.
 
 ## API
 
-::: pyramids_mesh.drivers.river_flood.aquaveo.xms.XmdfDriver
+::: pyramids_mesh.drivers.river_flood.xms.XmdfDriver
     options:
         show_root_heading: true
         show_source: true

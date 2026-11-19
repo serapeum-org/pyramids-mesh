@@ -15,8 +15,8 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d, MeshDataset
 
-from pyramids_mesh.drivers.river_flood.aquaveo import sms
-from pyramids_mesh.drivers.river_flood.aquaveo.sms import (
+from pyramids_mesh.drivers.river_flood import sms
+from pyramids_mesh.drivers.river_flood.sms import (
     TwoDmDriver,
     build_minimal_fixture,
 )

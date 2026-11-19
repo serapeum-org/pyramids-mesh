@@ -48,9 +48,7 @@ def minimal_file(driver, tmp_path):
     if builder is None:
         # A driver name may be hyphenated (`xms-tin`); the builder is a Python
         # identifier, so fall back to the hyphen->underscore spelling.
-        builder = getattr(
-            module, f"build_minimal_fixture_{driver.name.replace('-', '_')}", None
-        )
+        builder = getattr(module, f"build_minimal_fixture_{driver.name.replace('-', '_')}", None)
     if builder is None:
         builder = getattr(module, "build_minimal_fixture", None)
     if builder is None:

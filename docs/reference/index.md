@@ -73,7 +73,7 @@ its suffixes, capabilities and documented limitations:
 
 The package root deliberately re-exports nothing (`__all__` is empty): it carries `__version__` and
 the import contract that activates the vendored osgeo bindings. Driver classes are reached by their
-module path — `pyramids_mesh.drivers.river_flood.aquaveo.sms.TwoDmDriver` — which is also how their entry points name
+module path — `pyramids_mesh.drivers.river_flood.sms.TwoDmDriver` — which is also how their entry points name
 them, though normal use goes through `pyramids` rather than importing them at all.
 
 For the mesh data model itself — `Mesh2d`, `Mesh1d`, `MeshDataset`, connectivity, graph
