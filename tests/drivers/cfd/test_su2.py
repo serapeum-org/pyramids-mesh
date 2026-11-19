@@ -1,0 +1,355 @@
+"""Tests for the SU2 reader (C11), against the committed su2code samples.
+
+The fixtures are genuine SU2 ``.su2`` meshes committed under ``tests/data/su2/``
+(LGPL-2.1, su2code/TestCases): ``5x5Mesh.su2`` (25 quadrilaterals, 36 nodes) and
+``square.su2`` (128 triangles, 81 nodes). The tests read the committed bytes, so they
+cover the traps a real SU2 file carries: VTK-typed rows of mixed arity, 0-based
+connectivity, the trailing element/point index columns, and the boundary markers.
+
+The ``min_3d_*.su2`` fixtures are minimal one-cell files, each a real NELEM row of a 3-D
+volume cell (tetrahedron, hexahedron, prism, pyramid) lifted from the su2code
+``deformation/brick_*`` meshes, used to pin the 3-D-volume rejection message (#95).
+"""
+
+import pyramids  # noqa: F401  # isort:skip
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+from pyramids.base._errors import FileFormatNotSupportedError
+from pyramids.netcdf.ugrid import MeshDataset
+
+from pyramids_mesh.drivers.cfd.su2 import Su2Driver
+
+_DATA = Path(__file__).parent.parent.parent / "data" / "su2"
+_QUADS = _DATA / "5x5Mesh.su2"
+_TRIANGLES = _DATA / "square.su2"
+
+
+def _read(path):
+    """Read a committed SU2 sample."""
+    return Su2Driver().read(str(path))
+
+
+def _signed_area2(mesh, row):
+    """Twice the signed area of one face of a built mesh (positive = CCW)."""
+    real = row[row != -1]
+    xs = np.asarray(mesh.node_x)[real]
+    ys = np.asarray(mesh.node_y)[real]
+    return float(np.dot(xs, np.roll(ys, -1)) - np.dot(ys, np.roll(xs, -1)))
+
+
+def test_quad_file_reads_nodes_and_quad_faces():
+    """5x5Mesh.su2 builds a 36-node mesh of 25 four-node faces."""
+    mesh = _read(_QUADS).mesh
+
+    assert mesh.n_node == 36
+    assert mesh.n_face == 25
+    assert mesh.face_node_connectivity.data.shape == (25, 4)
+
+
+def test_triangle_file_reads_nodes_and_tri_faces():
+    """square.su2 builds an 81-node mesh of 128 three-node faces."""
+    mesh = _read(_TRIANGLES).mesh
+
+    assert mesh.n_node == 81
+    assert mesh.n_face == 128
+    assert mesh.face_node_connectivity.data.shape == (128, 3)
+
+
+@pytest.mark.parametrize(
+    "path, first_face",
+    [(_QUADS, [0, 1, 7, 6]), (_TRIANGLES, [0, 1, 9])],
+)
+def test_connectivity_is_zero_based_and_not_shifted(path, first_face):
+    """SU2 is 0-based: the node indices arrive unshifted, base 0 recorded for a writer.
+
+    The first element of each file is a known 0-based row, so a stray ``-1`` shift (the
+    1-based re-basing the 2DM driver applies) would move every index and be caught here.
+    """
+    connectivity = _read(path).mesh.face_node_connectivity
+
+    assert int(connectivity.data.min()) == 0
+    assert connectivity.original_start_index == 0
+    assert connectivity.data[0].tolist() == first_face
+
+
+@pytest.mark.parametrize("path", [_QUADS, _TRIANGLES])
+def test_every_face_comes_back_counter_clockwise(path):
+    """Validation orients each face counter-clockwise, whatever the file's winding."""
+    mesh = _read(path).mesh
+
+    for row in mesh.face_node_connectivity.data:
+        assert _signed_area2(mesh, row) > 0
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        (_QUADS, {"bottom": 5, "left": 5, "right": 5, "top": 5}),
+        (_TRIANGLES, {"lower": 8, "right": 8, "upper": 8, "left": 8}),
+    ],
+)
+def test_boundary_markers_are_recorded_as_metadata(path, expected):
+    """Each MARKER_TAG group is kept as su2_markers (tag -> boundary-element count)."""
+    dataset = _read(path)
+
+    assert dataset.global_attributes["su2_markers"] == expected
+    assert dataset.global_attributes["source"] == "SU2"
+    assert dataset.global_attributes["NDIME"] == 2
+
+
+def test_mixed_triangle_and_quad_file_pads_to_the_widest(tmp_path):
+    """A file mixing a triangle and a quad pads the triangle row to width 4 with -1."""
+    text = """NDIME= 2
+NELEM= 2
+5 0 1 2 0
+9 0 1 2 3 1
+NPOIN= 4
+0.0 0.0 0
+1.0 0.0 1
+1.0 1.0 2
+0.0 1.0 3
+NMARK= 0
+"""
+    path = tmp_path / "mixed.su2"
+    path.write_text(text, encoding="utf-8")
+
+    connectivity = Su2Driver().read(str(path)).mesh.face_node_connectivity
+
+    assert connectivity.data.shape == (2, 4)
+    assert connectivity.data[0, 3] == -1
+    assert sorted(int(v) for v in connectivity.data[1]) == [0, 1, 2, 3]
+
+
+def test_glued_card_value_is_accepted(tmp_path):
+    """A card written NDIME=2 (no space after =) reads as NDIME= 2 does."""
+    text = "NDIME=2\nNELEM=1\n5 0 1 2 0\nNPOIN=3\n0 0 0\n1 0 1\n0 1 2\nNMARK=0\n"
+    path = tmp_path / "glued.su2"
+    path.write_text(text, encoding="utf-8")
+
+    assert Su2Driver().read(str(path)).mesh.n_face == 1
+
+
+# The committed minimal volume fixtures: one real NELEM row of each 3-D cell type, lifted
+# from the su2code deformation/brick_* meshes (see data/su2/SOURCE.txt). Each must be
+# refused with an explicit "3-D volume mesh" message naming the cell -- regression for #95.
+_VOLUME_FIXTURES = [
+    ("min_3d_tet_rejected.su2", 10, "tetrahedron"),
+    ("min_3d_hex_rejected.su2", 12, "hexahedron"),
+    ("min_3d_prism_rejected.su2", 13, "prism"),
+    ("min_3d_pyra_rejected.su2", 14, "pyramid"),
+]
+
+
+@pytest.mark.parametrize("name, code, cell", _VOLUME_FIXTURES)
+def test_three_dimensional_volume_mesh_is_refused_with_explicit_message(
+    name, code, cell
+):
+    """Every 3-D volume cell type is refused with an explicit "3-D volume mesh" message.
+
+    Regression for issue #95: a real 3-D SU2 volume mesh (tetrahedron 10, hexahedron 12,
+    prism 13 or pyramid 14) must fail with a message that names the cell and calls it a
+    3-D volume mesh -- not a generic "unknown code". Prism (13) and pyramid (14) are codes
+    SU2 genuinely writes, so they must not be reported as unknown. The fixtures are the
+    committed one-cell ``min_3d_*.su2`` files, each a real element row from su2code.
+    """
+    with pytest.raises(FileFormatNotSupportedError) as excinfo:
+        _read(_DATA / name)
+
+    message = str(excinfo.value)
+    assert "3-D volume mesh" in message
+    # Pin the name-to-code pairing on the discriminating clause: every message also lists
+    # all four cell names in a static tail, so a bare ``cell in message`` would pass even
+    # for the wrong cell. Only "holds <cell> cells (VTK code <code>)" is fixture-specific.
+    assert f"holds {cell} cells (VTK code {code})" in message
+
+
+def test_mixed_surface_then_volume_still_refuses_on_the_volume_cell(tmp_path):
+    """A triangle followed by a tetrahedron is still refused, on the volume row.
+
+    ``_read_nelem`` streams the NELEM rows in order, so a valid surface element preceding
+    a volume cell must not mask the rejection: the refusal has to fire on the first volume
+    row (here the second element), not be swallowed by the accumulated face.
+    """
+    text = (
+        "NDIME= 3\n"
+        "NELEM= 2\n"
+        "5 0 1 2\n"
+        "10 0 1 2 3\n"
+        "NPOIN= 4\n"
+        "0 0 0\n1 0 0\n0 1 0\n0 0 1\n"
+        "NMARK= 0\n"
+    )
+    path = _write(tmp_path, "mixed_vol.su2", text)
+    with pytest.raises(FileFormatNotSupportedError, match="holds tetrahedron cells"):
+        Su2Driver().read(path)
+
+
+def test_unknown_vtk_code_is_refused(tmp_path):
+    """An element code outside the SU2 surface/volume set is refused, naming the code."""
+    text = "NDIME= 2\nNELEM= 1\n7 0 1 2 0\nNPOIN= 3\n0 0 0\n1 0 1\n0 1 2\nNMARK= 0\n"
+    path = tmp_path / "bad.su2"
+    path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(FileFormatNotSupportedError, match="unsupported element code 7"):
+        Su2Driver().read(str(path))
+
+
+def test_short_element_row_is_refused(tmp_path):
+    """A quad row short of its four node ids is a format error, not an IndexError."""
+    text = "NDIME= 2\nNELEM= 1\n9 0 1 2\nNPOIN= 3\n0 0 0\n1 0 1\n0 1 2\nNMARK= 0\n"
+    path = tmp_path / "short.su2"
+    path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(FileFormatNotSupportedError, match="short NELEM row"):
+        Su2Driver().read(str(path))
+
+
+def test_can_open_declines_junk_and_foreign_content(tmp_path):
+    """can_open declines non-SU2 content, an empty or binary file, and never raises."""
+    driver = Su2Driver()
+    junk = tmp_path / "junk.su2"
+    junk.write_text("hello world\nnothing here\n", encoding="utf-8")
+    empty = tmp_path / "empty.su2"
+    empty.write_bytes(b"")
+    binary = tmp_path / "binary.su2"
+    binary.write_bytes(bytes(range(256)) * 4)
+    foreign = tmp_path / "mesh.txt"
+    foreign.write_text("NDIME= 2\nNELEM= 1\n", encoding="utf-8")
+
+    assert driver.can_open(str(junk)) is False
+    assert driver.can_open(str(empty)) is False
+    assert driver.can_open(str(binary)) is False
+    assert driver.can_open(str(tmp_path / "missing.su2")) is False
+    # Right content, wrong suffix: the suffix gate still applies.
+    assert driver.can_open(str(foreign)) is False
+
+
+def test_dispatch_accepts_the_committed_files_and_returns_a_dataset():
+    """The dispatch gate (can_open) selects both samples, and read yields a dataset.
+
+    can_open is the discriminator pyramids uses to route a path to a driver, so a True
+    here on each committed file, paired with a built MeshDataset, is the dispatch path
+    this driver exposes once its entry point is registered.
+    """
+    driver = Su2Driver()
+
+    for path in (_QUADS, _TRIANGLES):
+        assert driver.can_open(str(path)) is True
+        assert isinstance(driver.read(str(path)), MeshDataset)
+
+
+def test_declares_read_mesh_only():
+    """The driver advertises read_mesh and nothing else."""
+    assert set(Su2Driver.capabilities) == {"read_mesh"}
+    assert Su2Driver.name == "su2"
+    assert Su2Driver.suffixes == (".su2",)
+
+
+def _write(tmp_path, name, text):
+    """Write an SU2 snippet to tmp_path and return its path as a string."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
+def test_stray_top_level_row_is_skipped(tmp_path):
+    """A bare data row and an unknown valued card outside a section are ignored."""
+    text = (
+        "NDIME= 2\n"
+        "99 99\n"
+        "AOA=3.0\n"
+        "NELEM= 1\n"
+        "5 0 1 2\n"
+        "NPOIN= 3\n"
+        "0.0 0.0\n"
+        "1.0 0.0\n"
+        "0.0 1.0\n"
+        "NMARK= 0\n"
+    )
+    assert Su2Driver().read(_write(tmp_path, "stray.su2", text)).mesh.n_face == 1
+
+
+def test_npoin_before_ndime_is_refused(tmp_path):
+    """NPOIN before a valid NDIME is a format error: the z column is unplaceable."""
+    text = "NPOIN= 1\n0.0 0.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="before a valid NDIME"):
+        Su2Driver().read(_write(tmp_path, "order.su2", text))
+
+
+def test_short_npoin_row_is_refused(tmp_path):
+    """A coordinate row short of NDIME values is a format error, not an IndexError."""
+    text = "NDIME= 2\nNPOIN= 1\n0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="short NPOIN row"):
+        Su2Driver().read(_write(tmp_path, "shortpoin.su2", text))
+
+
+def test_three_dimensional_surface_mesh_carries_node_z(tmp_path):
+    """An NDIME= 3 surface mesh records the third coordinate as node_z."""
+    text = (
+        "NDIME= 3\n"
+        "NELEM= 1\n"
+        "5 0 1 2\n"
+        "NPOIN= 3\n"
+        "0.0 0.0 0.0\n"
+        "1.0 0.0 0.5\n"
+        "0.0 1.0 1.0\n"
+        "NMARK= 0\n"
+    )
+    dataset = Su2Driver().read(_write(tmp_path, "mesh3d.su2", text))
+
+    node_z = dataset.get("node_z")
+    assert node_z.location == "node"
+    assert node_z.shape == (3,)
+    assert dataset.global_attributes["NDIME"] == 3
+
+
+def test_file_without_ndime_is_refused(tmp_path):
+    """A file carrying no NDIME card is not an SU2 mesh."""
+    text = "% a comment and nothing else\n"
+    with pytest.raises(FileFormatNotSupportedError, match="declares no NDIME"):
+        Su2Driver().read(_write(tmp_path, "nondime.su2", text))
+
+
+def test_file_without_npoin_is_refused(tmp_path):
+    """A file with a dimension but no nodes is refused."""
+    text = "NDIME= 2\nNMARK= 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="declares no NPOIN nodes"):
+        Su2Driver().read(_write(tmp_path, "nonpoin.su2", text))
+
+
+def test_file_without_surface_elements_is_refused(tmp_path):
+    """A file with nodes but no triangle/quad faces is refused."""
+    text = "NDIME= 2\nNPOIN= 1\n0.0 0.0\nNMARK= 0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="no surface elements"):
+        Su2Driver().read(_write(tmp_path, "noface.su2", text))
+
+
+def test_file_truncated_mid_section_is_refused(tmp_path):
+    """A section declaring more rows than the file holds is a clean format error."""
+    text = "NDIME= 2\nNELEM= 2\n5 0 1 2\n"
+    with pytest.raises(FileFormatNotSupportedError, match="ends inside the NELEM"):
+        Su2Driver().read(_write(tmp_path, "trunc.su2", text))
+
+
+def test_card_with_no_value_is_refused(tmp_path):
+    """A section card carrying no value names itself in the format error."""
+    text = "NELEM\n"
+    with pytest.raises(FileFormatNotSupportedError, match="card with no value"):
+        Su2Driver().read(_write(tmp_path, "novalue.su2", text))
+
+
+def test_non_integer_card_value_is_refused(tmp_path):
+    """A non-integer card value is a format error naming the card."""
+    text = "NDIME= x\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed NDIME field"):
+        Su2Driver().read(_write(tmp_path, "badint.su2", text))
+
+
+def test_non_numeric_coordinate_is_refused(tmp_path):
+    """A non-numeric coordinate field is a format error naming the section."""
+    text = "NDIME= 2\nNPOIN= 1\nx 0.0\n"
+    with pytest.raises(FileFormatNotSupportedError, match="malformed NPOIN field"):
+        Su2Driver().read(_write(tmp_path, "badcoord.su2", text))
