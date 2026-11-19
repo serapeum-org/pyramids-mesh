@@ -2,7 +2,7 @@
 
 The SWAN Easymesh reader. SWAN defines no native unstructured grid: `READGRID UNSTRUCTURED`
 delegates to ADCIRC (`fort.14`), Triangle (`.node`/`.ele`) or Easymesh (`.n`/`.e`). The
-first two are covered by the [ADCIRC](adcirc.md) and [Triangle / TetGen](triangle.md)
+first two are covered by the [ADCIRC](../coastal_ocean/adcirc.md) and [Triangle / TetGen](triangle.md)
 readers; this driver adds the third, so all three SWAN unstructured routes are read. Pure
 ASCII, parsed with the standard library and numpy (no declared dependency).
 
@@ -51,7 +51,7 @@ Easymesh also writes a third `.s` sides file and closes each file with two trail
   to 0-based and recorded for a writer.
 - **Node markers, element neighbours, side ids, the circumcentre and the sign are ignored**,
   and no CRS is declared — the format carries none, so `crs` is `None` rather than guessed.
-- **The `.e` suffix is shared with the [Exodus II](exodus.md) driver.** Dispatch resolves by
+- **The `.e` suffix is shared with the [Exodus II](../finite_element/exodus.md) driver.** Dispatch resolves by
   content, not registration order: an Exodus `.e` is binary NetCDF (its sniff declines an ASCII
   file) and this driver requires a sibling `.n`, which an Exodus `.e` never has — so each real
   file resolves to exactly one driver.
