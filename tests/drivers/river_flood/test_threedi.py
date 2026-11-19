@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.coastal_ocean.threedi import ThreeDiDriver
+from pyramids_mesh.drivers.river_flood.threedi import ThreeDiDriver
 
 _RESULTS = Path(__file__).parent.parent.parent / "data" / "3di" / "results_3di.nc"
 

@@ -128,8 +128,8 @@ nav:
       - TUFLOW FV (results): reference/coastal_ocean/tuflowfv.md
       - DFSU (DHI MIKE): reference/coastal_ocean/dfsu.md
       - Mike21 (DHI mesh): reference/coastal_ocean/mike21.md
-      - 3Di (results): reference/coastal_ocean/3di.md
     - river_flood:
+      - 3Di (urban/rural flood): reference/river_flood/3di.md
       - HEC-RAS 2D: reference/river_flood/hecras.md
       - FLO-2D (flood): reference/river_flood/flo2d.md
       - RiverFlow2D (.fed): reference/river_flood/riverflow2d.md

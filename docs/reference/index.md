@@ -25,7 +25,7 @@ its suffixes, capabilities and documented limitations:
 | `selafin` | TELEMAC Selafin / Serafin | [Selafin](coastal_ocean/selafin.md) |
 | `sww` | ANUGA SWW (NetCDF) | [SWW](coastal_ocean/sww.md) |
 | `xmdf` | XMDF HDF5 results | [XMDF](river_flood/xmdf.md) |
-| `3di` | 3Di results (NetCDF) | [3Di](coastal_ocean/3di.md) |
+| `3di` | 3Di results (NetCDF) | [3Di](river_flood/3di.md) |
 | `tuflowfv` | TUFLOW FV results (NetCDF, 2D) | [TUFLOW FV](coastal_ocean/tuflowfv.md) |
 | `dfsu` | DHI MIKE DFSU (needs `dhi`) | [DFSU](coastal_ocean/dfsu.md) |
 | `arcgis-tin` | Esri TIN (directory of `.adf`) | [Esri TIN](geometry/arcgis-tin.md) |

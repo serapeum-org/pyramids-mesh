@@ -40,7 +40,7 @@ water_level = mesh.get("Mesh2D_s1")   # face-located, over time
 
 ## API
 
-::: pyramids_mesh.drivers.coastal_ocean.threedi.ThreeDiDriver
+::: pyramids_mesh.drivers.river_flood.threedi.ThreeDiDriver
     options:
         show_root_heading: true
         show_source: true

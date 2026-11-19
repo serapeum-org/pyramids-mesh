@@ -18,7 +18,9 @@ from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
 from pyramids_mesh.drivers.earth_system.icon import IconDriver, _orient_faces
 
-_GRID = Path(__file__).parent.parent.parent / "data" / "icon" / "icon_grid_R02B04_subset.nc"
+_GRID = (
+    Path(__file__).parent.parent.parent / "data" / "icon" / "icon_grid_R02B04_subset.nc"
+)
 
 
 def _read():

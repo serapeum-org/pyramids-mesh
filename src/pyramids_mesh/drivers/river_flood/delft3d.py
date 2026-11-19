@@ -39,7 +39,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION, place_nodes_on_network
 
 from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
-from pyramids_mesh.drivers.coastal_ocean.threedi import (
+from pyramids_mesh.drivers.river_flood.threedi import (
     _ThreeDiLoader,  # reopen-per-read lazy loader
 )
 
