@@ -25,7 +25,7 @@ from osgeo import gdal
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import Mesh1d
 
-from pyramids_mesh.drivers.river_flood.deltares import (
+from pyramids_mesh.drivers.river_flood.delft3d import (
     DeltaresNetworkDriver,
     _as_str,
     _attr_map,
@@ -807,7 +807,7 @@ def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
     a non-numeric offset must leave ``_parse`` as the driver's documented decline type, never
     a raw ``ValueError``.
     """
-    from pyramids_mesh.drivers.river_flood import deltares
+    from pyramids_mesh.drivers.river_flood import delft3d
 
     mesh1d = _Array(
         attrs=[
@@ -831,8 +831,8 @@ def test_parse_declines_a_non_numeric_offset_file_end_to_end(monkeypatch):
             "mesh1d_node_offset": _Array(value=np.array(["x", "y"], dtype=object)),
         }
     )
-    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
-    driver = deltares.DeltaresNetworkDriver()
+    monkeypatch.setattr(delft3d.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = delft3d.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="could not be resolved"):
         driver._parse("malformed.nc", lazy=True)
 
@@ -858,7 +858,7 @@ def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
     ``RuntimeError`` on the dereference, which must surface as the documented
     ``FileFormatNotSupportedError``.
     """
-    from pyramids_mesh.drivers.river_flood import deltares
+    from pyramids_mesh.drivers.river_flood import delft3d
 
     topo = _Array(
         attrs=[
@@ -868,19 +868,19 @@ def test_build_translates_a_dangling_reference_to_a_format_error(monkeypatch):
         ]
     )
     group = _RaisingGroup({"mesh1d": topo}, missing="missing_x")
-    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
-    driver = deltares.DeltaresNetworkDriver()
+    monkeypatch.setattr(delft3d.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = delft3d.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="not a readable Deltares 1D"):
         driver._parse("dangling.nc", lazy=True)
 
 
 def test_build_propagates_a_format_error_unwrapped(monkeypatch):
     """A ``FileFormatNotSupportedError`` from inside build re-raises as itself."""
-    from pyramids_mesh.drivers.river_flood import deltares
+    from pyramids_mesh.drivers.river_flood import delft3d
 
     group = _Group({"mesh2d": _topo_array(2)})
-    monkeypatch.setattr(deltares.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
-    driver = deltares.DeltaresNetworkDriver()
+    monkeypatch.setattr(delft3d.gdal, "OpenEx", lambda *a, **k: _FakeDataset(group))
+    driver = delft3d.DeltaresNetworkDriver()
     with pytest.raises(FileFormatNotSupportedError, match="no 1D mesh_topology"):
         driver._parse("no_1d.nc", lazy=True)
 

@@ -6,7 +6,7 @@ a single file. Read through plain binary parsing and the vendored GDAL for the p
 
 | | |
 |---|---|
-| Driver name | `esri-tin` |
+| Driver name | `arcgis-tin` |
 | Suffixes | `.adf` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
@@ -22,7 +22,7 @@ from pyramids.netcdf.ugrid import MeshDataset
 mesh = MeshDataset.read_file("path/to/tin/tdenv9.adf")
 
 # or pass the directory with an explicit driver
-mesh = MeshDataset.read_file("path/to/tin", driver="esri-tin")
+mesh = MeshDataset.read_file("path/to/tin", driver="arcgis-tin")
 
 elevation = mesh.get("node_z")
 ```
@@ -30,7 +30,7 @@ elevation = mesh.get("node_z")
 ## Documented limitations
 
 - **The input is a directory of `.adf` files.** `read_file` reaches it through any `.adf`
-  component, or through `driver="esri-tin"` on the directory. A raster `.adf` (an Esri
+  component, or through `driver="arcgis-tin"` on the directory. A raster `.adf` (an Esri
   GRID), whose directory has no triangle table, is declined.
 - **Masked triangles are dropped.** The convex-hull frame triangles flagged in `tmsk.adf`
   are excluded, so the mesh is the surface the TIN represents; the frame nodes they
@@ -44,7 +44,7 @@ elevation = mesh.get("node_z")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.esri.EsriTinDriver
+::: pyramids_mesh.drivers.generic.arcgis.EsriTinDriver
     options:
         show_root_heading: true
         show_source: true

@@ -32,7 +32,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "xmdf",
     "3di",
     "tuflowfv",
-    "esri-tin",
+    "arcgis-tin",
     "xdmf",
     "flo2d",
     "hecras",

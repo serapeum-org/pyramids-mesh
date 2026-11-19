@@ -128,7 +128,7 @@ nav:
     - 3Di (results): reference/3di.md
     - TUFLOW FV (results): reference/tuflowfv.md
     - DFSU (DHI MIKE): reference/dfsu.md
-    - Esri TIN (directory): reference/esri-tin.md
+    - Esri TIN (directory): reference/arcgis-tin.md
     - PLY (Stanford): reference/ply.md
     - XMS TIN: reference/xmstin.md
     - XDMF (XML+HDF5): reference/xdmf.md

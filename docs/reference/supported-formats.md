@@ -15,7 +15,7 @@ Two naming axes are at work:
   one (`2dm`, `dfsu`, `selafin`), the software name where the file is that software's native output
   (`hecras`, `adcirc`, `3di`), or a name plus a variant where one toolchain emits several grids
   (`modflow6-disv`, `modflow6-disu`). Multi-word driver names are **hyphenated**, never underscored
-  (`delft3d-1d`, `dhydro-1d`, `esri-tin`, `modflow6-disv`); a single compact token stays one word
+  (`delft3d-1d`, `dhydro-1d`, `arcgis-tin`, `modflow6-disv`); a single compact token stays one word
   (`2dm`, `3di`, `flo2d`, `srh2d`). Subpackage and package names, being Python identifiers, keep
   underscores (`coastal_ocean`, `pyramids_mesh`).
 
@@ -69,7 +69,7 @@ Two naming axes are at work:
 | `off`           | -                   | `generic`       | Simple geometry format (Geomview)                        | Object File Format (`.off`)                        |
 | `ply`           | Stanford            | `generic`       | Polygon geometry format                                  | Stanford PLY (`.ply`)                              |
 | `xmstin`        | Aquaveo XMS         | `generic`       | XMS suite triangulated surface                           | XMS / SMS TIN (`.tin`)                             |
-| `esri-tin`      | Esri (ArcGIS)       | `generic`       | GIS platform; TIN terrain surface                        | Esri TIN, directory of `.adf`                      |
+| `arcgis-tin`      | Esri (ArcGIS)       | `generic`       | GIS platform; TIN terrain surface                        | Esri TIN, directory of `.adf`                      |
 | `triangle`      | Triangle / TetGen   | `generic`       | 2D/3D mesh generators (Shewchuk / Si)                    | Triangle node+ele (`.node`, `.ele`)                |
 | `easymesh`      | EasyMesh            | `generic`       | 2D triangular mesh generator (for SWAN)                  | SWAN Easymesh (`.n`, `.e`)                         |
 

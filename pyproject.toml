@@ -152,14 +152,14 @@ xmstin = "pyramids_mesh.drivers.generic.interchange:XmsTinDriver"
 xmdf = "pyramids_mesh.drivers.river_flood.xmdf:XmdfDriver"
 3di = "pyramids_mesh.drivers.coastal_ocean.threedi:ThreeDiDriver"
 tuflowfv = "pyramids_mesh.drivers.coastal_ocean.tuflowfv:TuflowFvDriver"
-dfsu = "pyramids_mesh.drivers.coastal_ocean.dhi:DfsuDriver"
-esri-tin = "pyramids_mesh.drivers.generic.esri:EsriTinDriver"
+dfsu = "pyramids_mesh.drivers.coastal_ocean.mike:DfsuDriver"
+arcgis-tin = "pyramids_mesh.drivers.generic.arcgis:EsriTinDriver"
 xdmf = "pyramids_mesh.drivers.generic.xdmf:XdmfDriver"
 flo2d = "pyramids_mesh.drivers.river_flood.flo2d:Flo2dDriver"
 hecras = "pyramids_mesh.drivers.river_flood.hecras:HecRasDriver"
 adcirc = "pyramids_mesh.drivers.coastal_ocean.adcirc:AdcircDriver"
-delft3d-1d = "pyramids_mesh.drivers.river_flood.deltares:DeltaresNetworkDriver"
-dhydro-1d = "pyramids_mesh.drivers.river_flood.deltares:DHydro1dDriver"
+delft3d-1d = "pyramids_mesh.drivers.river_flood.delft3d:DeltaresNetworkDriver"
+dhydro-1d = "pyramids_mesh.drivers.river_flood.delft3d:DHydro1dDriver"
 schism = "pyramids_mesh.drivers.coastal_ocean.schism:SchismDriver"
 gmsh = "pyramids_mesh.drivers.engineering.gmsh:GmshDriver"
 vtk = "pyramids_mesh.drivers.generic.vtk:VtkDriver"
@@ -293,13 +293,13 @@ source = ["src/pyramids_mesh"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 # `pytest --doctest-modules src/pyramids_mesh` (the `static` CI job and the local `doctest`
-# pre-commit hook) imports every module it collects. drivers/coastal_ocean/dhi.py imports the
+# pre-commit hook) imports every module it collects. drivers/coastal_ocean/mike.py imports the
 # optional `mikeio` extra at module top -- that eager import is the registry's skip-on-missing-
 # extra mechanism -- so in an env without the extra the import raises and collection errors out.
 # dhi.py carries no executable `>>>` doctests, so there is nothing to collect there either way;
 # ignore it unconditionally rather than guarding collection with a conftest. (If a real doctest is
 # ever added to dhi.py it will need the `dhi` env and this ignore removed.)
-addopts = "--ignore=src/pyramids_mesh/drivers/coastal_ocean/dhi.py"
+addopts = "--ignore=src/pyramids_mesh/drivers/coastal_ocean/mike.py"
 markers = [
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",

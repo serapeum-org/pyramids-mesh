@@ -9,7 +9,7 @@ holds the node and triangle counts.
 A directory has no file suffix, so ``read_file`` cannot dispatch a bare directory path.
 The driver instead claims ``.adf`` and is reached two ways: ``read_file`` pointed at any
 of the TIN's ``.adf`` component files (``read_file("tin_dir/tdenv9.adf")``), or the
-directory itself passed with ``driver="esri-tin"``. Either way ``can_open`` confirms the
+directory itself passed with ``driver="arcgis-tin"``. Either way ``can_open`` confirms the
 TIN components are present and the reader works from the directory. Nothing here reads a
 raster ``.adf`` (an Esri GRID), which this package does not own -- ``can_open`` declines an
 ``.adf`` whose directory lacks the TIN triangle table.
@@ -78,7 +78,7 @@ class EsriTinDriver(BaseDriver):
     Documented limitations:
         - **The input is a directory of ``.adf`` files.** ``read_file`` cannot dispatch a
           bare directory (it has no suffix), so point it at any of the TIN's ``.adf``
-          files, or pass the directory with ``driver="esri-tin"``. ``can_open`` accepts
+          files, or pass the directory with ``driver="arcgis-tin"``. ``can_open`` accepts
           either and confirms the TIN components are present; a raster ``.adf`` (an Esri
           GRID), whose directory has no triangle table, is declined.
         - **Masked triangles are dropped.** The hull-frame triangles flagged in
@@ -101,7 +101,7 @@ class EsriTinDriver(BaseDriver):
             elevation = mesh.get("node_z")
     """
 
-    name = "esri-tin"
+    name = "arcgis-tin"
     long_name = "Esri TIN"
     # An Esri TIN is a directory; read_file reaches it through any .adf component file.
     suffixes = (".adf",)

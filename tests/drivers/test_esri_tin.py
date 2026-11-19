@@ -17,7 +17,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.generic.esri import (
+from pyramids_mesh.drivers.generic.arcgis import (
     EsriTinDriver,
     _drop_unreferenced_nodes,
     _EsriTinReader,
@@ -199,7 +199,7 @@ def test_reached_through_read_file_with_driver_on_directory():
     """read_file dispatches to this driver for a directory when driver= is given."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        dataset = MeshDataset.read_file(str(_DEM), driver="esri-tin")
+        dataset = MeshDataset.read_file(str(_DEM), driver="arcgis-tin")
     assert dataset.mesh.n_face == 528
 
 
