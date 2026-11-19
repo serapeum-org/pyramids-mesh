@@ -12,9 +12,12 @@ Two naming axes are at work:
   with no single owning tool (`vtk`, `cgns`, `obj`…). A module can hold several drivers (`sms` holds
   both `2dm` and `dat`).
 - the **driver name** is the handle passed to `driver=` — the format name where it has a well-known
-  one (`2dm`, `dfsu`, `selafin`), the software name where the file is that software's native output (`hecras`, `adcirc`,
-  `3di`), or a software + variant where one toolchain emits several grids (`modflow6-disv`, `modflow6-disu`,
-  `delft3d-1d`).
+  one (`2dm`, `dfsu`, `selafin`), the software name where the file is that software's native output
+  (`hecras`, `adcirc`, `3di`), or a name plus a variant where one toolchain emits several grids
+  (`modflow6-disv`, `modflow6-disu`). Multi-word driver names are **hyphenated**, never underscored
+  (`delft3d-1d`, `dhydro-1d`, `esri-tin`, `modflow6-disv`); a single compact token stays one word
+  (`2dm`, `3di`, `flo2d`, `srh2d`). Subpackage and package names, being Python identifiers, keep
+  underscores (`coastal_ocean`, `pyramids_mesh`).
 
 | Driver          | Software            | Subpackage      | What the software is                                     | Format                                             |
 |-----------------|---------------------|-----------------|----------------------------------------------------------|----------------------------------------------------|
