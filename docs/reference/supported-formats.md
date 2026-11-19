@@ -53,7 +53,7 @@ company**.
 | `srh2d`         | `srh2d`       | SRH-2D              | `river_flood`   | USBR 2D river hydraulics & sedimentation model           | SRH-2D (`.srhgeom`, `.srhhydro`)                   |
 | `2dm`           | `sms`         | SMS                 | `river_flood`   | Aquaveo Surface-water Modeling System (GUI)              | SMS/TUFLOW 2DM mesh (`.2dm`)                       |
 | `dat`           | `sms`         | SMS                 | `river_flood`   | Aquaveo Surface-water Modeling System (GUI)              | SMS ASCII DAT results (`.dat`)                     |
-| `xmdf`          | `xmdf`        | Aquaveo XMS         | `river_flood`   | Results container for the XMS suite (SMS/SRH-2D)         | XMDF HDF5 results (`.xmdf`, `.h5`)                 |
+| `xmdf`          | `xms`         | Aquaveo XMS         | `river_flood`   | Results container for the XMS suite (SMS/SRH-2D)         | XMDF HDF5 results (`.xmdf`, `.h5`)                 |
 | `delft3d-1d`    | `delft3d`     | Delft3D FM          | `river_flood`   | Deltares' flexible-mesh hydrodynamic suite               | UGRID-1.0 + Deltares-extension NetCDF (`.nc`)      |
 | `dhydro-1d`     | `delft3d`     | D-HYDRO             | `river_flood`   | Same software, D-HYDRO name; alias of `delft3d-1d`       | UGRID-1.0 + Deltares-extension NetCDF (`.nc`)      |
 | `gid`           | `gid`         | GiD (Iber)          | `river_flood`   | CIMNE pre/post-processor; reads the Iber 2D model export | GiD / CIMNE ASCII mesh (`.msh`)                    |
