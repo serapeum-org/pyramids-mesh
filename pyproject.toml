@@ -291,6 +291,14 @@ source = ["src/pyramids_mesh"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+# `pytest --doctest-modules src/pyramids_mesh` (the `static` CI job and the local `doctest`
+# pre-commit hook) imports every module it collects. drivers/coastal_ocean/dhi.py imports the
+# optional `mikeio` extra at module top -- that eager import is the registry's skip-on-missing-
+# extra mechanism -- so in an env without the extra the import raises and collection errors out.
+# dhi.py carries no executable `>>>` doctests, so there is nothing to collect there either way;
+# ignore it unconditionally rather than guarding collection with a conftest. (If a real doctest is
+# ever added to dhi.py it will need the `dhi` env and this ignore removed.)
+addopts = "--ignore=src/pyramids_mesh/drivers/coastal_ocean/dhi.py"
 markers = [
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
