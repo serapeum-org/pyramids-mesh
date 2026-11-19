@@ -104,7 +104,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -124,7 +124,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -142,7 +142,7 @@ class Mike21Driver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.misc import (
+            >>> from pyramids_mesh.drivers.coastal_ocean.misc import (
             ...     Mike21Driver,
             ...     build_minimal_fixture_mike21,
             ... )
@@ -160,7 +160,7 @@ class Mike21Driver(BaseDriver):
             >>> import os
             >>> import tempfile
             >>> from pathlib import Path
-            >>> from pyramids_mesh.drivers.river_hydraulics.misc import Mike21Driver
+            >>> from pyramids_mesh.drivers.coastal_ocean.misc import Mike21Driver
             >>> legacy = (
             ...     "4 UTM-33\n"
             ...     "1 0.0 0.0 0.0 1\n2 1.0 0.0 0.0 1\n"
@@ -352,7 +352,7 @@ def build_minimal_fixture_mike21(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.misc import build_minimal_fixture_mike21
+            >>> from pyramids_mesh.drivers.coastal_ocean.misc import build_minimal_fixture_mike21
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.mesh")
             ...     build_minimal_fixture_mike21(path)

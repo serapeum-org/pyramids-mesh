@@ -144,7 +144,7 @@ notebook = [
 [project.entry-points."pyramids.mesh_drivers"]
 2dm = "pyramids_mesh.drivers.river_hydraulics.sms:TwoDmDriver"
 dat = "pyramids_mesh.drivers.river_hydraulics.sms:DatDriver"
-mike21 = "pyramids_mesh.drivers.river_hydraulics.misc:Mike21Driver"
+mike21 = "pyramids_mesh.drivers.coastal_ocean.misc:Mike21Driver"
 selafin = "pyramids_mesh.drivers.coastal_ocean.telemac:SelafinDriver"
 sww = "pyramids_mesh.drivers.coastal_ocean.anuga:SwwDriver"
 ply = "pyramids_mesh.drivers.generic.interchange:PlyDriver"

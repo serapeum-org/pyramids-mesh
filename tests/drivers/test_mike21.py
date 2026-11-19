@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.river_hydraulics import misc
-from pyramids_mesh.drivers.river_hydraulics.misc import (
+from pyramids_mesh.drivers.coastal_ocean import misc
+from pyramids_mesh.drivers.coastal_ocean.misc import (
     Mike21Driver,
     build_minimal_fixture_mike21,
 )
