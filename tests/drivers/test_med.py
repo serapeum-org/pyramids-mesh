@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.engineering.med import (
+from pyramids_mesh.drivers.engineering.salome import (
     MedDriver,
     _array_count,
     _med_corner_count,

@@ -69,8 +69,8 @@ company**.
 | `abaqus`        | `abaqus`      | Abaqus              | `engineering`   | Dassault Systemes FEA solver                             | Abaqus keyword deck (`.inp`)                       |
 | `nastran`       | `nastran`     | Nastran             | `engineering`   | Structural FEA solver                                    | Nastran bulk data (`.bdf`, `.nas`, `.fem`)         |
 | `avs-ucd`       | `avs`         | AVS                 | `engineering`   | Advanced Visual Systems visualization                    | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
-| `exodus`        | `exodus`      | Sandia SEACAS       | `engineering`   | Sandia FE pre/post toolkit                               | Exodus II, NetCDF-based (`.exo`, `.e`)             |
-| `med`           | `med`         | SALOME / code_aster | `engineering`   | EDF/CEA simulation platform                              | MED-file (`.med`)                                  |
+| `exodus`        | `seacas`      | Sandia SEACAS       | `engineering`   | Sandia FE pre/post toolkit                               | Exodus II, NetCDF-based (`.exo`, `.e`)             |
+| `med`           | `salome`      | SALOME / code_aster | `engineering`   | EDF/CEA simulation platform                              | MED-file (`.med`)                                  |
 | `medit`         | `medit`       | Medit (INRIA)       | `engineering`   | INRIA mesh viewer                                        | Medit mesh (`.mesh`)                               |
 | `netgen`        | `netgen`      | Netgen              | `engineering`   | Open-source mesh generator                               | Netgen volume mesh (`.vol`, `.vol.gz`)             |
 | `su2`           | `su2`         | SU2                 | `engineering`   | Open-source CFD / multiphysics suite                     | SU2 native mesh (`.su2`)                           |
