@@ -274,11 +274,11 @@ class XmsTinDriver(BaseDriver):
             >>> import tempfile
             >>> from pyramids_mesh.drivers.generic.interchange import (
             ...     XmsTinDriver,
-            ...     build_minimal_fixture_xmstin,
+            ...     build_minimal_fixture_xms_tin,
             ... )
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "surface.tin")
-            ...     build_minimal_fixture_xmstin(path)
+            ...     build_minimal_fixture_xms_tin(path)
             ...     dataset = XmsTinDriver().read(path)
             >>> dataset.mesh.n_node, dataset.mesh.n_face
             (4, 2)
@@ -288,7 +288,7 @@ class XmsTinDriver(BaseDriver):
             1
     """
 
-    name = "xmstin"
+    name = "xms-tin"
     long_name = "XMS / SMS TIN"
     suffixes = (".tin",)
     api_version = MESH_DRIVER_API_VERSION
@@ -320,7 +320,7 @@ class XmsTinDriver(BaseDriver):
         return _TinReader(path).build()
 
 
-def build_minimal_fixture_xmstin(path: str) -> None:
+def build_minimal_fixture_xms_tin(path: str) -> None:
     """Write the smallest valid XMS TIN, for the cross-driver invariant harness.
 
     The unit square split into two counter-clockwise triangles, each vertex carrying an
@@ -334,10 +334,10 @@ def build_minimal_fixture_xmstin(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.interchange import build_minimal_fixture_xmstin
+            >>> from pyramids_mesh.drivers.generic.interchange import build_minimal_fixture_xms_tin
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.tin")
-            ...     build_minimal_fixture_xmstin(path)
+            ...     build_minimal_fixture_xms_tin(path)
             ...     with open(path, encoding="utf-8") as handle:
             ...         text = handle.read()
             >>> text.splitlines()[0]

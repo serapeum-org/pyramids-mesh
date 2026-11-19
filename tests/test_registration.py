@@ -28,7 +28,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "selafin",
     "sww",
     "ply",
-    "xmstin",
+    "xms-tin",
     "xmdf",
     "3di",
     "tuflowfv",

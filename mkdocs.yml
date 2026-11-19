@@ -130,7 +130,7 @@ nav:
     - DFSU (DHI MIKE): reference/dfsu.md
     - Esri TIN (directory): reference/arcgis-tin.md
     - PLY (Stanford): reference/ply.md
-    - XMS TIN: reference/xmstin.md
+    - XMS TIN: reference/xms-tin.md
     - XDMF (XML+HDF5): reference/xdmf.md
     - FLO-2D (flood): reference/flo2d.md
     - HEC-RAS 2D: reference/hecras.md

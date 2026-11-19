@@ -85,7 +85,7 @@ company**.
 | `stl`           | `stl`         | -                   | `generic`       | 3D-printing / CAD surface format                         | STL stereolithography (`.stl`)                     |
 | `off`           | `off`         | -                   | `generic`       | Simple geometry format (Geomview)                        | Object File Format (`.off`)                        |
 | `ply`           | `interchange` | Stanford            | `generic`       | Polygon geometry format                                  | Stanford PLY (`.ply`)                              |
-| `xmstin`        | `interchange` | Aquaveo XMS         | `generic`       | XMS suite triangulated surface                           | XMS / SMS TIN (`.tin`)                             |
+| `xms-tin`       | `interchange` | Aquaveo XMS         | `generic`       | XMS suite triangulated surface                           | XMS / SMS TIN (`.tin`)                             |
 | `arcgis-tin`    | `arcgis`      | Esri (ArcGIS)       | `generic`       | GIS platform; TIN terrain surface                        | Esri TIN, directory of `.adf`                      |
 | `triangle`      | `triangle`    | Triangle / TetGen   | `generic`       | 2D/3D mesh generators (Shewchuk / Si)                    | Triangle node+ele (`.node`, `.ele`)                |
 | `easymesh`      | `easymesh`    | EasyMesh            | `generic`       | 2D triangular mesh generator (for SWAN)                  | SWAN Easymesh (`.n`, `.e`)                         |

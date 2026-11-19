@@ -30,7 +30,7 @@ its suffixes, capabilities and documented limitations:
 | `dfsu` | DHI MIKE DFSU (needs `dhi`) | [DFSU](dfsu.md) |
 | `arcgis-tin` | Esri TIN (directory of `.adf`) | [Esri TIN](arcgis-tin.md) |
 | `ply` | Stanford PLY polygon | [PLY](ply.md) |
-| `xmstin` | XMS / SMS TIN | [XMS TIN](xmstin.md) |
+| `xms-tin` | XMS / SMS TIN | [XMS TIN](xms-tin.md) |
 | `xdmf` | XDMF (XML index over HDF5) | [XDMF](xdmf.md) |
 | `flo2d` | FLO-2D (directory of files) | [FLO-2D](flo2d.md) |
 | `hecras` | HEC-RAS 2D (HDF5 plan file) | [HEC-RAS 2D](hecras.md) |

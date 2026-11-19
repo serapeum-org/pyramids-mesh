@@ -21,7 +21,7 @@ from pyramids_mesh.drivers.generic.interchange import (
     PlyDriver,
     XmsTinDriver,
     build_minimal_fixture_ply,
-    build_minimal_fixture_xmstin,
+    build_minimal_fixture_xms_tin,
 )
 
 _ASCII_PLY = """ply
@@ -394,13 +394,13 @@ TRI 5
         assert driver.can_open(str(directory)) is False
 
     def test_tin_committed_fixture_matches_the_builder(self, tmp_path):
-        """The committed fixture reads and matches ``build_minimal_fixture_xmstin``."""
+        """The committed fixture reads and matches ``build_minimal_fixture_xms_tin``."""
         committed = Path(__file__).parent.parent / "data" / "minimal.tin"
         dataset = XmsTinDriver().read(str(committed))
 
         assert dataset.mesh.n_node == 4
         generated = tmp_path / "generated.tin"
-        build_minimal_fixture_xmstin(str(generated))
+        build_minimal_fixture_xms_tin(str(generated))
         assert generated.read_text(encoding="utf-8") == committed.read_text(
             encoding="utf-8"
         )

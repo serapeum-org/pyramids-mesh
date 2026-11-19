@@ -5,7 +5,7 @@ The XMS / SMS TIN reader. A text triangulated irregular network: a `VERT` block 
 
 | | |
 |---|---|
-| Driver name | `xmstin` |
+| Driver name | `xms-tin` |
 | Suffixes | `.tin` |
 | Capabilities | `read_mesh`, `read_data` |
 | Extra required | none |
