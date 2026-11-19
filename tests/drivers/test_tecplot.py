@@ -18,7 +18,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.engineering.tecplot import TecplotDriver
+from pyramids_mesh.drivers.cfd.tecplot import TecplotDriver
 
 _DATA = Path(__file__).parent.parent / "data"
 _SAMPLE = _DATA / "tecplot" / "quad_zone_space.tec"

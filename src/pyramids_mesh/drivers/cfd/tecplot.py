@@ -301,7 +301,7 @@ class TecplotDriver(BaseDriver):
         Read a Tecplot FE mesh (shown, not run as a doctest -- it needs a real ``.tec``
         file), reached through ``read_file`` or the driver directly::
 
-            from pyramids_mesh.drivers.engineering.tecplot import TecplotDriver
+            from pyramids_mesh.drivers.cfd.tecplot import TecplotDriver
 
             dataset = TecplotDriver().read("mesh.tec")
             dataset.mesh.n_node, dataset.mesh.n_face

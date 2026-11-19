@@ -18,7 +18,7 @@ the `X`/`Y` (and `Z`) coordinates and the connectivity are read, everything else
 | Returns | `MeshDataset` |
 
 ```python
-from pyramids_mesh.drivers.engineering.tecplot import TecplotDriver
+from pyramids_mesh.drivers.cfd.tecplot import TecplotDriver
 
 dataset = TecplotDriver().read("mesh.tec")
 dataset.mesh.n_node, dataset.mesh.n_face
@@ -48,7 +48,7 @@ dataset.mesh.n_node, dataset.mesh.n_face
 
 ## API
 
-::: pyramids_mesh.drivers.engineering.tecplot.TecplotDriver
+::: pyramids_mesh.drivers.cfd.tecplot.TecplotDriver
     options:
         show_root_heading: true
         show_source: true

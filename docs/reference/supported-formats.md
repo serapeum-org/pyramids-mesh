@@ -77,7 +77,7 @@ company**.
 | `openfoam`      | `openfoam`    | OpenFOAM            | `cfd`           | Open-source CFD toolbox                                  | OpenFOAM polyMesh (`.foam`)                        |
 | `kratos`        | `kratos`      | Kratos Multiphysics | `engineering`   | Open-source multiphysics FEM framework                   | Kratos model part (`.mdpa`)                        |
 | `flac3d`        | `flac3d`      | FLAC3D              | `engineering`   | Itasca geomechanics solver                               | FLAC3D grid (`.f3grid`)                            |
-| `tecplot`       | `tecplot`     | Tecplot             | `engineering`   | CFD / engineering visualization                          | Tecplot FE ASCII (`.dat`, `.tec`)                  |
+| `tecplot`       | `tecplot`     | Tecplot             | `cfd`           | CFD / engineering visualization                          | Tecplot FE ASCII (`.dat`, `.tec`)                  |
 | `vtk`           | `vtk`         | VTK (Kitware)       | `generic`       | Visualization Toolkit / ParaView                         | VTK / VTU unstructured grid (`.vtk`, `.vtu`)       |
 | `xdmf`          | `xdmf`        | XDMF                | `cfd`           | Open XML + HDF5 data model                               | XDMF (`.xdmf`, `.xmf`)                             |
 | `cgns`          | `cgns`        | CGNS                | `cfd`           | Open CFD data standard                                   | CGNS / HDF5 (`.cgns`)                              |
