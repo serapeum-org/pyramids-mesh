@@ -5,19 +5,36 @@ Every format `pyramids_mesh` reads. The **driver name** is the handle you pass t
 file, its driver subpackage, what that software is, and the file format. See each format's own
 [reference page](index.md) for capabilities and documented limitations.
 
-Two naming axes are at work:
+## Naming conventions
 
-- the **module** (the `.py` file) is named for the **software/model** that writes the file (`hecras`, `adcirc`,
-  `telemac`…), or for the **format** itself when it is a vendor-neutral standard
-  with no single owning tool (`vtk`, `cgns`, `obj`…). A module can hold several drivers (`sms` holds
-  both `2dm` and `dat`).
-- the **driver name** is the handle passed to `driver=` — the format name where it has a well-known
-  one (`2dm`, `dfsu`, `selafin`), the software name where the file is that software's native output
-  (`hecras`, `adcirc`, `3di`), or a name plus a variant where one toolchain emits several grids
-  (`modflow6-disv`, `modflow6-disu`). Multi-word driver names are **hyphenated**, never underscored
-  (`delft3d-1d`, `dhydro-1d`, `arcgis-tin`, `modflow6-disv`); a single compact token stays one word
-  (`2dm`, `3di`, `flo2d`, `srh2d`). Subpackage and package names, being Python identifiers, keep
-  underscores (`coastal_ocean`, `pyramids_mesh`).
+Three identifiers, three rules — and each is named for the **software or the format, never the
+company**.
+
+**Module** — the `.py` file. A Python identifier, so `snake_case` (underscores, never hyphens).
+
+- Named for the **software/model** that writes the file (`hecras`, `adcirc`, `modflow`), or for the
+  **format** itself when it is a vendor-neutral standard with no single owning tool (`vtk`, `cgns`,
+  `obj`).
+- **Never a company name** — use the software, not the vendor: `delft3d` (not `deltares`), `mike`
+  (not `dhi`), `arcgis` (not `esri`).
+- One module may expose several drivers (`sms` holds both `2dm` and `dat`).
+
+**Driver name** — the handle you pass to `driver=`.
+
+- The **format's own name** when the format has a distinctive, well-known one (`selafin`, `dfsu`,
+  `2dm`, `vtk`, `obj`); otherwise the **software/model name** when the file is that software's native
+  output (`hecras`, `adcirc`, `3di`); or **software + variant** when one toolchain emits several grids
+  (`modflow6-disv`, `modflow6-disu`).
+- The software name also **disambiguates a shared extension** (`.msh` → `gmsh`/`gid`, `.inp` →
+  `abaqus`/`avsucd`).
+- **Never a company name** (`delft3d-1d` / `dhydro-1d`, not `deltares…`; `arcgis-tin`, not `esri-tin`).
+- **Multi-word names are hyphenated, never underscored** (`delft3d-1d`, `arcgis-tin`,
+  `modflow6-disv`); a single compact token stays one word (`2dm`, `3di`, `flo2d`, `srh2d`).
+
+**Subpackage** — the domain bucket. A Python identifier, so `snake_case`.
+
+- A domain/realm word: `coastal_ocean`, `river_flood`, `earth_system`, `subsurface`, `engineering`,
+  `generic`. **Never a company name.**
 
 | Driver          | Software            | Subpackage      | What the software is                                     | Format                                             |
 |-----------------|---------------------|-----------------|----------------------------------------------------------|----------------------------------------------------|
