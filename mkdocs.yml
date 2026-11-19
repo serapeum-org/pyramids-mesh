@@ -118,6 +118,7 @@ nav:
     - Installation: installation.md
   - Reference:
     - Overview: reference/index.md
+    - Supported formats: reference/supported-formats.md
     - 2DM (SMS/TUFLOW): reference/2dm.md
     - DAT (SMS results): reference/dat.md
     - Mike21 (DHI mesh): reference/mike21.md
