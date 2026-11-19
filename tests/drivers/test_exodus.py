@@ -18,7 +18,11 @@ import numpy as np
 import pytest
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.engineering.exodus import ExodusDriver, _ExodusReader, _pad_blocks
+from pyramids_mesh.drivers.engineering.exodus import (
+    ExodusDriver,
+    _ExodusReader,
+    _pad_blocks,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "exodus"
 _QUAD = _DATA / "nontrivial_node_num_map.exo"

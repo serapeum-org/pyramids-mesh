@@ -17,7 +17,10 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.subsurface.modflow import Modflow6DisvDriver, _Modflow6DisvReader
+from pyramids_mesh.drivers.subsurface.modflow import (
+    Modflow6DisvDriver,
+    _Modflow6DisvReader,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "modflow6"
 _DISV = _DATA / "tri_model_cnst.disv"

@@ -18,7 +18,10 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.subsurface.modflow import Modflow6DisuDriver, _Modflow6DisuReader
+from pyramids_mesh.drivers.subsurface.modflow import (
+    Modflow6DisuDriver,
+    _Modflow6DisuReader,
+)
 
 _DATA = Path(__file__).parent.parent / "data" / "modflow6_disu"
 _DISU = _DATA / "keating.disu"
