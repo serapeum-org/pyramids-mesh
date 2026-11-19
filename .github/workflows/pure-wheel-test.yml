@@ -117,7 +117,7 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.13"]
         extra:
-          - { name: dhi, pip_extra: "dhi", module: "pyramids_mesh.drivers.dhi" }
+          - { name: dhi, pip_extra: "dhi", module: "pyramids_mesh.drivers.coastal_ocean.dhi" }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
