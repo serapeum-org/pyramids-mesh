@@ -26,7 +26,7 @@ company**.
   output (`hecras`, `adcirc`, `3di`); or **software + variant** when one toolchain emits several grids
   (`modflow6-disv`, `modflow6-disu`).
 - The software name also **disambiguates a shared extension** (`.msh` → `gmsh`/`gid`, `.inp` →
-  `abaqus`/`avsucd`).
+  `abaqus`/`avs-ucd`).
 - **Never a company name** (`delft3d-1d` / `dhydro-1d`, not `deltares…`; `arcgis-tin`, not `esri-tin`).
 - **Multi-word names are hyphenated, never underscored** (`delft3d-1d`, `arcgis-tin`,
   `modflow6-disv`); a single compact token stays one word (`2dm`, `3di`, `flo2d`, `srh2d`).
@@ -68,7 +68,7 @@ company**.
 | `gmsh`          | `gmsh`        | Gmsh                | `engineering`   | Open-source finite-element mesh generator                | Gmsh mesh v2.2/v4.1 (`.msh`)                       |
 | `abaqus`        | `abaqus`      | Abaqus              | `engineering`   | Dassault Systemes FEA solver                             | Abaqus keyword deck (`.inp`)                       |
 | `nastran`       | `nastran`     | Nastran             | `engineering`   | Structural FEA solver                                    | Nastran bulk data (`.bdf`, `.nas`, `.fem`)         |
-| `avsucd`        | `avsucd`      | AVS                 | `engineering`   | Advanced Visual Systems visualization                    | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
+| `avs-ucd`       | `avs_ucd`     | AVS                 | `engineering`   | Advanced Visual Systems visualization                    | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
 | `exodus`        | `exodus`      | Sandia SEACAS       | `engineering`   | Sandia FE pre/post toolkit                               | Exodus II, NetCDF-based (`.exo`, `.e`)             |
 | `med`           | `med`         | SALOME / code_aster | `engineering`   | EDF/CEA simulation platform                              | MED-file (`.med`)                                  |
 | `medit`         | `medit`       | Medit (INRIA)       | `engineering`   | INRIA mesh viewer                                        | Medit mesh (`.mesh`)                               |
@@ -98,7 +98,7 @@ Several extensions are claimed by more than one driver, so the suffix alone cann
 |---------|---------------------------------------------------------------------------------------|
 | `.nc`   | `3di`, `tuflowfv`, `delft3d-1d`, `dhydro-1d`, `mpas`, `icon`, `geos`, `esmf`, `scrip` |
 | `.dat`  | `dat`, `fvcom`, `tecplot`                                                             |
-| `.inp`  | `abaqus`, `avsucd`                                                                    |
+| `.inp`  | `abaqus`, `avs-ucd`                                                                    |
 | `.msh`  | `gmsh`, `gid`                                                                         |
 | `.fem`  | `feflow`, `nastran`                                                                   |
 | `.mesh` | `mike21`, `medit`                                                                     |

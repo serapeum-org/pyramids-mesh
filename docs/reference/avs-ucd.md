@@ -6,7 +6,7 @@ node (`node_id x y z`) and one per cell (`cell_id material_id cell_type v1..vn`)
 
 | | |
 |---|---|
-| Driver name | `avsucd` |
+| Driver name | `avs-ucd` |
 | Suffixes | `.inp`, `.avs` |
 | Capabilities | `read_mesh` |
 | Extra required | none |
@@ -38,7 +38,7 @@ node-data and cell-data sections are discarded — this is a geometry reader.
 
 ## API
 
-::: pyramids_mesh.drivers.engineering.avsucd.AvsUcdDriver
+::: pyramids_mesh.drivers.engineering.avs_ucd.AvsUcdDriver
     options:
         show_root_heading: true
         show_source: true

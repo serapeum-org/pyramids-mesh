@@ -60,7 +60,7 @@ DEPENDENCY_FREE_DRIVERS: set[str] = {
     "med",
     "nastran",
     "abaqus",
-    "avsucd",
+    "avs-ucd",
     "medit",
     "netgen",
     "tecplot",

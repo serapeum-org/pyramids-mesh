@@ -157,7 +157,7 @@ nav:
     - MED (.med): reference/med.md
     - Nastran bulk data: reference/nastran.md
     - Abaqus (.inp): reference/abaqus.md
-    - AVS-UCD: reference/avsucd.md
+    - AVS-UCD: reference/avs-ucd.md
     - Medit (.mesh): reference/medit.md
     - Netgen (.vol): reference/netgen.md
     - Tecplot FE: reference/tecplot.md

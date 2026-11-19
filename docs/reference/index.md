@@ -58,7 +58,7 @@ its suffixes, capabilities and documented limitations:
 | `med` | MED / Salome (FEM, HDF5) | [MED (.med)](med.md) |
 | `nastran` | Nastran `.bdf`/`.nas`/`.fem` | [Nastran bulk data](nastran.md) |
 | `abaqus` | Abaqus `.inp` (FEM) | [Abaqus (.inp)](abaqus.md) |
-| `avsucd` | AVS-UCD `.inp`/`.avs` | [AVS-UCD](avsucd.md) |
+| `avs-ucd` | AVS-UCD `.inp`/`.avs` | [AVS-UCD](avs-ucd.md) |
 | `medit` | Medit `.mesh` (INRIA) | [Medit (.mesh)](medit.md) |
 | `netgen` | Netgen `.vol` | [Netgen (.vol)](netgen.md) |
 | `tecplot` | Tecplot FE ASCII | [Tecplot FE](tecplot.md) |

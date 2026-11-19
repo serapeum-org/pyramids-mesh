@@ -76,7 +76,7 @@ class AvsUcdDriver(BaseDriver):
             mesh.mesh.n_node, mesh.mesh.n_face
     """
 
-    name = "avsucd"
+    name = "avs-ucd"
     long_name = "AVS-UCD unstructured cell data"
     suffixes = (".inp", ".avs")
     api_version = MESH_DRIVER_API_VERSION
