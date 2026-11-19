@@ -37,7 +37,7 @@ a = mesh.get("a")          # cell (face) located, over time
 
 ## API
 
-::: pyramids_mesh.drivers.generic.xdmf.XdmfDriver
+::: pyramids_mesh.drivers.cfd.xdmf.XdmfDriver
     options:
         show_root_heading: true
         show_source: true

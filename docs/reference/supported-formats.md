@@ -79,8 +79,8 @@ company**.
 | `flac3d`        | `flac3d`      | FLAC3D              | `engineering`   | Itasca geomechanics solver                               | FLAC3D grid (`.f3grid`)                            |
 | `tecplot`       | `tecplot`     | Tecplot             | `engineering`   | CFD / engineering visualization                          | Tecplot FE ASCII (`.dat`, `.tec`)                  |
 | `vtk`           | `vtk`         | VTK (Kitware)       | `generic`       | Visualization Toolkit / ParaView                         | VTK / VTU unstructured grid (`.vtk`, `.vtu`)       |
-| `xdmf`          | `xdmf`        | XDMF                | `generic`       | Open XML + HDF5 data model                               | XDMF (`.xdmf`, `.xmf`)                             |
-| `cgns`          | `cgns`        | CGNS                | `generic`       | Open CFD data standard                                   | CGNS / HDF5 (`.cgns`)                              |
+| `xdmf`          | `xdmf`        | XDMF                | `cfd`           | Open XML + HDF5 data model                               | XDMF (`.xdmf`, `.xmf`)                             |
+| `cgns`          | `cgns`        | CGNS                | `cfd`           | Open CFD data standard                                   | CGNS / HDF5 (`.cgns`)                              |
 | `obj`           | `obj`         | Wavefront           | `generic`       | Geometry interchange format                              | Wavefront OBJ (`.obj`)                             |
 | `stl`           | `stl`         | -                   | `generic`       | 3D-printing / CAD surface format                         | STL stereolithography (`.stl`)                     |
 | `off`           | `off`         | -                   | `generic`       | Simple geometry format (Geomview)                        | Object File Format (`.off`)                        |

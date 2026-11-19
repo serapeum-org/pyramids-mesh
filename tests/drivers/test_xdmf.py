@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.generic.xdmf import (
+from pyramids_mesh.drivers.cfd.xdmf import (
     XdmfDriver,
     _read_md_array,
     _reshape_by_dimensions,

@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.generic.cgns import (
+from pyramids_mesh.drivers.cfd.cgns import (
     _PAD,
     CgnsDriver,
     _cgns_corner_count,
