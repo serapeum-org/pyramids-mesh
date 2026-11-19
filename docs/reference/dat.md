@@ -104,7 +104,7 @@ variable name.
 
 ## API
 
-::: pyramids_mesh.drivers.river_flood.sms.DatDriver
+::: pyramids_mesh.drivers.river_flood.aquaveo.sms.DatDriver
     options:
         show_root_heading: true
         show_source: true
