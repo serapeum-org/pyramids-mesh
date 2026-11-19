@@ -164,7 +164,7 @@ class GidDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.gid import GidDriver
+            >>> from pyramids_mesh.drivers.river_flood.gid import GidDriver
             >>> text = '''MESH dimension 2 ElemType Triangle Nnode 3
             ... Coordinates
             ... 1 0.0 0.0
@@ -190,7 +190,7 @@ class GidDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.gid import GidDriver
+            >>> from pyramids_mesh.drivers.river_flood.gid import GidDriver
             >>> gmsh_text = '''$MeshFormat
             ... 2.2 0 8
             ... $EndMeshFormat

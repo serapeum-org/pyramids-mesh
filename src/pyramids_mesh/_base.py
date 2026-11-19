@@ -235,7 +235,7 @@ class BaseDriver:
         ``_sniff`` to judge, and the default ``_sniff`` judges nothing -- so on
         ``BaseDriver`` itself an empty file with a claimed suffix answers ``True``. A
         driver that means to decline an empty or foreign file reads a header signature,
-        as :meth:`~pyramids_mesh.drivers.river_hydraulics.sms.TwoDmDriver._sniff` does.
+        as :meth:`~pyramids_mesh.drivers.river_flood.sms.TwoDmDriver._sniff` does.
 
         A ``_sniff`` that fails for any reason is reported as a warning and the file
         declined, so a broken candidate cannot abort driver dispatch. Only ``_sniff``

@@ -17,7 +17,7 @@ import pytest
 from osgeo import osr
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.river_hydraulics.hecras import (
+from pyramids_mesh.drivers.river_flood.hecras import (
     _SUMMARY_PATH,
     HecRasDriver,
     _HecRasReader,

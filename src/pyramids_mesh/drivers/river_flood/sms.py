@@ -171,7 +171,7 @@ class TwoDmDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import (
+            >>> from pyramids_mesh.drivers.river_flood.sms import (
             ...     TwoDmDriver,
             ...     build_minimal_fixture,
             ... )
@@ -191,7 +191,7 @@ class TwoDmDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import (
+            >>> from pyramids_mesh.drivers.river_flood.sms import (
             ...     TwoDmDriver,
             ...     build_minimal_fixture,
             ... )
@@ -211,7 +211,7 @@ class TwoDmDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import (
+            >>> from pyramids_mesh.drivers.river_flood.sms import (
             ...     TwoDmDriver,
             ...     build_minimal_fixture,
             ... )
@@ -229,7 +229,7 @@ class TwoDmDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import TwoDmDriver
+            >>> from pyramids_mesh.drivers.river_flood.sms import TwoDmDriver
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "flat.2dm")
             ...     with open(path, "w", encoding="utf-8") as handle:
@@ -287,7 +287,7 @@ class TwoDmDriver(BaseDriver):
                 >>> import os
                 >>> import tempfile
                 >>> import warnings
-                >>> from pyramids_mesh.drivers.river_hydraulics.sms import TwoDmDriver
+                >>> from pyramids_mesh.drivers.river_flood.sms import TwoDmDriver
                 >>> with tempfile.TemporaryDirectory() as directory:
                 ...     path = os.path.join(directory, "mixed.2dm")
                 ...     with open(path, "w", encoding="utf-8") as handle:
@@ -318,7 +318,7 @@ class TwoDmDriver(BaseDriver):
 
                 >>> import os
                 >>> import tempfile
-                >>> from pyramids_mesh.drivers.river_hydraulics.sms import (
+                >>> from pyramids_mesh.drivers.river_flood.sms import (
                 ...     TwoDmDriver,
                 ...     build_minimal_fixture,
                 ... )
@@ -561,7 +561,7 @@ class DatDriver(BaseDriver):
             >>> import os
             >>> import tempfile
             >>> from pyramids.netcdf.ugrid import MeshDataset
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import (
+            >>> from pyramids_mesh.drivers.river_flood.sms import (
             ...     build_minimal_fixture,
             ...     build_minimal_fixture_dat,
             ... )
@@ -582,7 +582,7 @@ class DatDriver(BaseDriver):
         - ``read`` is not how a results-only format is reached, and says so rather than
           failing obscurely:
 
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import DatDriver
+            >>> from pyramids_mesh.drivers.river_flood.sms import DatDriver
             >>> try:
             ...     DatDriver().read("depth.dat")
             ... except ValueError as error:
@@ -595,7 +595,7 @@ class DatDriver(BaseDriver):
             >>> import os
             >>> import tempfile
             >>> from pyramids.netcdf.ugrid import MeshDataset
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import build_minimal_fixture
+            >>> from pyramids_mesh.drivers.river_flood.sms import build_minimal_fixture
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     mesh_path = os.path.join(directory, "domain.2dm")
             ...     dat_path = os.path.join(directory, "wrong.dat")
@@ -850,7 +850,7 @@ def build_minimal_fixture_dat(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import build_minimal_fixture_dat
+            >>> from pyramids_mesh.drivers.river_flood.sms import build_minimal_fixture_dat
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.dat")
             ...     build_minimal_fixture_dat(path)
@@ -1056,7 +1056,7 @@ def build_minimal_fixture(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.river_hydraulics.sms import build_minimal_fixture
+            >>> from pyramids_mesh.drivers.river_flood.sms import build_minimal_fixture
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.2dm")
             ...     build_minimal_fixture(path)

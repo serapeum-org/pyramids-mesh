@@ -18,7 +18,7 @@ is absent. See ADR-0005 for the scope decision.
 The package root deliberately re-exports nothing: it carries `__version__` and the
 import contract that activates the vendored osgeo bindings, and that is all. Installing
 the package is the whole integration, so nothing here needs importing. A driver class is
-still reachable by its module path (`pyramids_mesh.drivers.river_hydraulics.sms.TwoDmDriver`, which is how
+still reachable by its module path (`pyramids_mesh.drivers.river_flood.sms.TwoDmDriver`, which is how
 its entry point names it) for the rare case of wanting one directly.
 
 Examples:
@@ -34,7 +34,7 @@ Examples:
     - A driver is reached by its module path, not from the root, and reports the
       suffixes it claims:
 
-        >>> from pyramids_mesh.drivers.river_hydraulics.sms import TwoDmDriver
+        >>> from pyramids_mesh.drivers.river_flood.sms import TwoDmDriver
         >>> TwoDmDriver.name
         '2dm'
         >>> TwoDmDriver.suffixes
