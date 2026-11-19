@@ -57,7 +57,7 @@ class ObjDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.obj import ObjDriver
+            >>> from pyramids_mesh.drivers.geometry.obj import ObjDriver
             >>> lines = (
             ...     "v 0.0 0.0 2.0",
             ...     "v 1.0 0.0 2.5",

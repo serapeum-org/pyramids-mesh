@@ -15,7 +15,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.generic.off import OffDriver
+from pyramids_mesh.drivers.geometry.off import OffDriver
 
 _COMMENTS_OFF = Path(__file__).parent.parent / "data" / "off" / "comments.off"
 

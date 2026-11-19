@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.generic.obj import ObjDriver, _pad_faces
+from pyramids_mesh.drivers.geometry.obj import ObjDriver, _pad_faces
 
 _SAMPLE = Path(__file__).parent.parent / "data" / "obj" / "elephav.obj"
 

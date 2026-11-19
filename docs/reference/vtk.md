@@ -56,7 +56,7 @@ leading corners linearises it without moving the corner positions.
 
 ## API
 
-::: pyramids_mesh.drivers.generic.vtk.VtkDriver
+::: pyramids_mesh.drivers.geometry.vtk.VtkDriver
     options:
         show_root_heading: true
         show_source: true

@@ -62,7 +62,7 @@ Easymesh also writes a third `.s` sides file and closes each file with two trail
 
 ## API
 
-::: pyramids_mesh.drivers.generic.easymesh.EasymeshDriver
+::: pyramids_mesh.drivers.mesh_generators.easymesh.EasymeshDriver
     options:
         show_root_heading: true
         show_source: true

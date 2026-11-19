@@ -44,7 +44,7 @@ elevation = mesh.get("node_z")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.arcgis.EsriTinDriver
+::: pyramids_mesh.drivers.geometry.arcgis.EsriTinDriver
     options:
         show_root_heading: true
         show_source: true

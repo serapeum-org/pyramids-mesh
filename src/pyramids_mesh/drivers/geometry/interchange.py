@@ -134,7 +134,7 @@ class PlyDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.interchange import (
+            >>> from pyramids_mesh.drivers.geometry.interchange import (
             ...     PlyDriver,
             ...     build_minimal_fixture_ply,
             ... )
@@ -234,7 +234,7 @@ def build_minimal_fixture_ply(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.interchange import build_minimal_fixture_ply
+            >>> from pyramids_mesh.drivers.geometry.interchange import build_minimal_fixture_ply
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.ply")
             ...     build_minimal_fixture_ply(path)
@@ -272,7 +272,7 @@ class XmsTinDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.interchange import (
+            >>> from pyramids_mesh.drivers.geometry.interchange import (
             ...     XmsTinDriver,
             ...     build_minimal_fixture_xms_tin,
             ... )
@@ -334,7 +334,7 @@ def build_minimal_fixture_xms_tin(path: str) -> None:
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.interchange import build_minimal_fixture_xms_tin
+            >>> from pyramids_mesh.drivers.geometry.interchange import build_minimal_fixture_xms_tin
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "minimal.tin")
             ...     build_minimal_fixture_xms_tin(path)

@@ -46,7 +46,7 @@ mesh.mesh.n_node, mesh.mesh.n_face
 
 ## API
 
-::: pyramids_mesh.drivers.engineering.salome.MedDriver
+::: pyramids_mesh.drivers.finite_element.salome.MedDriver
     options:
         show_root_heading: true
         show_source: true

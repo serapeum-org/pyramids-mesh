@@ -33,7 +33,7 @@ mesh = MeshDataset.read_file("surface.ply")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.interchange.PlyDriver
+::: pyramids_mesh.drivers.geometry.interchange.PlyDriver
     options:
         show_root_heading: true
         show_source: true

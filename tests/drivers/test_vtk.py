@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.generic.vtk import (
+from pyramids_mesh.drivers.geometry.vtk import (
     VtkDriver,
     _cells_from_offsets,
     _Cursor,

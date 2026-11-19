@@ -42,7 +42,7 @@ mesh = MeshDataset.read_file("surface.off")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.off.OffDriver
+::: pyramids_mesh.drivers.geometry.off.OffDriver
     options:
         show_root_heading: true
         show_source: true

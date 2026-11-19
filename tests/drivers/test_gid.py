@@ -22,7 +22,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, _drivers
 
-from pyramids_mesh.drivers.engineering.gmsh import GmshDriver
+from pyramids_mesh.drivers.mesh_generators.gmsh import GmshDriver
 from pyramids_mesh.drivers.river_flood.gid import GidDriver, _as_float, _as_int
 
 _DATA = Path(__file__).parent.parent / "data"

@@ -42,7 +42,7 @@ matched case-insensitively.
 
 ## API
 
-::: pyramids_mesh.drivers.engineering.abaqus.AbaqusDriver
+::: pyramids_mesh.drivers.finite_element.abaqus.AbaqusDriver
     options:
         show_root_heading: true
         show_source: true

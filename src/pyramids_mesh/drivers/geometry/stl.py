@@ -61,7 +61,7 @@ class StlDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.generic.stl import StlDriver
+            >>> from pyramids_mesh.drivers.geometry.stl import StlDriver
             >>> lines = (
             ...     "solid square",
             ...     "facet normal 0 0 1",

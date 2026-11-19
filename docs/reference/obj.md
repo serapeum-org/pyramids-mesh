@@ -38,7 +38,7 @@ mesh = MeshDataset.read_file("surface.obj")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.obj.ObjDriver
+::: pyramids_mesh.drivers.geometry.obj.ObjDriver
     options:
         show_root_heading: true
         show_source: true

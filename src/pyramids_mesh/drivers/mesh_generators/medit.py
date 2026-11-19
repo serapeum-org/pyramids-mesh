@@ -106,7 +106,7 @@ class MeditDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.engineering.medit import MeditDriver
+            >>> from pyramids_mesh.drivers.mesh_generators.medit import MeditDriver
             >>> text = '''MeshVersionFormatted 1
             ... Dimension 2
             ... Vertices
@@ -138,7 +138,7 @@ class MeditDriver(BaseDriver):
 
             >>> import os
             >>> import tempfile
-            >>> from pyramids_mesh.drivers.engineering.medit import MeditDriver
+            >>> from pyramids_mesh.drivers.mesh_generators.medit import MeditDriver
             >>> mike = '''100079 1000 4 LONG/LAT
             ... 1 0 0 0 1
             ... '''

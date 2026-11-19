@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 
-from pyramids_mesh.drivers.engineering.netgen import NetgenDriver, _iter_records
+from pyramids_mesh.drivers.mesh_generators.netgen import NetgenDriver, _iter_records
 
 _DATA = Path(__file__).parent.parent / "data" / "netgen"
 _SAMPLE = _DATA / "periodic_3d.vol"

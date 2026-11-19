@@ -18,7 +18,7 @@ import numpy as np
 import pytest
 from pyramids.netcdf.ugrid import MeshDataset
 
-from pyramids_mesh.drivers.engineering.seacas import (
+from pyramids_mesh.drivers.finite_element.seacas import (
     ExodusDriver,
     _ExodusReader,
     _pad_blocks,

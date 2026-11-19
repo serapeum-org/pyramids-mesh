@@ -87,7 +87,7 @@ class AvsUcdDriver(BaseDriver):
 
         An AVS-UCD file opens with the ``n_nodes n_cells n_node_data n_cell_data
         model_data`` header. This is deliberately the inverse of
-        :meth:`~pyramids_mesh.drivers.engineering.abaqus.AbaqusDriver._sniff`, whose first
+        :meth:`~pyramids_mesh.drivers.finite_element.abaqus.AbaqusDriver._sniff`, whose first
         significant line begins a ``*`` keyword, so the two ``.inp`` drivers never both
         accept one file.
 

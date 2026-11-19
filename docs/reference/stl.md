@@ -41,7 +41,7 @@ mesh = MeshDataset.read_file("solid.stl")
 
 ## API
 
-::: pyramids_mesh.drivers.generic.stl.StlDriver
+::: pyramids_mesh.drivers.geometry.stl.StlDriver
     options:
         show_root_heading: true
         show_source: true
