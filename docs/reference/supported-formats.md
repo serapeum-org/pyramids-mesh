@@ -68,7 +68,7 @@ company**.
 | `gmsh`          | `gmsh`        | Gmsh                | `engineering`   | Open-source finite-element mesh generator                | Gmsh mesh v2.2/v4.1 (`.msh`)                       |
 | `abaqus`        | `abaqus`      | Abaqus              | `engineering`   | Dassault Systemes FEA solver                             | Abaqus keyword deck (`.inp`)                       |
 | `nastran`       | `nastran`     | Nastran             | `engineering`   | Structural FEA solver                                    | Nastran bulk data (`.bdf`, `.nas`, `.fem`)         |
-| `avs-ucd`       | `avs_ucd`     | AVS                 | `engineering`   | Advanced Visual Systems visualization                    | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
+| `avs-ucd`       | `avs`         | AVS                 | `engineering`   | Advanced Visual Systems visualization                    | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
 | `exodus`        | `exodus`      | Sandia SEACAS       | `engineering`   | Sandia FE pre/post toolkit                               | Exodus II, NetCDF-based (`.exo`, `.e`)             |
 | `med`           | `med`         | SALOME / code_aster | `engineering`   | EDF/CEA simulation platform                              | MED-file (`.med`)                                  |
 | `medit`         | `medit`       | Medit (INRIA)       | `engineering`   | INRIA mesh viewer                                        | Medit mesh (`.mesh`)                               |
