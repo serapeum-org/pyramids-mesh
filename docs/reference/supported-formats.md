@@ -1,99 +1,74 @@
 # Supported formats
 
-Every format `pyramids_mesh` reads, grouped by the driver subpackage it lives in, with the file
-suffix(es) each driver claims. The **driver name** is what you pass to
-`MeshDataset.read_file(path, driver="…")`; see each format's own
+Every format `pyramids_mesh` reads. The **driver name** is the handle you pass to
+`MeshDataset.read_file(path, driver="…")`; the remaining columns give the software that writes the
+file, what that software is, the driver's subpackage, and the file format. See each format's own
 [reference page](index.md) for capabilities and documented limitations.
 
-Two naming axes are at work (see the per-format pages for detail):
+Two naming axes are at work:
 
-- the **module** is named for the *vendor / toolchain* that owns the parser (so formats that share a
-  parser live together, e.g. `sms` holds both `2dm` and `dat`);
-- the **driver name** is the *format or model handle* a user asks for — the format name where it has a
-  well-known one (`2dm`, `dfsu`, `selafin`), the model name where the file is that model's native
-  output (`hecras`, `adcirc`, `3di`), or a vendor + variant where disambiguation is needed (`modflow6-disv`,
-  `modflow6-disu`).
+- the **module** (the `.py` file) is named for the **software/model** that writes the file
+  (`hecras`, `adcirc`, `telemac`…), or for the **format** itself when it is a vendor-neutral standard
+  with no single owning tool (`vtk`, `cgns`, `obj`…). A module can hold several drivers (`sms` holds
+  both `2dm` and `dat`).
+- the **driver name** is the handle passed to `driver=` — the format name where it has a well-known
+  one (`2dm`, `dfsu`, `selafin`), the software name where the file is that software's native output
+  (`hecras`, `adcirc`, `3di`), or a software + variant where one toolchain emits several grids
+  (`modflow6-disv`, `modflow6-disu`, `delft3d-1d`).
 
-## coastal_ocean — coastal, estuarine and ocean circulation
-
-| Driver     | Suffix(es)                     | Format / model                        |
-|------------|--------------------------------|---------------------------------------|
-| `adcirc`   | `.14`                          | ADCIRC (`fort.14`)                    |
-| `schism`   | `.gr3`                         | SCHISM (`hgrid.gr3`)                  |
-| `fvcom`    | `.dat`                         | FVCOM native grid                     |
-| `selafin`  | `.slf`, `.srf`, `.ser`, `.sel` | TELEMAC Selafin / Serafin             |
-| `sww`      | `.sww`                         | ANUGA SWW (NetCDF)                    |
-| `tuflowfv` | `.nc`                          | TUFLOW FV results (2D)                |
-| `dfsu`     | `.dfsu`                        | DHI MIKE DFSU (needs the `dhi` extra) |
-| `mike21`   | `.mesh`                        | DHI MIKE 21 mesh                      |
-| `3di`      | `.nc`                          | 3Di results                           |
-
-## river_flood — inland river and flood models
-
-| Driver        | Suffix(es)              | Format / model                                    |
-|---------------|-------------------------|---------------------------------------------------|
-| `hecras`      | `.hdf`, `.hdf5`         | HEC-RAS 2D (HDF5 plan file)                       |
-| `flo2d`       | `.out`                  | FLO-2D                                            |
-| `riverflow2d` | `.fed`                  | RiverFlow2D mesh                                  |
-| `srh2d`       | `.srhgeom`, `.srhhydro` | SRH-2D mesh                                       |
-| `2dm`         | `.2dm`                  | SMS / TUFLOW 2DM mesh                             |
-| `dat`         | `.dat`                  | SMS ASCII DAT results                             |
-| `xmdf`        | `.xmdf`, `.h5`          | XMDF HDF5 results                                 |
-| `delft3d-1d`  | `.nc`                   | Delft3D FM / D-HYDRO 1D network                   |
-| `dhydro-1d`   | `.nc`                   | Alias of `delft3d-1d` (same reader, D-HYDRO name) |
-| `gid`         | `.msh`                  | GiD / CIMNE ASCII mesh (Iber)                     |
-
-## earth_system — global atmosphere/ocean grids and remapping weights
-
-| Driver  | Suffix(es)    | Format / model         |
-|---------|---------------|------------------------|
-| `mpas`  | `.nc`         | MPAS mesh              |
-| `icon`  | `.nc`         | ICON icosahedral grid  |
-| `geos`  | `.nc`, `.nc4` | GEOS cubed-sphere grid |
-| `esmf`  | `.nc`         | ESMF unstructured mesh |
-| `scrip` | `.nc`         | SCRIP remapping grid   |
-
-## subsurface — groundwater models
-
-| Driver          | Suffix(es) | Format / model                               |
-|-----------------|------------|----------------------------------------------|
-| `modflow6-disv` | `.disv`    | MODFLOW 6 DISV (discretization by vertices)  |
-| `modflow6-disu` | `.disu`    | MODFLOW 6 DISU (unstructured discretization) |
-| `feflow`        | `.fem`     | DHI FEFLOW (classic ASCII)                   |
-
-## engineering — FEM / CAE and CFD solver meshes
-
-| Driver     | Suffix(es)             | Format / model                 |
-|------------|------------------------|--------------------------------|
-| `gmsh`     | `.msh`                 | Gmsh mesh (v2.2 + v4.1)        |
-| `abaqus`   | `.inp`                 | Abaqus keyword deck            |
-| `nastran`  | `.bdf`, `.nas`, `.fem` | Nastran bulk data              |
-| `avsucd`   | `.inp`, `.avs`         | AVS-UCD unstructured cell data |
-| `exodus`   | `.exo`, `.e`           | Exodus II (NetCDF-based FEM)   |
-| `med`      | `.med`                 | MED-file (Salome / code_aster) |
-| `medit`    | `.mesh`                | Medit (INRIA) mesh             |
-| `netgen`   | `.vol`, `.vol.gz`      | Netgen volume mesh             |
-| `su2`      | `.su2`                 | SU2 native mesh                |
-| `openfoam` | `.foam`                | OpenFOAM polyMesh              |
-| `kratos`   | `.mdpa`                | Kratos Multiphysics model part |
-| `flac3d`   | `.f3grid`              | FLAC3D grid                    |
-| `tecplot`  | `.dat`, `.tec`         | Tecplot finite-element ASCII   |
-
-## generic — format-neutral interchange, CAD geometry and triangulators
-
-| Driver     | Suffix(es)      | Format / model                       |
-|------------|-----------------|--------------------------------------|
-| `vtk`      | `.vtk`, `.vtu`  | VTK / VTU unstructured grid          |
-| `xdmf`     | `.xdmf`, `.xmf` | XDMF (XML index over HDF5)           |
-| `cgns`     | `.cgns`         | CGNS (CFD, HDF5)                     |
-| `obj`      | `.obj`          | Wavefront OBJ                        |
-| `stl`      | `.stl`          | STL (stereolithography)              |
-| `off`      | `.off`          | Object File Format                   |
-| `ply`      | `.ply`          | Stanford PLY                         |
-| `xmstin`   | `.tin`          | XMS / SMS TIN                        |
-| `esri-tin` | `.adf`          | Esri TIN (directory of `.adf` files) |
-| `triangle` | `.node`, `.ele` | Triangle / TetGen                    |
-| `easymesh` | `.n`, `.e`      | SWAN Easymesh                        |
+| Driver          | Software             | What the software is                                     | Subpackage      | Format                                             |
+|-----------------|----------------------|----------------------------------------------------------|-----------------|----------------------------------------------------|
+| `adcirc`        | ADCIRC               | Coastal-ocean circulation / storm-surge model            | `coastal_ocean` | ADCIRC `fort.14` ASCII grid (`.14`)                |
+| `schism`        | SCHISM               | Cross-scale ocean/coastal circulation model              | `coastal_ocean` | `hgrid.gr3` ASCII grid (`.gr3`)                    |
+| `fvcom`         | FVCOM                | Finite-volume coastal-ocean model                        | `coastal_ocean` | FVCOM native grid (`.dat`)                         |
+| `selafin`       | TELEMAC              | Free-surface hydrodynamics suite (rivers/coasts)         | `coastal_ocean` | Selafin / Serafin (`.slf`, `.srf`, `.ser`, `.sel`) |
+| `sww`           | ANUGA                | Shallow-water flood & tsunami model                      | `coastal_ocean` | SWW, NetCDF (`.sww`)                               |
+| `tuflowfv`      | TUFLOW FV            | Flexible-mesh flood/coastal hydrodynamic solver          | `coastal_ocean` | TUFLOW FV results, NetCDF (`.nc`)                  |
+| `dfsu`          | DHI MIKE             | DHI's coastal/estuarine hydrodynamic suite               | `coastal_ocean` | DFSU, needs `dhi` extra (`.dfsu`)                  |
+| `mike21`        | DHI MIKE 21          | DHI's 2D coastal/estuarine hydrodynamic model            | `coastal_ocean` | MIKE 21 mesh (`.mesh`)                             |
+| `3di`           | 3Di                  | Urban/rural flood-modelling platform                     | `coastal_ocean` | 3Di results, NetCDF (`.nc`)                        |
+| `hecras`        | HEC-RAS              | USACE river hydraulics & flood model                     | `river_flood`   | HEC-RAS HDF5 plan file (`.hdf`, `.hdf5`)           |
+| `flo2d`         | FLO-2D               | Flood-routing / overland-flow model                      | `river_flood`   | FLO-2D (`.out`)                                    |
+| `riverflow2d`   | RiverFlow2D          | 2D river/flood hydrodynamic & sediment model             | `river_flood`   | RiverFlow2D mesh (`.fed`)                          |
+| `srh2d`         | SRH-2D               | USBR 2D river hydraulics & sedimentation model           | `river_flood`   | SRH-2D (`.srhgeom`, `.srhhydro`)                   |
+| `2dm`           | SMS                  | Aquaveo Surface-water Modeling System (GUI)              | `river_flood`   | SMS/TUFLOW 2DM mesh (`.2dm`)                       |
+| `dat`           | SMS                  | Aquaveo Surface-water Modeling System (GUI)              | `river_flood`   | SMS ASCII DAT results (`.dat`)                     |
+| `xmdf`          | Aquaveo XMS          | Results container for the XMS suite (SMS/SRH-2D)         | `river_flood`   | XMDF HDF5 results (`.xmdf`, `.h5`)                 |
+| `delft3d-1d`    | Delft3D FM / D-HYDRO | Deltares' flexible-mesh hydrodynamic suite               | `river_flood`   | UGRID-1.0 + Deltares-extension NetCDF (`.nc`)      |
+| `dhydro-1d`     | Delft3D FM / D-HYDRO | Same software, D-HYDRO name; alias of `delft3d-1d`       | `river_flood`   | UGRID-1.0 + Deltares-extension NetCDF (`.nc`)      |
+| `gid`           | GiD (Iber)           | CIMNE pre/post-processor; reads the Iber 2D model export | `river_flood`   | GiD / CIMNE ASCII mesh (`.msh`)                    |
+| `mpas`          | MPAS                 | Model for Prediction Across Scales (atmos/ocean)         | `earth_system`  | MPAS mesh, NetCDF (`.nc`)                          |
+| `icon`          | ICON                 | ICOsahedral Nonhydrostatic weather/climate model         | `earth_system`  | ICON icosahedral grid, NetCDF (`.nc`)              |
+| `geos`          | GEOS                 | NASA global atmosphere / earth-system model              | `earth_system`  | GEOS cubed-sphere grid, NetCDF (`.nc`, `.nc4`)     |
+| `esmf`          | ESMF                 | Earth System Modeling Framework (model coupling)         | `earth_system`  | ESMF unstructured mesh, NetCDF (`.nc`)             |
+| `scrip`         | SCRIP                | Remapping-weights package / grid convention              | `earth_system`  | SCRIP remapping grid, NetCDF (`.nc`)               |
+| `modflow6-disv` | MODFLOW 6            | USGS groundwater-flow model                              | `subsurface`    | DISV discretization-by-vertices (`.disv`)          |
+| `modflow6-disu` | MODFLOW 6            | USGS groundwater-flow model                              | `subsurface`    | DISU unstructured discretization (`.disu`)         |
+| `feflow`        | FEFLOW               | DHI subsurface flow & transport model                    | `subsurface`    | FEFLOW classic ASCII (`.fem`)                      |
+| `gmsh`          | Gmsh                 | Open-source finite-element mesh generator                | `engineering`   | Gmsh mesh v2.2/v4.1 (`.msh`)                       |
+| `abaqus`        | Abaqus               | Dassault Systemes FEA solver                             | `engineering`   | Abaqus keyword deck (`.inp`)                       |
+| `nastran`       | Nastran              | Structural FEA solver                                    | `engineering`   | Nastran bulk data (`.bdf`, `.nas`, `.fem`)         |
+| `avsucd`        | AVS                  | Advanced Visual Systems visualization                    | `engineering`   | AVS-UCD unstructured cell data (`.inp`, `.avs`)    |
+| `exodus`        | Sandia SEACAS        | Sandia FE pre/post toolkit                               | `engineering`   | Exodus II, NetCDF-based (`.exo`, `.e`)             |
+| `med`           | SALOME / code_aster  | EDF/CEA simulation platform                              | `engineering`   | MED-file (`.med`)                                  |
+| `medit`         | Medit (INRIA)        | INRIA mesh viewer                                        | `engineering`   | Medit mesh (`.mesh`)                               |
+| `netgen`        | Netgen               | Open-source mesh generator                               | `engineering`   | Netgen volume mesh (`.vol`, `.vol.gz`)             |
+| `su2`           | SU2                  | Open-source CFD / multiphysics suite                     | `engineering`   | SU2 native mesh (`.su2`)                           |
+| `openfoam`      | OpenFOAM             | Open-source CFD toolbox                                  | `engineering`   | OpenFOAM polyMesh (`.foam`)                        |
+| `kratos`        | Kratos Multiphysics  | Open-source multiphysics FEM framework                   | `engineering`   | Kratos model part (`.mdpa`)                        |
+| `flac3d`        | FLAC3D               | Itasca geomechanics solver                               | `engineering`   | FLAC3D grid (`.f3grid`)                            |
+| `tecplot`       | Tecplot              | CFD / engineering visualization                          | `engineering`   | Tecplot FE ASCII (`.dat`, `.tec`)                  |
+| `vtk`           | VTK (Kitware)        | Visualization Toolkit / ParaView                         | `generic`       | VTK / VTU unstructured grid (`.vtk`, `.vtu`)       |
+| `xdmf`          | XDMF                 | Open XML + HDF5 data model                               | `generic`       | XDMF (`.xdmf`, `.xmf`)                             |
+| `cgns`          | CGNS                 | Open CFD data standard                                   | `generic`       | CGNS / HDF5 (`.cgns`)                              |
+| `obj`           | Wavefront            | Geometry interchange format                              | `generic`       | Wavefront OBJ (`.obj`)                             |
+| `stl`           | -                    | 3D-printing / CAD surface format                         | `generic`       | STL stereolithography (`.stl`)                     |
+| `off`           | -                    | Simple geometry format (Geomview)                        | `generic`       | Object File Format (`.off`)                        |
+| `ply`           | Stanford             | Polygon geometry format                                  | `generic`       | Stanford PLY (`.ply`)                              |
+| `xmstin`        | Aquaveo XMS          | XMS suite triangulated surface                           | `generic`       | XMS / SMS TIN (`.tin`)                             |
+| `esri-tin`      | Esri (ArcGIS)        | GIS platform; TIN terrain surface                        | `generic`       | Esri TIN, directory of `.adf`                      |
+| `triangle`      | Triangle / TetGen    | 2D/3D mesh generators (Shewchuk / Si)                    | `generic`       | Triangle node+ele (`.node`, `.ele`)                |
+| `easymesh`      | EasyMesh             | 2D triangular mesh generator (for SWAN)                  | `generic`       | SWAN Easymesh (`.n`, `.e`)                         |
 
 ## Suffixes are not unique — pass `driver=` to disambiguate
 
