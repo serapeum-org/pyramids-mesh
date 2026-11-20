@@ -246,7 +246,7 @@ class _ExodusReader:
         node_z = None
         if _COORD_Z in names:
             coordz = np.asarray(group.OpenMDArray(_COORD_Z).ReadAsArray(), np.float64)
-            if np.any(coordz != 0.0):
+            if np.any(coordz):
                 node_z = coordz
         return node_x, node_y, node_z
 

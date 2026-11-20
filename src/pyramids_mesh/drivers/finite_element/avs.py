@@ -163,7 +163,7 @@ class _AvsUcdReader:
             # format labels from 1, which is recorded for a writer.
             start_index=0,
             original_start_index=1,
-            node_z=z if np.any(z != 0.0) else None,
+            node_z=z if np.any(z) else None,
             crs=None,
             variables={},
             global_attributes={"source": "AVS-UCD"},

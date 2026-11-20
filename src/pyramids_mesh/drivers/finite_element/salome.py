@@ -276,7 +276,7 @@ class _MedReader:
         node_x = coords[:, 0]
         node_y = coords[:, 1] if dim >= 2 else np.zeros(n_node)
         node_z = None
-        if dim >= 3 and np.any(coords[:, 2] != 0.0):
+        if dim >= 3 and np.any(coords[:, 2]):
             node_z = coords[:, 2]
         return node_x, node_y, node_z
 

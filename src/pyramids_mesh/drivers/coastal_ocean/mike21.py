@@ -34,6 +34,7 @@ _ELEMENT_PADDING = 0
 # does.
 _NODE_FIELDS = 5
 _ELEMENT_HEADER_FIELDS = 3
+_ELEMENT_HEADER = "element header"
 
 # WKT begins with one of these top-level keywords. A projection field that does not is a
 # DHI-internal name (`UTM-32`, `LONG/LAT`, `NON-UTM`), which carries no datum this
@@ -240,7 +241,7 @@ class Mike21Driver(BaseDriver):
         """
         return _Mike21Scan(path).build()
 
-    def write(self, dataset: MeshDataset, path: str, **options: object) -> None:
+    def write(self, dataset: MeshDataset, path: str, **_options: object) -> None:
         """Write a mesh frame back to a Mike21 ``.mesh`` file.
 
         Emits the header line, one ``id x y z boundary`` record per node and one
@@ -666,15 +667,15 @@ class _Mike21Scan:
         A trailing ``0`` node id is the format's padding for a triangle in a quad mesh;
         it becomes ``-1`` fill. Every other id is resolved through ``node_map``.
         """
-        header = self._next("element header")
+        header = self._next(_ELEMENT_HEADER)
         if len(header) < _ELEMENT_HEADER_FIELDS:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} has a short element header: expected "
                 f"{_ELEMENT_HEADER_FIELDS} fields (count max_nodes type), found "
                 f"{len(header)}"
             )
-        count = _as_int(header[0], "element header", self.path)
-        max_nodes = _as_int(header[1], "element header", self.path)
+        count = _as_int(header[0], _ELEMENT_HEADER, self.path)
+        max_nodes = _as_int(header[1], _ELEMENT_HEADER, self.path)
         if count <= 0 or max_nodes < 3:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} declares {count} element(s) of up to {max_nodes} "
