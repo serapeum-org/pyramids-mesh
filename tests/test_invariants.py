@@ -9,6 +9,8 @@ right before any lazy load.
 The builder is looked up as ``build_minimal_fixture_<driver name>`` first and
 ``build_minimal_fixture`` second, because one module may hold several drivers: ``sms``
 holds both 2DM and DAT, and a single shared name would hand the DAT driver a 2DM file.
+A hyphen in the driver name becomes an underscore in the builder (``xms-tin`` ->
+``build_minimal_fixture_xms_tin``), since the builder is a Python identifier.
 
 A driver declaring ``needs_mesh`` carries values and no topology, so it has no ``read``
 and the topology invariants cannot apply to it. Those tests skip for it by name; the
@@ -43,6 +45,12 @@ def minimal_file(driver, tmp_path):
     # Per-driver name first: one module may hold several drivers, and the shared name
     # would otherwise hand every driver in it the first driver's format.
     builder = getattr(module, f"build_minimal_fixture_{driver.name}", None)
+    if builder is None:
+        # A driver name may be hyphenated (`xms-tin`); the builder is a Python
+        # identifier, so fall back to the hyphen->underscore spelling.
+        builder = getattr(
+            module, f"build_minimal_fixture_{driver.name.replace('-', '_')}", None
+        )
     if builder is None:
         builder = getattr(module, "build_minimal_fixture", None)
     if builder is None:

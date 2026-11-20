@@ -118,56 +118,65 @@ nav:
     - Installation: installation.md
   - Reference:
     - Overview: reference/index.md
-    - 2DM (SMS/TUFLOW): reference/2dm.md
-    - DAT (SMS results): reference/dat.md
-    - Mike21 (DHI mesh): reference/mike21.md
-    - Selafin (TELEMAC): reference/selafin.md
-    - SWW (ANUGA): reference/sww.md
-    - XMDF (HDF5 results): reference/xmdf.md
-    - 3Di (results): reference/3di.md
-    - TUFLOW FV (results): reference/tuflowfv.md
-    - DFSU (DHI MIKE): reference/dfsu.md
-    - Esri TIN (directory): reference/esri-tin.md
-    - PLY (Stanford): reference/ply.md
-    - XMS TIN: reference/xmstin.md
-    - XDMF (XML+HDF5): reference/xdmf.md
-    - FLO-2D (flood): reference/flo2d.md
-    - HEC-RAS 2D: reference/hecras.md
-    - ADCIRC: reference/adcirc.md
-    - Deltares 1D (D-Flow FM): reference/deltares1d.md
-    - SCHISM (.gr3): reference/schism.md
-    - Gmsh (.msh): reference/gmsh.md
-    - VTK / VTU: reference/vtk.md
-    - MODFLOW 6 DISV: reference/modflow6.md
-    - MPAS (NetCDF): reference/mpas.md
-    - ICON (NetCDF): reference/icon.md
-    - FVCOM (native grid): reference/fvcom.md
-    - Triangle / TetGen: reference/triangle.md
-    - SWAN Easymesh: reference/easymesh.md
-    - Exodus II (.exo): reference/exodus.md
-    - SU2 (.su2): reference/su2.md
-    - SRH-2D: reference/srh2d.md
-    - MODFLOW 6 DISU: reference/modflow6_disu.md
-    - FEFLOW (.fem): reference/feflow.md
-    - SCRIP grid: reference/scrip.md
-    - ESMF mesh: reference/esmf.md
-    - GEOS cubed-sphere: reference/geos.md
-    - CGNS (.cgns): reference/cgns.md
-    - MED (.med): reference/med.md
-    - Nastran bulk data: reference/nastran.md
-    - Abaqus (.inp): reference/abaqus.md
-    - AVS-UCD: reference/avsucd.md
-    - Medit (.mesh): reference/medit.md
-    - Netgen (.vol): reference/netgen.md
-    - Tecplot FE: reference/tecplot.md
-    - FLAC3D (.f3grid): reference/flac3d.md
-    - Kratos MDPA: reference/kratos.md
-    - OpenFOAM polyMesh: reference/openfoam.md
-    - Wavefront OBJ: reference/obj.md
-    - STL: reference/stl.md
-    - OFF (Object File Format): reference/off.md
-    - GiD / Iber (.msh): reference/gid.md
-    - RiverFlow2D (.fed): reference/riverflow2d.md
+    - Supported formats: reference/supported-formats.md
+    - coastal_ocean:
+      - ADCIRC: reference/coastal_ocean/adcirc.md
+      - SCHISM (.gr3): reference/coastal_ocean/schism.md
+      - FVCOM (native grid): reference/coastal_ocean/fvcom.md
+      - Selafin (TELEMAC): reference/coastal_ocean/selafin.md
+      - SWW (ANUGA): reference/coastal_ocean/sww.md
+      - TUFLOW FV (results): reference/coastal_ocean/tuflowfv.md
+      - DFSU (DHI MIKE): reference/coastal_ocean/dfsu.md
+      - Mike21 (DHI mesh): reference/coastal_ocean/mike21.md
+    - river_flood:
+      - 3Di (urban/rural flood): reference/river_flood/3di.md
+      - HEC-RAS 2D: reference/river_flood/hecras.md
+      - FLO-2D (flood): reference/river_flood/flo2d.md
+      - RiverFlow2D (.fed): reference/river_flood/riverflow2d.md
+      - SRH-2D: reference/river_flood/srh2d.md
+      - 2DM (SMS/TUFLOW): reference/river_flood/2dm.md
+      - DAT (SMS results): reference/river_flood/dat.md
+      - XMDF (HDF5 results): reference/river_flood/xmdf.md
+      - Delft3D FM / D-HYDRO 1D: reference/river_flood/delft3d-1d.md
+      - GiD / Iber (.msh): reference/river_flood/gid.md
+    - earth_system:
+      - MPAS (NetCDF): reference/earth_system/mpas.md
+      - ICON (NetCDF): reference/earth_system/icon.md
+      - GEOS cubed-sphere: reference/earth_system/geos.md
+      - ESMF mesh: reference/earth_system/esmf.md
+      - SCRIP grid: reference/earth_system/scrip.md
+    - subsurface:
+      - MODFLOW 6 DISV: reference/subsurface/modflow6.md
+      - MODFLOW 6 DISU: reference/subsurface/modflow6-disu.md
+      - FEFLOW (.fem): reference/subsurface/feflow.md
+    - finite_element:
+      - Abaqus (.inp): reference/finite_element/abaqus.md
+      - Nastran bulk data: reference/finite_element/nastran.md
+      - Kratos MDPA: reference/finite_element/kratos.md
+      - FLAC3D (.f3grid): reference/finite_element/flac3d.md
+      - MED (.med): reference/finite_element/med.md
+      - Exodus II (.exo): reference/finite_element/exodus.md
+      - AVS-UCD: reference/finite_element/avs-ucd.md
+    - cfd:
+      - SU2 (.su2): reference/cfd/su2.md
+      - OpenFOAM polyMesh: reference/cfd/openfoam.md
+      - CGNS (.cgns): reference/cfd/cgns.md
+      - XDMF (XML+HDF5): reference/cfd/xdmf.md
+      - Tecplot FE: reference/cfd/tecplot.md
+    - mesh_generators:
+      - Gmsh (.msh): reference/mesh_generators/gmsh.md
+      - Netgen (.vol): reference/mesh_generators/netgen.md
+      - Triangle / TetGen: reference/mesh_generators/triangle.md
+      - SWAN Easymesh: reference/mesh_generators/easymesh.md
+      - Medit (.mesh): reference/mesh_generators/medit.md
+    - geometry:
+      - VTK / VTU: reference/geometry/vtk.md
+      - Wavefront OBJ: reference/geometry/obj.md
+      - STL: reference/geometry/stl.md
+      - OFF (Object File Format): reference/geometry/off.md
+      - PLY (Stanford): reference/geometry/ply.md
+      - XMS TIN: reference/geometry/xms-tin.md
+      - Esri TIN (directory): reference/geometry/arcgis-tin.md
   - About:
     - Change-log: change-log.md
     - Code of Conduct: CODE_OF_CONDUCT.md
