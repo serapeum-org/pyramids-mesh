@@ -258,7 +258,7 @@ class Mike21Driver(BaseDriver):
         Args:
             dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
             path: The output ``.mesh`` path.
-            **options: Unused; accepted for a uniform writer signature.
+            **_options: Unused; accepted for a uniform writer signature.
 
         Raises:
             FileFormatNotSupportedError: If the dataset carries no faces, or any face has
