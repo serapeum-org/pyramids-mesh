@@ -133,6 +133,15 @@ notebook = [
     # `xyzservices` pin — `cleopatra[tiles]` already carries it.
     "pyramids-core[viz]>=0.77.0",
 ]
+# Local-only group for exercising the example notebooks against digitalearth's optional
+# plotting backends (interactive / 3d / web) through `ds.plot(..., backend=...)`. This is a
+# PEP 735 dependency-group, NOT a published `[project.optional-dependencies]` extra, so it does
+# not relax ADR-0005: the package still declares no plotting code or runtime plotting
+# dependency; this is dev-only tooling. pixi maps it to the `digitalearth` environment below,
+# on its own solve-group, so the heavy VTK / HoloViz / MapLibre stacks never perturb the other
+# environments' locks -- the same isolation the `dhi` env uses for mikeio. `[all]` is
+# digitalearth's `[3d,interactive,web]` aggregate (it does NOT include the `photoreal` extra).
+digitalearth = ["digitalearth[all] >=0.15.2"]
 
 
 # One entry point per driver. The value is a class, which pyramids' registry
@@ -392,6 +401,12 @@ py314 = { features = ["py314", "dev", "notebook"], solve-group = "py314" }
 # It also carries the `notebook` feature: `dfsu.ipynb` can only read a DFSU file with
 # mikeio installed, so this is the one environment that can execute that example.
 dhi = { features = ["py314", "dev", "notebook", "dhi"], solve-group = "dhi" }
+# Exercises the example notebooks against digitalearth's optional interactive / 3d / web
+# backends (see the `digitalearth` dependency-group above). Local-only; its own solve-group
+# keeps the heavy VTK / HoloViz / MapLibre resolution out of every other environment's lock.
+# Pinned to py311 (not py314): the viz stack (VTK, cartopy) ships no cp314 win-64 wheels yet, so
+# 3.14 falls back to source builds that fail on Windows; 3.11 has wheels for the whole stack.
+digitalearth = { features = ["py311", "dev", "notebook", "digitalearth"], solve-group = "digitalearth" }
 
 
 # Interpreter pins, one feature per environment in the matrix. `default`, `dev`
