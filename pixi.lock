@@ -1384,7 +1384,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/1d/39/91bc08650cc8e3efeb7a83c25e20ebddcc9b70d28b4eb6f51a4fb55da7a4/jupyter_server-2.21.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/20/c2/247c150f5ca12f8593c20e39115db551b18de5c6cb383006de21b57399e4/pyogrio-0.13.0-cp311-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/22/b1/d162e58abf014e7b620b960490a86098317537b877079d580e60feb585f9/digitalearth-0.15.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/93/4e45e37f26c820216704b36b8e67cc55c490a7abd287a78a26a2c0e21386/lazy_loader-0.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/d3/996332fe24f3c2458b9c353b998570dfa2631763e9a8674ba3f94c0877d0/jupyterlab_server-2.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/e8/9d61dcbd1dce8ef418f06befd4ac084b4720429c26b0b1222bc218685eff/jupyter_lsp-2.3.1-py3-none-any.whl
@@ -1493,6 +1492,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/8c/b2/23f4032cd1c9744aa8e9ecda43cd4d755fcb209f7f40fae035248f31a679/pyct-0.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8e/09/9f33bee7acbb95b0b8b4847a20f0ca15650bbfbed53795c2ca88f3390391/pyzmq-27.3.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/8e/c2/8fec8e8e2eb920cc2280f569144080cd58622a2eda83bfa4c0c354a63264/anywidget-0.11.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8f/21/54b6e4ad1b8b0afcaac83c8c61c3aa077d21c57e9666d26e57488f2dbcd7/digitalearth-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/ae/1c9aa48198c9bb824766a6bc3b0527db9831d67c1faf1e3f1927b18afa92/trame_rca-2.11.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/f5/e7baaa238f7f5b8790a27d1174f38e50e77c2d4860207dffac32ef1c0409/panel-1.9.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/91/ae/7154308ae637e32530b93575fd815a210f805c79097b7e47a51b98c75bae/pyshp-3.1.9-py3-none-any.whl
@@ -1660,7 +1660,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/51/7c725115425be01aa0fac87eb38f8e8c8c04de80d49a99b08a74898b25ee/fonttools-4.68.0-cp311-cp311-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/22/67/6a0b94a7960d5e1b5eacd2fb529f3fccc47db4644f7f0a7cfdcfc3be578a/charset_normalizer-3.5.2-cp311-cp311-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/22/b1/d162e58abf014e7b620b960490a86098317537b877079d580e60feb585f9/digitalearth-0.15.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/93/4e45e37f26c820216704b36b8e67cc55c490a7abd287a78a26a2c0e21386/lazy_loader-0.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/d3/996332fe24f3c2458b9c353b998570dfa2631763e9a8674ba3f94c0877d0/jupyterlab_server-2.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/e8/9d61dcbd1dce8ef418f06befd4ac084b4720429c26b0b1222bc218685eff/jupyter_lsp-2.3.1-py3-none-any.whl
@@ -1769,6 +1768,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/8a/c9/eb6b6528c7edb958d4c24ac47a8b94113d9de36e4cfc6eecd599b1a4f349/filelock-4.2.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8c/b2/23f4032cd1c9744aa8e9ecda43cd4d755fcb209f7f40fae035248f31a679/pyct-0.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8e/c2/8fec8e8e2eb920cc2280f569144080cd58622a2eda83bfa4c0c354a63264/anywidget-0.11.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8f/21/54b6e4ad1b8b0afcaac83c8c61c3aa077d21c57e9666d26e57488f2dbcd7/digitalearth-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/ae/1c9aa48198c9bb824766a6bc3b0527db9831d67c1faf1e3f1927b18afa92/trame_rca-2.11.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/f3/cf2fd18d108c6d12f8c73fbf1d7f6949c13a3a0481444510a61bbaba7329/coverage-7.17.4-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/8f/f5/e7baaa238f7f5b8790a27d1174f38e50e77c2d4860207dffac32ef1c0409/panel-1.9.4-py3-none-any.whl
@@ -1922,7 +1922,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/1f/02/41d769148f32c9bd535fd0ddd946c4e42f38acaddf7899f3bf49d9e67703/multidict-7.2.1-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/1f/bc/1b4246004806869c1d420c0a53e97244c9b538a7175e10f5e30012bbeab7/shapely-2.2.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/21/fc/b98d6dbbd458eeb197b63486c64eb8ed3ef1216d4bf17c353d1153edca97/pyvista_validation-0.2.2-cp310-abi3-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/22/b1/d162e58abf014e7b620b960490a86098317537b877079d580e60feb585f9/digitalearth-0.15.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/93/4e45e37f26c820216704b36b8e67cc55c490a7abd287a78a26a2c0e21386/lazy_loader-0.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/d3/996332fe24f3c2458b9c353b998570dfa2631763e9a8674ba3f94c0877d0/jupyterlab_server-2.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/23/e8/9d61dcbd1dce8ef418f06befd4ac084b4720429c26b0b1222bc218685eff/jupyter_lsp-2.3.1-py3-none-any.whl
@@ -2030,6 +2029,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/8a/c9/eb6b6528c7edb958d4c24ac47a8b94113d9de36e4cfc6eecd599b1a4f349/filelock-4.2.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8c/b2/23f4032cd1c9744aa8e9ecda43cd4d755fcb209f7f40fae035248f31a679/pyct-0.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8e/c2/8fec8e8e2eb920cc2280f569144080cd58622a2eda83bfa4c0c354a63264/anywidget-0.11.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8f/21/54b6e4ad1b8b0afcaac83c8c61c3aa077d21c57e9666d26e57488f2dbcd7/digitalearth-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/ae/1c9aa48198c9bb824766a6bc3b0527db9831d67c1faf1e3f1927b18afa92/trame_rca-2.11.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8f/f5/e7baaa238f7f5b8790a27d1174f38e50e77c2d4860207dffac32ef1c0409/panel-1.9.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/91/89/f2b509f7bf79352e40117824c1070dbeafd4df67031d3fa98165a3134228/markupsafe-3.0.4-cp311-cp311-win_amd64.whl
@@ -7890,37 +7890,6 @@ packages:
   name: ptyprocess
   version: 0.7.0
   sha256: 4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35
-- pypi: https://files.pythonhosted.org/packages/22/b1/d162e58abf014e7b620b960490a86098317537b877079d580e60feb585f9/digitalearth-0.15.2-py3-none-any.whl
-  name: digitalearth
-  version: 0.15.2
-  sha256: 2505ca550b33ee3cde9bdb2661fb7fda93dc359121596f975784ab6ee5d05596
-  requires_dist:
-  - numpy>=2.0.0
-  - pandas>=2.0.0
-  - matplotlib>=3.11
-  - geopandas>=1.1.3
-  - cleopatra[tiles]>=0.45.0
-  - xyzservices>=2023.10.0
-  - pyramids-core>=0.77.0
-  - loguru>=0.7.3
-  - pyyaml>=6.0
-  - pyvista[jupyter]>=0.48 ; extra == '3d'
-  - geovista>=0.5.3 ; extra == '3d'
-  - pointclouds>=0.1.0 ; extra == '3d'
-  - imageio>=2.34 ; extra == '3d'
-  - imageio-ffmpeg>=0.5 ; extra == '3d'
-  - mitsuba>=3.9 ; extra == 'photoreal'
-  - oidn>=0.2 ; extra == 'photoreal'
-  - tbb>=2021.13 ; sys_platform != 'darwin' and extra == 'photoreal'
-  - geoviews>=1.15 ; extra == 'interactive'
-  - holoviews>=1.22 ; extra == 'interactive'
-  - hvplot>=0.12 ; extra == 'interactive'
-  - datashader>=0.19 ; extra == 'interactive'
-  - panel>=1.9 ; extra == 'interactive'
-  - cartopy<0.26 ; extra == 'interactive'
-  - maplibre[ipywidget]>=0.3 ; extra == 'web'
-  - digitalearth[3d,interactive,web] ; extra == 'all'
-  requires_python: '>=3.11,<4'
 - pypi: https://files.pythonhosted.org/packages/22/c3/9062531735ff1fd27f3a79c353c4cf4d822eeffd062fd90b2c553a96f4bb/mkdocstrings-1.0.7-py3-none-any.whl
   name: mkdocstrings
   version: 1.0.7
@@ -12089,6 +12058,37 @@ packages:
   - pip ; extra == 'install-types'
   - orjson ; extra == 'faster-cache'
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/8f/21/54b6e4ad1b8b0afcaac83c8c61c3aa077d21c57e9666d26e57488f2dbcd7/digitalearth-0.16.0-py3-none-any.whl
+  name: digitalearth
+  version: 0.16.0
+  sha256: 1069ac5be5e677ea0e236a9800b08311143bf7cc1291e11acac153ea39786ed9
+  requires_dist:
+  - numpy>=2.0.0
+  - pandas>=2.0.0
+  - matplotlib>=3.11
+  - geopandas>=1.1.3
+  - cleopatra[tiles]>=0.46.1
+  - xyzservices>=2023.10.0
+  - pyramids-core>=0.77.0
+  - loguru>=0.7.3
+  - pyyaml>=6.0
+  - pyvista[jupyter]>=0.48 ; extra == '3d'
+  - geovista>=0.5.3 ; extra == '3d'
+  - pointclouds>=0.1.0 ; extra == '3d'
+  - imageio>=2.34 ; extra == '3d'
+  - imageio-ffmpeg>=0.5 ; extra == '3d'
+  - mitsuba>=3.9 ; extra == 'photoreal'
+  - oidn>=0.2 ; extra == 'photoreal'
+  - tbb>=2021.13 ; sys_platform != 'darwin' and extra == 'photoreal'
+  - geoviews>=1.15 ; extra == 'interactive'
+  - holoviews>=1.22 ; extra == 'interactive'
+  - hvplot>=0.12 ; extra == 'interactive'
+  - datashader>=0.19 ; extra == 'interactive'
+  - panel>=1.9 ; extra == 'interactive'
+  - cartopy<0.26 ; extra == 'interactive'
+  - maplibre[ipywidget]>=0.3 ; extra == 'web'
+  - digitalearth[3d,interactive,web] ; extra == 'all'
+  requires_python: '>=3.11,<4'
 - pypi: https://files.pythonhosted.org/packages/8f/26/8a90d2a8f2b2e471bb486b7aec117b8ae622715ed6c39853aec48ea20073/librt-0.16.0-cp314-cp314-macosx_11_0_arm64.whl
   name: librt
   version: 0.16.0

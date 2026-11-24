@@ -141,7 +141,7 @@ notebook = [
 # on its own solve-group, so the heavy VTK / HoloViz / MapLibre stacks never perturb the other
 # environments' locks -- the same isolation the `dhi` env uses for mikeio. `[all]` is
 # digitalearth's `[3d,interactive,web]` aggregate (it does NOT include the `photoreal` extra).
-digitalearth = ["digitalearth[all] >=0.15.2"]
+digitalearth = ["digitalearth[all] >=0.16.0"]  # 0.16.0: mesh render on interactive/3d/web + cleopatra-0.46 static import fix
 
 
 # One entry point per driver. The value is a class, which pyramids' registry
