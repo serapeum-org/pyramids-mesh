@@ -13,6 +13,8 @@ change that registers its entry point.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import sys
+import types
 import warnings
 from importlib.util import find_spec
 
@@ -161,22 +163,46 @@ def test_dfsu_absent_from_registry_without_mikeio():
     assert "dfsu" not in mesh_drivers()
 
 
-def test_mikeio_helper_pins_agg_backend():
-    """``_mikeio`` pins matplotlib's ``Agg`` backend before importing the backend.
+def test_mikeio_does_not_repin_backend_when_already_imported(monkeypatch):
+    """``_mikeio`` returns an already-imported ``mikeio`` without re-pinning the backend.
 
-    The ``Agg`` pin must run even when the import then fails, so a headless run never selects a
-    GUI backend. Without ``mikeio`` the helper raises ``ModuleNotFoundError``, but matplotlib's
-    backend is already ``Agg`` by the time it does; with ``mikeio`` the helper returns the module
-    (an object exposing ``open``). Skipped where matplotlib itself is absent (a bare wheel env),
-    since there is then no backend to pin.
+    ``mikeio`` selects a backend on import, so ``Agg`` is pinned before the *first* import; re-pinning
+    on a later call would clobber a backend chosen afterwards (e.g. cleopatra's inline backend while a
+    plot is being drawn). With a ``mikeio`` already in ``sys.modules`` the helper must return it and
+    leave ``matplotlib.use`` untouched. ``matplotlib.use`` is spied, never called, so the real process
+    backend is not mutated. Skipped where matplotlib is absent (a bare wheel env has no backend to pin).
     """
     matplotlib = pytest.importorskip("matplotlib")
 
     from pyramids_mesh.drivers.coastal_ocean.mike import _mikeio
 
-    if find_spec("mikeio") is None:
-        with pytest.raises(ModuleNotFoundError):
-            _mikeio()
-    else:
-        assert hasattr(_mikeio(), "open"), "the helper must return the mikeio module"
-    assert matplotlib.get_backend().lower() == "agg", matplotlib.get_backend()
+    calls: list = []
+    monkeypatch.setattr(matplotlib, "use", lambda *args, **kwargs: calls.append(args))
+    fake = types.ModuleType("mikeio")
+    monkeypatch.setitem(sys.modules, "mikeio", fake)
+
+    assert _mikeio() is fake, "the helper must return the already-imported mikeio module"
+    assert calls == [], f"matplotlib.use must not be called when mikeio is already imported, got {calls}"
+
+
+@pytest.mark.skipif(
+    find_spec("mikeio") is not None,
+    reason="forces the first-import path, which only occurs when mikeio is absent",
+)
+def test_mikeio_pins_agg_before_importing_when_absent(monkeypatch):
+    """``_mikeio`` pins ``Agg`` before importing ``mikeio`` the first time, even on the failing path.
+
+    The pin must run before the import is attempted, so a headless run never selects a GUI backend --
+    and it still runs when the import then raises ``ModuleNotFoundError`` because the backend is absent.
+    ``matplotlib.use`` is spied, so the real process backend is not mutated. Skipped where matplotlib is
+    absent (a bare wheel env has no backend to pin).
+    """
+    matplotlib = pytest.importorskip("matplotlib")
+
+    from pyramids_mesh.drivers.coastal_ocean.mike import _mikeio
+
+    calls: list = []
+    monkeypatch.setattr(matplotlib, "use", lambda *args, **kwargs: calls.append(args[0] if args else None))
+    with pytest.raises(ModuleNotFoundError):
+        _mikeio()
+    assert calls == ["Agg"], f"Agg must be pinned once before the mikeio import, got {calls}"

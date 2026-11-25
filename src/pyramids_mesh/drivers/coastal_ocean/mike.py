@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import pyramids  # noqa: F401  # isort:skip
 
+import sys
+
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
@@ -38,12 +40,18 @@ def _mikeio():
     non-interactive ``Agg`` backend is pinned first to keep a headless run from choosing a GUI
     backend.
 
+    The pin runs only before ``mikeio``'s *first* import (when it is not yet in ``sys.modules``).
+    Re-pinning on every call would clobber a backend the caller deliberately chose afterwards --
+    for example cleopatra's inline backend while a DFSU variable is plotted in a notebook, which a
+    lazy value read would reset back to ``Agg`` mid-plot.
+
     Returns:
         module: The imported ``mikeio`` module.
     """
-    import matplotlib
+    if "mikeio" not in sys.modules:
+        import matplotlib
 
-    matplotlib.use("Agg")
+        matplotlib.use("Agg")
 
     import mikeio
 
