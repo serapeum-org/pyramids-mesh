@@ -43,7 +43,9 @@ def _mikeio():
     The pin runs only before ``mikeio``'s *first* import (when it is not yet in ``sys.modules``).
     Re-pinning on every call would clobber a backend the caller deliberately chose afterwards --
     for example cleopatra's inline backend while a DFSU variable is plotted in a notebook, which a
-    lazy value read would reset back to ``Agg`` mid-plot.
+    lazy value read would reset back to ``Agg`` mid-plot. A consequence is that the headless pin is
+    guaranteed only when this driver is the first code to import ``mikeio`` in the process; nothing
+    else in this package imports it, so in practice it is.
 
     Returns:
         module: The imported ``mikeio`` module.

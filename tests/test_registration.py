@@ -138,6 +138,8 @@ def test_discovery_emits_no_dfsu_runtimewarning():
     ``extra_missing`` skip. Either way a ``dfsu`` ``RuntimeWarning`` is noise every non-``dhi``
     read would print, and it must not appear.
     """
+    # _drivers._CACHE is an upstream private, used deliberately (as the repo's other driver
+    # registration tests do) to save and restore the discovery cache around a forced re-discovery.
     original = _drivers._CACHE
     try:
         _drivers.clear_driver_cache()
@@ -195,7 +197,8 @@ def test_mikeio_pins_agg_before_importing_when_absent(monkeypatch):
     The pin must run before the import is attempted, so a headless run never selects a GUI backend --
     and it still runs when the import then raises ``ModuleNotFoundError`` because the backend is absent.
     ``matplotlib.use`` is spied, so the real process backend is not mutated. Skipped where matplotlib is
-    absent (a bare wheel env has no backend to pin).
+    absent (a bare wheel env has no backend to pin). This covers the Agg-before-import *ordering*; the
+    re-pin *guard* is covered by ``test_mikeio_does_not_repin_backend_when_already_imported``.
     """
     matplotlib = pytest.importorskip("matplotlib")
 
