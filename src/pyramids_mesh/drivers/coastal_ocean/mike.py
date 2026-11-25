@@ -59,7 +59,8 @@ class DfsuDriver(BaseDriver):
     variable, and each item becomes a face-located variable over time.
 
     Documented limitations:
-        - **Requires the ``dhi`` extra.** Without ``mikeio`` installed the driver is not
+        - **Requires the ``dhi`` extra.** The class declares ``extra = "mikeio"``, so without
+          ``mikeio`` installed pyramids' registry skips it silently (no warning) and it is not
           registered at all; nothing here is reachable.
         - **Elements are cell-centred, so every item is face-located.** Mixed triangles
           and quads are padded to the widest row with ``-1``.
