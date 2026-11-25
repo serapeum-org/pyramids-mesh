@@ -4,32 +4,50 @@ DFSU and DFS2 are proprietary DHI binary containers that cannot be read without 
 Python library, ``mikeio`` -- the heaviest extra in this package (it pulls ``mikecore``,
 pandas, matplotlib, scipy and tqdm), which is why it is isolated in ``[dhi]``.
 
-``mikeio`` is imported at this module's top, so the driver registry skips the DHI drivers
-with a warning when the extra is absent rather than failing the whole package; they appear
-only when ``[dhi]`` is installed. Matplotlib's backend is pinned to the non-interactive
-``Agg`` before ``mikeio`` is imported, so importing a driver never selects a GUI backend in
-a headless run. Task D8; see ``planning/design.md`` section 20.3.
+``mikeio`` and ``matplotlib`` are imported lazily (see :func:`_mikeio`), not at module scope,
+so this module imports cleanly without the ``dhi`` extra. The driver declares
+``extra = "mikeio"``, so pyramids' registry loads :class:`DfsuDriver`, finds the backend
+missing via ``find_spec`` and skips it **silently** -- no ``RuntimeWarning`` -- when the extra
+is absent; the DHI drivers appear only when ``[dhi]`` is installed. Matplotlib's backend is
+pinned to the non-interactive ``Agg`` before ``mikeio`` is imported, so importing the backend
+never selects a GUI backend in a headless run. Task D8; see ``planning/design.md`` section
+20.3.
 """
 
 from __future__ import annotations
 
 import pyramids  # noqa: F401  # isort:skip
 
-import matplotlib  # isort:skip
+import numpy as np
+from pyramids.base._errors import FileFormatNotSupportedError
+from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION
 
-matplotlib.use("Agg")  # non-interactive; must precede the mikeio import below
-
-import mikeio  # noqa: E402  # isort:skip
-
-import numpy as np  # noqa: E402
-from pyramids.base._errors import FileFormatNotSupportedError  # noqa: E402
-from pyramids.netcdf.ugrid import MESH_DRIVER_API_VERSION  # noqa: E402
-
-from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable  # noqa: E402
+from pyramids_mesh._base import BaseDriver, ParsedMesh, ParsedVariable
 
 # DFS binary files open with this ASCII tag; the cheap half of the sniff, so a foreign
 # ``.dfsu`` is declined without paying for a full ``mikeio`` open.
 _DFS_MAGIC = b"DHI_DFS_"
+
+
+def _mikeio():
+    """Import and return ``mikeio`` on demand, pinning matplotlib's backend first.
+
+    Both imports are deferred out of module scope so this module imports without the ``dhi``
+    extra: the registry loads :class:`DfsuDriver`, sees ``extra = "mikeio"`` is missing and
+    skips it silently. ``mikeio`` pulls matplotlib and selects a backend on import, so the
+    non-interactive ``Agg`` backend is pinned first to keep a headless run from choosing a GUI
+    backend.
+
+    Returns:
+        module: The imported ``mikeio`` module.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    import mikeio
+
+    return mikeio
 
 
 class DfsuDriver(BaseDriver):
@@ -68,6 +86,9 @@ class DfsuDriver(BaseDriver):
     suffixes = (".dfsu",)
     api_version = MESH_DRIVER_API_VERSION
     capabilities = frozenset({"read_mesh", "read_data", "lazy_data"})
+    # The registry probes this with find_spec and skips the driver silently when mikeio is
+    # absent, so a non-dhi install never prints a RuntimeWarning about dfsu.
+    extra = "mikeio"
 
     def _sniff(self, path: str) -> bool:
         """Report whether the file opens with the DFS binary tag."""
@@ -100,7 +121,7 @@ class _DfsuLoader:
 
     def __call__(self) -> np.ndarray:
         """Reopen the file and read this item's values as ``(n_time, n_element)``."""
-        dataset = mikeio.open(self.path).read(items=[self.item_name])
+        dataset = _mikeio().open(self.path).read(items=[self.item_name])
         return np.asarray(dataset[0].values, dtype=np.float64)
 
 
@@ -118,7 +139,7 @@ class _DfsuReader:
             FileFormatNotSupportedError: If mikeio cannot open the file as a mesh.
         """
         try:
-            opened = mikeio.open(self.path)
+            opened = _mikeio().open(self.path)
         except Exception as error:  # noqa: BLE001 - mikeio raises various types
             raise FileFormatNotSupportedError(
                 f"{self.path!r} could not be opened as a DFSU mesh: {error}"

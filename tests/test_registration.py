@@ -13,10 +13,15 @@ change that registers its entry point.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import warnings
+from importlib.util import find_spec
+
+import pytest
 from pyramids.netcdf.ugrid import (
     CAPABILITIES,
     MESH_DRIVER_API_VERSION,
     RESERVED_NAMES,
+    _drivers,
     mesh_drivers,
 )
 
@@ -109,3 +114,48 @@ def test_every_registered_driver_is_structurally_valid():
             assert suffix == suffix.lower(), suffix
             assert suffix.startswith("."), suffix
         assert capabilities <= set(CAPABILITIES), name
+
+
+def test_dfsu_driver_declares_its_mikeio_extra():
+    """DfsuDriver names ``mikeio`` as its extra so the registry can probe it with find_spec.
+
+    Importing the driver module must succeed even without ``mikeio`` installed -- the import
+    itself is part of the silent-skip contract, because the registry loads the class before it
+    probes the extra. A module that imports its backend eagerly would raise on load and be
+    reported as a broken plugin instead of skipped.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.mike import DfsuDriver
+
+    assert DfsuDriver.extra == "mikeio"
+
+
+def test_discovery_emits_no_dfsu_runtimewarning():
+    """Driver discovery never warns about ``dfsu``, whether or not ``mikeio`` is installed.
+
+    With ``mikeio`` present the class loads cleanly; without it the registry takes the silent
+    ``extra_missing`` skip. Either way a ``dfsu`` ``RuntimeWarning`` is noise every non-``dhi``
+    read would print, and it must not appear.
+    """
+    original = _drivers._CACHE
+    try:
+        _drivers.clear_driver_cache()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            mesh_drivers()
+        dfsu_warnings = [
+            str(w.message)
+            for w in caught
+            if issubclass(w.category, RuntimeWarning) and "dfsu" in str(w.message)
+        ]
+        assert not dfsu_warnings, dfsu_warnings
+    finally:
+        _drivers._CACHE = original
+
+
+@pytest.mark.skipif(
+    find_spec("mikeio") is not None,
+    reason="dfsu is registered when the dhi extra (mikeio) is installed",
+)
+def test_dfsu_absent_from_registry_without_mikeio():
+    """Without ``mikeio`` the driver is skipped (not broken) and stays out of the registry."""
+    assert "dfsu" not in mesh_drivers()
