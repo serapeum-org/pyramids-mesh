@@ -159,3 +159,24 @@ def test_discovery_emits_no_dfsu_runtimewarning():
 def test_dfsu_absent_from_registry_without_mikeio():
     """Without ``mikeio`` the driver is skipped (not broken) and stays out of the registry."""
     assert "dfsu" not in mesh_drivers()
+
+
+def test_mikeio_helper_pins_agg_backend():
+    """``_mikeio`` pins matplotlib's ``Agg`` backend before importing the backend.
+
+    The ``Agg`` pin must run even when the import then fails, so a headless run never selects a
+    GUI backend. Without ``mikeio`` the helper raises ``ModuleNotFoundError``, but matplotlib's
+    backend is already ``Agg`` by the time it does; with ``mikeio`` the helper returns the module
+    (an object exposing ``open``). Skipped where matplotlib itself is absent (a bare wheel env),
+    since there is then no backend to pin.
+    """
+    matplotlib = pytest.importorskip("matplotlib")
+
+    from pyramids_mesh.drivers.coastal_ocean.mike import _mikeio
+
+    if find_spec("mikeio") is None:
+        with pytest.raises(ModuleNotFoundError):
+            _mikeio()
+    else:
+        assert hasattr(_mikeio(), "open"), "the helper must return the mikeio module"
+    assert matplotlib.get_backend().lower() == "agg", matplotlib.get_backend()
