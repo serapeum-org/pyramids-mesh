@@ -13,10 +13,17 @@ change that registers its entry point.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import sys
+import types
+import warnings
+from importlib.util import find_spec
+
+import pytest
 from pyramids.netcdf.ugrid import (
     CAPABILITIES,
     MESH_DRIVER_API_VERSION,
     RESERVED_NAMES,
+    _drivers,
     mesh_drivers,
 )
 
@@ -109,3 +116,96 @@ def test_every_registered_driver_is_structurally_valid():
             assert suffix == suffix.lower(), suffix
             assert suffix.startswith("."), suffix
         assert capabilities <= set(CAPABILITIES), name
+
+
+def test_dfsu_driver_declares_its_mikeio_extra():
+    """DfsuDriver names ``mikeio`` as its extra so the registry can probe it with find_spec.
+
+    Importing the driver module must succeed even without ``mikeio`` installed -- the import
+    itself is part of the silent-skip contract, because the registry loads the class before it
+    probes the extra. A module that imports its backend eagerly would raise on load and be
+    reported as a broken plugin instead of skipped.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.mike import DfsuDriver
+
+    assert DfsuDriver.extra == "mikeio"
+
+
+def test_discovery_emits_no_dfsu_runtimewarning():
+    """Driver discovery never warns about ``dfsu``, whether or not ``mikeio`` is installed.
+
+    With ``mikeio`` present the class loads cleanly; without it the registry takes the silent
+    ``extra_missing`` skip. Either way a ``dfsu`` ``RuntimeWarning`` is noise every non-``dhi``
+    read would print, and it must not appear.
+    """
+    # _drivers._CACHE is an upstream private, used deliberately (as the repo's other driver
+    # registration tests do) to save and restore the discovery cache around a forced re-discovery.
+    original = _drivers._CACHE
+    try:
+        _drivers.clear_driver_cache()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            mesh_drivers()
+        dfsu_warnings = [
+            str(w.message)
+            for w in caught
+            if issubclass(w.category, RuntimeWarning) and "dfsu" in str(w.message)
+        ]
+        assert not dfsu_warnings, dfsu_warnings
+    finally:
+        _drivers._CACHE = original
+
+
+@pytest.mark.skipif(
+    find_spec("mikeio") is not None,
+    reason="dfsu is registered when the dhi extra (mikeio) is installed",
+)
+def test_dfsu_absent_from_registry_without_mikeio():
+    """Without ``mikeio`` the driver is skipped (not broken) and stays out of the registry."""
+    assert "dfsu" not in mesh_drivers()
+
+
+def test_mikeio_does_not_repin_backend_when_already_imported(monkeypatch):
+    """``_mikeio`` returns an already-imported ``mikeio`` without re-pinning the backend.
+
+    ``mikeio`` selects a backend on import, so ``Agg`` is pinned before the *first* import; re-pinning
+    on a later call would clobber a backend chosen afterwards (e.g. cleopatra's inline backend while a
+    plot is being drawn). With a ``mikeio`` already in ``sys.modules`` the helper must return it and
+    leave ``matplotlib.use`` untouched. ``matplotlib.use`` is spied, never called, so the real process
+    backend is not mutated. Skipped where matplotlib is absent (a bare wheel env has no backend to pin).
+    """
+    matplotlib = pytest.importorskip("matplotlib")
+
+    from pyramids_mesh.drivers.coastal_ocean.mike import _mikeio
+
+    calls: list = []
+    monkeypatch.setattr(matplotlib, "use", lambda *args, **kwargs: calls.append(args))
+    fake = types.ModuleType("mikeio")
+    monkeypatch.setitem(sys.modules, "mikeio", fake)
+
+    assert _mikeio() is fake, "the helper must return the already-imported mikeio module"
+    assert calls == [], f"matplotlib.use must not be called when mikeio is already imported, got {calls}"
+
+
+@pytest.mark.skipif(
+    find_spec("mikeio") is not None,
+    reason="forces the first-import path, which only occurs when mikeio is absent",
+)
+def test_mikeio_pins_agg_before_importing_when_absent(monkeypatch):
+    """``_mikeio`` pins ``Agg`` before importing ``mikeio`` the first time, even on the failing path.
+
+    The pin must run before the import is attempted, so a headless run never selects a GUI backend --
+    and it still runs when the import then raises ``ModuleNotFoundError`` because the backend is absent.
+    ``matplotlib.use`` is spied, so the real process backend is not mutated. Skipped where matplotlib is
+    absent (a bare wheel env has no backend to pin). This covers the Agg-before-import *ordering*; the
+    re-pin *guard* is covered by ``test_mikeio_does_not_repin_backend_when_already_imported``.
+    """
+    matplotlib = pytest.importorskip("matplotlib")
+
+    from pyramids_mesh.drivers.coastal_ocean.mike import _mikeio
+
+    calls: list = []
+    monkeypatch.setattr(matplotlib, "use", lambda *args, **kwargs: calls.append(args[0] if args else None))
+    with pytest.raises(ModuleNotFoundError):
+        _mikeio()
+    assert calls == ["Agg"], f"Agg must be pinned once before the mikeio import, got {calls}"
