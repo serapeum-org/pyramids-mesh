@@ -25,7 +25,7 @@ jobs:
       # env is not activated here; the formatters and linters run in pre-commit's
       # own isolated environments and read their config from pyproject.toml.
       - name: Set up pixi dev env
-        uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0  # pixi/v1.2.1
+        uses: serapeum-org/github-actions/actions/python-setup/pixi@71653ea9fc52dff9166b270614a41d7e42b3453a  # pixi/v1.3.0
         with:
           environments: dev
           cache: true
@@ -68,12 +68,11 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        # serapeum-org/github-actions is a monorepo: one commit carries the release tag for
-        # every action in it, so 38c11108 is the dereferenced commit for mkdocs/v1.3.1,
-        # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike. Three different
-        # actions pinned to one SHA reads like a copy-paste error and is not; verify with
+        # serapeum-org/github-actions is a monorepo pinned by commit SHA (the tag is in the
+        # trailing comment). 71653ea9 is the dereferenced commit for pixi/v1.3.0 (shared with
+        # mkdocs/v2.0.0); the release actions sit on their own commits. Verify with:
         #   git ls-remote --tags https://github.com/serapeum-org/github-actions
-        uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0  # pixi/v1.2.1
+        uses: serapeum-org/github-actions/actions/python-setup/pixi@71653ea9fc52dff9166b270614a41d7e42b3453a  # pixi/v1.3.0
         with:
           environments: dev
           activate-environment: dev
