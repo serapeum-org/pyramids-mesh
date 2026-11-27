@@ -293,7 +293,7 @@ def test_the_boundary_variable_is_not_written_as_a_result(tmp_path):
         ipobo=[1, 2, 0, 3],
     )
     src = _read(staged)
-    assert "boundary_node_number" in src.variable_names
+    assert "boundary_node_number" in src.data_variable_names
 
     out = tmp_path / "written.slf"
     src.to_file(str(out), driver="selafin")
@@ -361,7 +361,7 @@ def test_boundary_numbering_of_the_wrong_length_is_ignored_with_a_warning():
     """
     variable = SimpleNamespace(data=np.array([1, 2]))
     dataset = SimpleNamespace(
-        variable_names=["boundary_node_number"],
+        data_variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
     with pytest.warns(UserWarning, match="all-zero IPOBO"):
@@ -374,7 +374,7 @@ def test_boundary_numbering_is_taken_when_it_matches_the_node_count():
     """A correctly sized boundary variable is passed through as plain ints."""
     variable = SimpleNamespace(data=np.array([1.0, 0.0, 2.0, 0.0]))
     dataset = SimpleNamespace(
-        variable_names=["boundary_node_number"],
+        data_variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
     numbering = SelafinDriver._boundary_numbering(dataset, 4, "matched.slf")

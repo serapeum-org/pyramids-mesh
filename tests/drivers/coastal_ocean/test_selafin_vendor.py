@@ -130,7 +130,7 @@ def test_telemac_2d_output_reads_with_its_header_counts(sample):
     dataset = MeshDataset.read_file(sample("r2d_tidal_flats.slf"), driver="selafin")
 
     assert (dataset.mesh.n_node, dataset.mesh.n_face) == (648, 1030)
-    assert dataset.variable_names == [
+    assert dataset.data_variable_names == [
         "VELOCITY U",
         "VELOCITY V",
         "WATER DEPTH",
@@ -189,7 +189,7 @@ def test_bluekenue_written_geometry_reads_the_same_way(sample):
     dataset = MeshDataset.read_file(sample("qgismesh.slf"), driver="selafin")
 
     assert (dataset.mesh.n_node, dataset.mesh.n_face) == (12814, 25007)
-    assert dataset.variable_names == ["BOTTOM", "boundary_node_number"]
+    assert dataset.data_variable_names == ["BOTTOM", "boundary_node_number"]
     assert dataset.bounds[0] == pytest.approx(315120.22, abs=0.01)
     assert dataset.bounds[3] == pytest.approx(5346307.5, abs=0.01)
 
@@ -318,8 +318,8 @@ def test_round_trip_of_a_real_file_preserves_every_value(tmp_path, sample):
     np.testing.assert_allclose(
         np.asarray(source.time_values), np.asarray(back.time_values)
     )
-    assert back.variable_names == source.variable_names
-    for name in source.variable_names:
+    assert back.data_variable_names == source.data_variable_names
+    for name in source.data_variable_names:
         np.testing.assert_allclose(
             np.asarray(source.get(name).data), np.asarray(back.get(name).data)
         )

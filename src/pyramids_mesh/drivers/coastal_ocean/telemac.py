@@ -421,7 +421,7 @@ class SelafinDriver(BaseDriver):
                 ...     copy = os.path.join(directory, "copy.slf")
                 ...     SelafinDriver().write(SelafinDriver().read(source), copy)
                 ...     restored = SelafinDriver().read(copy)
-                >>> restored.variable_names
+                >>> restored.data_variable_names
                 ['WATER DEPTH', 'boundary_node_number']
                 >>> restored.get("boundary_node_number").data.tolist()
                 [1.0, 2.0, 0.0, 3.0]
@@ -505,7 +505,7 @@ class SelafinDriver(BaseDriver):
         Returns:
             list[int] | None: one entry per node, or ``None`` to write zeros.
         """
-        if _BOUNDARY_VARIABLE in dataset.variable_names:
+        if _BOUNDARY_VARIABLE in dataset.data_variable_names:
             variable = dataset.get(_BOUNDARY_VARIABLE)
             array = np.asarray(variable.data).reshape(-1)
             if array.size == n_node:
@@ -788,7 +788,7 @@ def write_selafin(
             'pyramids-mesh'
             >>> "start_date" in dataset.global_attributes
             False
-            >>> dataset.variable_names
+            >>> dataset.data_variable_names
             ['WATER DEPTH']
     """
     if len(values) != len(times):
