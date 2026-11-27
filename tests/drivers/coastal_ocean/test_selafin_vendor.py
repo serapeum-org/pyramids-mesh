@@ -31,6 +31,7 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, UnsupportedMeshFormatError
 
+from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
 from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
 
 pytestmark = pytest.mark.vendor_data
@@ -135,6 +136,8 @@ def test_telemac_2d_output_reads_with_its_header_counts(sample):
         "WATER DEPTH",
         "FREE SURFACE",
         "BOTTOM",
+        # Not a result series: the IPOBO boundary numbering, carried through the read.
+        "boundary_node_number",
     ]
     assert dataset.get("VELOCITY U").units == "M/S"
     assert dataset.get("VELOCITY U").location == "node"
@@ -186,7 +189,7 @@ def test_bluekenue_written_geometry_reads_the_same_way(sample):
     dataset = MeshDataset.read_file(sample("qgismesh.slf"), driver="selafin")
 
     assert (dataset.mesh.n_node, dataset.mesh.n_face) == (12814, 25007)
-    assert dataset.variable_names == ["BOTTOM"]
+    assert dataset.variable_names == ["BOTTOM", "boundary_node_number"]
     assert dataset.bounds[0] == pytest.approx(315120.22, abs=0.01)
     assert dataset.bounds[3] == pytest.approx(5346307.5, abs=0.01)
 
@@ -208,17 +211,13 @@ def test_a_genuine_layered_3d_file_is_refused(sample):
         MeshDataset.read_file(sample("r3d_tidal_flats.slf"), driver="selafin")
 
 
-@pytest.mark.xfail(
-    reason="#137: the 3D guard keys on IPARAM[6], which a single-layer extraction inherits "
-    "from its parent run, so this 2D mesh is refused",
-    strict=True,
-)
 def test_a_single_layer_extracted_from_a_3d_run_reads_as_2d(sample):
-    """One layer extracted from a 3D run is a 2D triangular mesh and should read as one.
+    """One layer extracted from a 3D run is a 2D triangular mesh and reads as one.
 
     ``r3d_bump_extracted_bottom_layer.slf`` carries ``IPARAM[6] = 5`` from the 3D run it came
     from, but its elements are ``NDP=3`` triangles: 2620 of them over 1452 nodes, tessellating
-    the flume's 21.2 x 2.0 footprint exactly once.
+    the flume's 21.2 x 2.0 footprint exactly once. Keying the guard on the plane count refused
+    it; keying it on ``NDP`` reads it.
     """
     dataset = MeshDataset.read_file(
         sample("r3d_bump_extracted_bottom_layer.slf"), driver="selafin"
@@ -228,22 +227,82 @@ def test_a_single_layer_extracted_from_a_3d_run_reads_as_2d(sample):
     areas = _signed_areas(dataset)
     assert (areas > 0).all()
     assert np.abs(areas).sum() == pytest.approx(41.92, rel=1e-4)
+    assert dataset.get("ELEVATION Z").data.shape == (3, 1452)
 
 
-def test_can_open_accepts_a_real_telemac_file(sample):
-    """The endianness sniff recognises files from both writers."""
+def test_header_metadata_survives_the_read(sample):
+    """The title, the start date and the boundary numbering reach the dataset.
+
+    All three are in the header and were previously read only to keep the record count
+    straight. Without the start date a series of seconds has no anchor, and the boundary
+    numbering is an ordering that cannot be rederived from the topology.
+    """
+    dataset = MeshDataset.read_file(sample("r2d_tidal_flats.slf"), driver="selafin")
+
+    assert dataset.global_attributes["title"] == "Sloped flume Rouse profile test"
+    assert dataset.global_attributes["start_date"] == "1900-01-01T00:00:00"
+    assert dataset.global_attributes["n_boundary_nodes"] == 264
+
+    boundary = np.asarray(dataset.get("boundary_node_number").data)
+    assert boundary.shape == (648,)
+    assert np.count_nonzero(boundary) == 264
+    assert boundary.max() == 264
+
+
+def test_a_file_without_a_date_record_has_no_start_date(sample):
+    """``start_date`` is absent rather than invented when the file declares no date.
+
+    ``qgismesh.slf`` has ``IPARAM[9] = 0``, so there is no date record to anchor anything to
+    and no key is added. Its title survives, short as it is.
+    """
+    dataset = MeshDataset.read_file(sample("qgismesh.slf"), driver="selafin")
+
+    assert "start_date" not in dataset.global_attributes
+    assert dataset.global_attributes["title"] == "new Selafin"
+
+
+def test_the_boundary_record_is_read_even_when_iparam_claims_none(sample):
+    """``IPOBO`` is read from its record, never trusted to ``IPARAM[7]``.
+
+    BlueKenue writes a populated boundary record while leaving the boundary-point count at
+    zero: ``qgismesh.slf`` has ``IPARAM[7] = 0`` and 619 non-zero ``IPOBO`` entries. Keying
+    the read on the count would silently drop a real boundary numbering, so the record is
+    always read and the count recomputed from it.
+    """
+    path = sample("qgismesh.slf")
+    endian = detect_endianness(path, expect_first_record=80)
+    with open(path, "rb") as handle:
+        _read_record(handle, endian)
+        counts = read_record_ints(handle, endian, 2)
+        for _ in range(int(counts[0] + counts[1])):
+            _read_record(handle, endian)
+        iparam = read_record_ints(handle, endian, 10)
+
+    assert int(iparam[7]) == 0
+
+    dataset = MeshDataset.read_file(path, driver="selafin")
+    boundary = np.asarray(dataset.get("boundary_node_number").data)
+    assert np.count_nonzero(boundary) == 619
+    assert dataset.global_attributes["n_boundary_nodes"] == 619
+
+
+def test_can_open_accepts_what_read_accepts_and_declines_what_it_refuses(sample):
+    """``can_open`` answers for readability, not merely for the format.
+
+    Auto-detection trusts it, so a file the read refuses must not be claimed here: the
+    layered 3D file is declined, while both writers' 2D files and the single-layer
+    extraction are accepted.
+    """
     driver = SelafinDriver()
 
     assert driver.can_open(sample("r2d_tidal_flats.slf")) is True
     assert driver.can_open(sample("qgismesh.slf")) is True
+    assert driver.can_open(sample("r3d_bump_extracted_bottom_layer.slf")) is True
+    assert driver.can_open(sample("r3d_tidal_flats.slf")) is False
 
 
 def test_round_trip_of_a_real_file_preserves_every_value(tmp_path, sample):
-    """Write a real file back out and read it again: mesh, times and values all survive.
-
-    Header metadata does not (see #138 and #139); this test pins what the writer does get right,
-    so a fix for those cannot silently regress the values.
-    """
+    """Write a real file back out and read it again: mesh, times and values all survive."""
     source = MeshDataset.read_file(sample("r2d_tidal_flats.slf"), driver="selafin")
     out = tmp_path / "round_trip.slf"
     source.to_file(str(out), driver="selafin")
@@ -264,6 +323,70 @@ def test_round_trip_of_a_real_file_preserves_every_value(tmp_path, sample):
         np.testing.assert_allclose(
             np.asarray(source.get(name).data), np.asarray(back.get(name).data)
         )
+
+
+def test_round_trip_of_a_real_file_preserves_its_header(tmp_path, sample):
+    """A written file keeps the source's identity instead of the writer's defaults.
+
+    The title is the run's own name, the date record is the anchor for the time axis, and
+    ``IPOBO`` is what TELEMAC needs to attach boundary conditions -- a file written with all
+    three zeroed out is geometry that no longer belongs to the model that produced it.
+    """
+    source = MeshDataset.read_file(sample("r2d_tidal_flats.slf"), driver="selafin")
+    out = tmp_path / "round_trip.slf"
+    source.to_file(str(out), driver="selafin")
+
+    endian = detect_endianness(str(out), expect_first_record=80)
+    with open(out, "rb") as handle:
+        title = _read_record(handle, endian).decode("latin-1")
+        counts = read_record_ints(handle, endian, 2)
+        for _ in range(int(counts[0] + counts[1])):
+            _read_record(handle, endian)
+        iparam = read_record_ints(handle, endian, 10)
+        date = read_record_ints(handle, endian, 6)
+        dims = read_record_ints(handle, endian, 4)
+        read_record_ints(handle, endian, int(dims[0]) * int(dims[2]))
+        ipobo = read_record_ints(handle, endian, int(dims[1]))
+
+    assert title[:72].strip() == "Sloped flume Rouse profile test"
+    assert int(iparam[7]) == 264
+    assert int(iparam[9]) == 1
+    assert date.tolist() == [1900, 1, 1, 0, 0, 0]
+    assert np.count_nonzero(ipobo) == 264
+
+    back = MeshDataset.read_file(str(out), driver="selafin")
+    assert back.global_attributes["title"] == "Sloped flume Rouse profile test"
+    assert back.global_attributes["start_date"] == "1900-01-01T00:00:00"
+    assert back.global_attributes["n_boundary_nodes"] == 264
+
+
+def test_the_boundary_numbering_is_not_written_as_a_result_series(tmp_path, sample):
+    """``IPOBO`` goes back into its own record, not into the variable list.
+
+    It arrives as a node variable so that it survives a read, which makes it a candidate for
+    the data slabs; writing it there would invent a sixth result and shift the record layout.
+    """
+    source = MeshDataset.read_file(sample("r2d_tidal_flats.slf"), driver="selafin")
+    out = tmp_path / "round_trip.slf"
+    source.to_file(str(out), driver="selafin")
+
+    endian = detect_endianness(str(out), expect_first_record=80)
+    with open(out, "rb") as handle:
+        _read_record(handle, endian)
+        counts = read_record_ints(handle, endian, 2)
+        names = [
+            _read_record(handle, endian).decode("latin-1")
+            for _ in range(int(counts[0] + counts[1]))
+        ]
+
+    assert len(names) == 5
+    assert [name[:16].strip() for name in names] == [
+        "VELOCITY U",
+        "VELOCITY V",
+        "WATER DEPTH",
+        "FREE SURFACE",
+        "BOTTOM",
+    ]
 
 
 def test_refusing_a_file_is_the_documented_error_type(sample):

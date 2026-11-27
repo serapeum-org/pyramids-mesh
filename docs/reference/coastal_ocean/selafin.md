@@ -27,8 +27,18 @@ dataset.to_file("small.slf", driver="selafin", precision="single")  # smaller, l
 
 The writer emits the same Fortran-record layout the reader parses, so a read → write →
 read round trip preserves the nodes, the connectivity (and its recorded 1-based `IKLE`
-base), the variable names and units, and the time steps.
+base), the variable names and units, the time steps, **and the header**: the title, the
+date record and the boundary numbering.
 
+- **The header is restored, not stamped.** The dataset's `title` and `start_date`
+  attributes become the title and date records, and `boundary_node_number` becomes `IPOBO`;
+  `IPARAM[7]` and the `IPARAM[9]` date flag are derived from what is actually written, so
+  the header cannot claim one thing while the records show another.
+- **An in-memory mesh has no boundary numbering**, and a boundary *ordering* cannot be
+  derived from the node set, so zeros are written and a warning says the output is geometry
+  only — TELEMAC needs `IPOBO` to attach boundary conditions.
+- **`boundary_node_number` is never written as a result.** It is mesh metadata that goes
+  back into its own record; it reappears on the next read for the same reason.
 - **Only node-located variables are written** — the format has no face-located storage.
 - **Every face must share a vertex count**: Selafin stores a single element width (`NDP`),
   so a mixed tri/quad mesh is refused rather than written with a scrambled `IKLE`.
@@ -45,6 +55,17 @@ base), the variable names and units, and the time steps.
   16-char unit. Splitting on whitespace instead would lose a multi-word name's tail.
 - **`IKLE` connectivity is 1-based**; it arrives 0-based, with the base recorded for a
   writer to restore.
+- **The title and the date record are kept**, as the `title` and `start_date` global
+  attributes (`start_date` as ISO-8601). Without the date, a time axis of seconds has
+  nothing to anchor it to. Either key is omitted rather than faked when the file has none.
+- **`IPOBO` is kept**, on the `boundary_node_number` node variable, with
+  `n_boundary_nodes` on the dataset. It is an ordering TELEMAC uses to attach boundary
+  conditions, not a mask, and not recoverable from the topology. It is read from its own
+  record rather than trusted to `IPARAM[7]` — BlueKenue writes a populated record while
+  leaving that count at zero — and a record of all zeros adds no variable at all.
+- **`can_open` answers for readability, not just for the format.** Auto-detection trusts
+  it, so the sniff reads the same header fields the read-time guards use and declines a
+  layered 3D or parallel file instead of claiming it and then throwing.
 
 ## Documented limitations
 
@@ -53,17 +74,17 @@ base), the variable names and units, and the time steps.
   are added to the node coordinates. Read without adding them, the mesh sits near zero
   instead of at its real location — plausible and completely wrong, with nothing in the
   data to catch it.
-- **A layered 3D file is refused.** `IPARAM[6]` is the plane count; 0 and 1 both mean 2D,
-  and a value above 1 is a real 3D file. Its `NPOIN` and prism `IKLE` cannot be read as a
-  flat 2D mesh without returning all planes' nodes under 6-node faces, and extracting one
-  plane out of a layered mesh is a mesh operation that belongs upstream rather than in a
-  format driver (ADR-0005), so it is refused rather than read as a malformed 2D mesh. A
-  full 3D read needs the layered mesh model pyramids does not have yet (design §21.1).
-  The test is the plane count alone, which is too blunt: a file holding a single layer
-  extracted from a 3D run inherits its parent's plane count while its elements are plain
-  triangles, and is refused although it reads correctly —
-  [#137](https://github.com/serapeum-org/pyramids-mesh/issues/137) tracks keying the guard
-  on `NDP` instead.
+- **A layered 3D file is refused, keyed on `NDP`.** The element width says what *this*
+  file's elements are: 3-node triangles or 4-node quadrilaterals are a 2D surface mesh,
+  6-node prisms a layered 3D one whose `NPOIN` is the full 3D node count. Reading prisms as
+  flat 2D returns every plane's nodes under 6-node faces, and extracting one plane out of a
+  layered mesh is a mesh operation that belongs upstream rather than in a format driver
+  (ADR-0005), so it is refused rather than read as a malformed 2D mesh. A full 3D read
+  needs the layered mesh model pyramids does not have yet (design §21.1).
+  The plane count `IPARAM[6]` is deliberately **not** the test, only part of the message: a
+  file holding a single layer extracted from a 3D run inherits its parent's plane count
+  while its elements are plain triangles, so keying on the count refused a mesh that reads
+  perfectly well.
 - **A parallel sub-domain file is refused.** A non-zero interface-point count
   (`IPARAM[8]`) means local numbering within one partition, so the connectivity would
   index a sub-domain rather than the whole mesh. It is keyed on interface points alone —

@@ -370,3 +370,169 @@ def test_selafin_lazy_loader_translates_a_short_read(tmp_path):
     loader = _SelafinLoader(str(path), [0], 100, endian="<", double=False)
     with pytest.raises(FileFormatNotSupportedError, match="not a readable Selafin"):
         loader()
+
+
+def test_selafin_single_layer_extraction_reads_despite_the_plane_count(tmp_path):
+    """A triangular mesh is read even when IPARAM[6] claims several planes.
+
+    TELEMAC's single-layer extraction copies the parent run's plane count into the header
+    while writing plain triangles, so the plane count cannot decide what the elements are.
+    NDP can: 3 here, so the file is a 2D surface mesh and is read as one.
+    """
+    path = _write(tmp_path, iparam=[1, 0, 0, 0, 0, 0, 5, 0, 0, 0])
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.shape == (2, 3)
+
+
+def test_selafin_quad_mesh_reads_despite_the_plane_count(tmp_path):
+    """The same holds for 4-node quadrilaterals, the other 2D element width."""
+    path = _write(
+        tmp_path,
+        ikle=[[1, 2, 3, 4]],
+        iparam=[1, 0, 0, 0, 0, 0, 7, 0, 0, 0],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.mesh.face_node_connectivity.data.shape == (1, 4)
+
+
+def test_selafin_prism_mesh_is_refused_whatever_the_plane_count(tmp_path):
+    """NDP=6 is a layered mesh and is refused even when the plane count says 2D.
+
+    The mirror of the extraction case: a header claiming one plane does not make prism
+    connectivity readable as a flat 2D mesh, so the element width decides here too.
+    """
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+        iparam=[1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="NDP=6"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_title_reaches_the_dataset(tmp_path):
+    """The title record is the run's own name for itself and is kept, stripped of padding."""
+    path = _write(tmp_path, title="Rouse profile test")
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.global_attributes["title"] == "Rouse profile test"
+
+
+def test_selafin_blank_title_adds_no_attribute(tmp_path):
+    """A title record of pure padding is absent, not an empty string."""
+    path = _write(tmp_path, title="   ")
+    dataset = SelafinDriver().read(path)
+
+    assert "title" not in dataset.global_attributes
+
+
+def test_selafin_date_record_becomes_the_start_date(tmp_path):
+    """The date record anchors the time axis, so it is carried as an ISO-8601 string."""
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=[1993, 7, 14, 6, 30, 15],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.global_attributes["start_date"] == "1993-07-14T06:30:15"
+
+
+def test_selafin_absent_date_record_leaves_no_start_date(tmp_path):
+    """Without the IPARAM[9] flag there is no date record and no attribute to add."""
+    dataset = SelafinDriver().read(_write(tmp_path))
+
+    assert "start_date" not in dataset.global_attributes
+
+
+def test_selafin_zero_date_record_is_a_placeholder_not_year_zero(tmp_path):
+    """An all-zero date record is a placeholder; reporting year 0 would be worse than none."""
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=[0, 0, 0, 0, 0, 0],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert "start_date" not in dataset.global_attributes
+
+
+def test_selafin_boundary_numbering_is_carried_on_a_node_variable(tmp_path):
+    """IPOBO is an ordering that cannot be rederived, so the read keeps it.
+
+    It arrives as a static node variable rather than as an attribute, which is what lets the
+    writer put it back into its own record.
+    """
+    path = _write(tmp_path, ipobo=[1, 2, 0, 3])
+    dataset = SelafinDriver().read(path)
+
+    numbering = np.asarray(dataset.get("boundary_node_number").data)
+    assert numbering.tolist() == [1.0, 2.0, 0.0, 3.0]
+    assert dataset.get("boundary_node_number").location == "node"
+    assert dataset.global_attributes["n_boundary_nodes"] == 3
+
+
+def test_selafin_all_zero_boundary_record_adds_no_variable(tmp_path):
+    """A mesh with no boundary numbering gains nothing from an array of zeros."""
+    dataset = SelafinDriver().read(_write(tmp_path))
+
+    assert "boundary_node_number" not in dataset.data_variable_names
+    assert "n_boundary_nodes" not in dataset.global_attributes
+
+
+def test_selafin_can_open_declines_a_layered_3d_file(tmp_path):
+    """can_open answers for readability: a file the read refuses is not claimed.
+
+    Auto-detection trusts can_open, so claiming a prism file and then throwing from read
+    would turn a clean "no driver" into a hard failure part-way through dispatch.
+    """
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+    )
+    assert SelafinDriver().can_open(path) is False
+
+
+def test_selafin_can_open_declines_a_parallel_subdomain_file(tmp_path):
+    """A non-zero interface-point count means local numbering, so the file is not claimed."""
+    path = _write(tmp_path, iparam=[1, 0, 0, 0, 0, 0, 0, 0, 7, 0])
+
+    assert SelafinDriver().can_open(path) is False
+
+
+def test_selafin_can_open_still_accepts_a_serial_2d_file(tmp_path):
+    """The added header checks must not start declining ordinary files."""
+    assert SelafinDriver().can_open(_write(tmp_path)) is True
+    assert (
+        SelafinDriver().can_open(
+            _write(tmp_path, name="dated.slf", iparam=[1, 0, 0, 0, 0, 0, 1, 264, 0, 1])
+        )
+        is True
+    )
+
+
+def test_selafin_can_open_declines_a_file_truncated_inside_its_header(tmp_path):
+    """A first record that parses does not make the rest of the header readable."""
+    source = Path(_write(tmp_path))
+    truncated = tmp_path / "truncated.slf"
+    truncated.write_bytes(source.read_bytes()[:104])
+
+    assert SelafinDriver().can_open(str(truncated)) is False
