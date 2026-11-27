@@ -140,12 +140,10 @@ jobs:
           ref: ${{ needs.prepare.outputs.branch }}
 
       - name: Create GitHub Release with Commitizen
-        # serapeum-org/github-actions is a monorepo: one commit carries the release tag for
-        # every action in it, so 38c11108 is the dereferenced commit for mkdocs/v1.3.1,
-        # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike. Three different
-        # actions pinned to one SHA reads like a copy-paste error and is not; verify with
-        #   git ls-remote --tags https://github.com/serapeum-org/github-actions
-        uses: serapeum-org/github-actions/actions/release/github@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # github-release/v1.5.0
+        # serapeum-org/github-actions is a monorepo pinned by commit SHA (the tag is in the
+        # trailing comment). e65132ca is the dereferenced commit for github-release/v1.6.0.
+        # Verify with: git ls-remote --tags https://github.com/serapeum-org/github-actions
+        uses: serapeum-org/github-actions/actions/release/github@e65132ca10fc27245cfd787c2148ddac3b44e668 # github-release/v1.6.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           increment: ${{ inputs.increment }}

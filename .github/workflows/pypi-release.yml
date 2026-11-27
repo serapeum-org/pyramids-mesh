@@ -120,15 +120,16 @@ jobs:
 
       - name: Build and publish sdist + pure wheel
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
-        # serapeum-org/github-actions is a monorepo: one commit carries the release tag for
-        # every action in it, so 38c11108 is the dereferenced commit for mkdocs/v1.3.1,
-        # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike. One SHA for
-        # several actions reads like a copy-paste error and is not; verify with
-        #   git ls-remote --tags https://github.com/serapeum-org/github-actions
-        uses: serapeum-org/github-actions/actions/release/pypi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0  # pypi-release/v1.0.3
+        # serapeum-org/github-actions is a monorepo pinned by commit SHA (the tag is in the
+        # trailing comment). ef83a5f0 is the dereferenced commit for pypi-release/v1.1.0.
+        # Verify with: git ls-remote --tags https://github.com/serapeum-org/github-actions
+        uses: serapeum-org/github-actions/actions/release/pypi@ef83a5f05b2d450406dc1da3c91dfa5e3f7701da  # pypi-release/v1.1.0
         with:
           pypi-username: __token__
           pypi-password: ${{ secrets.PYPI_PUBLISH }}
           package-manager: 'pixi'
+          # Explicit (the action defaults package-manager-version to 'latest'): build the
+          # published wheel with the same pixi that writes pixi.lock, matching the rest of CI.
+          package-manager-version: v0.73.0
           install-groups: 'dev'
           verify-lock: 'false'

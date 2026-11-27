@@ -70,12 +70,11 @@ jobs:
           persist-credentials: false
           ref: ${{ steps.ref.outputs.ref }}
 
-      # serapeum-org/github-actions is a monorepo: one commit carries the release tag for
-      # every action in it, so 38c11108 is the dereferenced commit for mkdocs/v1.3.1,
-      # github-release/v1.5.0, pypi-release/v1.0.3 and pixi/v1.2.1 alike -- not a copy-paste
-      # slip. The same pixi setup the deploy jobs get internally, so the gate and the deploy
-      # share one environment rather than drifting.
-      - uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # pixi/v1.2.1
+      # serapeum-org/github-actions is a monorepo pinned by commit SHA (the tag is in the trailing
+      # comment). 71653ea9 is the dereferenced commit for pixi/v1.3.0, shared with mkdocs/v2.0.0,
+      # so the --strict gate and the deploy jobs share one pixi setup rather than drifting. Verify
+      # with: git ls-remote --tags https://github.com/serapeum-org/github-actions
+      - uses: serapeum-org/github-actions/actions/python-setup/pixi@71653ea9fc52dff9166b270614a41d7e42b3453a # pixi/v1.3.0
         with:
           environments: docs
           activate-environment: docs
@@ -106,12 +105,16 @@ jobs:
     - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         fetch-depth: 0
-    - uses: serapeum-org/github-actions/actions/mkdocs-deploy@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # mkdocs/v1.3.1
+        # mkdocs/v2.0.0 dropped the deploy-token input: mike_push.sh now pushes gh-pages with the
+        # checkout's persisted credentials. Persist ACTIONS_DEPLOY_TOKEN (not the default
+        # GITHUB_TOKEN, which may be blocked from gh-pages and whose pushes do not rebuild Pages).
+        token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
+    - uses: serapeum-org/github-actions/actions/mkdocs-deploy@71653ea9fc52dff9166b270614a41d7e42b3453a # mkdocs/v2.0.0
       with:
         trigger: 'main'
         package-manager: 'pixi'
+        package-manager-version: v0.73.0
         install-groups: 'docs'
-        deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
   deploy-release:
     # Security: when triggered via `workflow_run`, require that the upstream
@@ -184,12 +187,11 @@ jobs:
         # the gated, fork-guarded release run, so it is trusted input; the fork guard in `if:` above keeps
         # untrusted code out.
         ref: ${{ steps.ref.outputs.ref }}
-        # Persist ACTIONS_DEPLOY_TOKEN (not the default GITHUB_TOKEN) so the prune
-        # step's `mike delete --push` authenticates to gh-pages with the SAME
-        # credential the deploy's own push uses. The default token may be blocked
-        # from pushing to gh-pages (and its pushes do not trigger a Pages rebuild),
-        # so letting the prune fall back to it would fail the job after a clean
-        # deploy. The mkdocs-deploy step still takes its own deploy-token input.
+        # Persist ACTIONS_DEPLOY_TOKEN (not the default GITHUB_TOKEN) so BOTH the deploy
+        # (mkdocs/v2.0.0 dropped deploy-token -- mike_push.sh pushes with these persisted
+        # credentials) and the prune step's `mike delete --push` authenticate to gh-pages with the
+        # SAME credential. The default token may be blocked from pushing to gh-pages (and its
+        # pushes do not trigger a Pages rebuild), so falling back to it would fail the job.
         token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
 
     - name: Extract version from pyproject.toml
@@ -200,19 +202,22 @@ jobs:
 
     # The same pixi + docs env the deploy and the prune below both need; `mike`
     # (invoked via `pixi run -e docs`) comes from the docs feature.
-    - uses: serapeum-org/github-actions/actions/python-setup/pixi@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # pixi/v1.2.1
+    - uses: serapeum-org/github-actions/actions/python-setup/pixi@71653ea9fc52dff9166b270614a41d7e42b3453a # pixi/v1.3.0
       with:
         environments: docs
         activate-environment: docs
         cache: true
         version: v0.73.0
 
-    - uses: serapeum-org/github-actions/actions/mkdocs-deploy@38c111084f99d5ff5f4a1e63bedce48fe33a10c0 # mkdocs/v1.3.1
+    # mkdocs/v2.0.0 dropped the deploy-token input; mike_push.sh pushes gh-pages with the
+    # credentials the checkout above persisted (ACTIONS_DEPLOY_TOKEN), the same token the prune
+    # step below reuses.
+    - uses: serapeum-org/github-actions/actions/mkdocs-deploy@71653ea9fc52dff9166b270614a41d7e42b3453a # mkdocs/v2.0.0
       with:
         trigger: 'release'
         package-manager: 'pixi'
+        package-manager-version: v0.73.0
         install-groups: "docs"
-        deploy-token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
         release-tag: ${{ github.event.release.tag_name || steps.version.outputs.tag }}
         mike-alias: 'latest'
 
