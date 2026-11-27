@@ -7,6 +7,7 @@ connectivity base, the variable names/units and the time steps.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -349,3 +350,175 @@ def test_write_selafin_refuses_a_date_of_the_wrong_length(tmp_path):
             values=[],
             date=[1993, 7, 14],
         )
+
+
+def test_boundary_numbering_of_the_wrong_length_is_ignored_with_a_warning():
+    """A boundary variable that does not match the node count is not written.
+
+    The reader always produces one entry per node, so this is the defensive path for a
+    dataset assembled by hand or resized after a read: writing a short array into the IPOBO
+    record would desynchronise every record after it, so it is dropped like an absent one.
+    """
+    variable = SimpleNamespace(data=np.array([1, 2]))
+    dataset = SimpleNamespace(
+        variable_names=["boundary_node_number"],
+        get=lambda name: variable,
+    )
+    with pytest.warns(UserWarning, match="all-zero IPOBO"):
+        numbering = SelafinDriver._boundary_numbering(dataset, 4, "mismatched.slf")
+
+    assert numbering is None, f"a mismatched numbering must be dropped, got {numbering}"
+
+
+def test_boundary_numbering_is_taken_when_it_matches_the_node_count():
+    """A correctly sized boundary variable is passed through as plain ints."""
+    variable = SimpleNamespace(data=np.array([1.0, 0.0, 2.0, 0.0]))
+    dataset = SimpleNamespace(
+        variable_names=["boundary_node_number"],
+        get=lambda name: variable,
+    )
+    numbering = SelafinDriver._boundary_numbering(dataset, 4, "matched.slf")
+
+    assert numbering == [1, 0, 2, 0], (
+        f"expected the numbering verbatim, got {numbering}"
+    )
+
+
+@pytest.mark.parametrize(
+    "start_date",
+    [
+        "abcd-ef-ghTij:kl:mn",
+        "1993-07-14T06:30:xx",
+        "----T::",
+    ],
+)
+def test_date_fields_refuses_six_pieces_that_are_not_numbers(start_date):
+    """A date of the right shape but the wrong content writes no record.
+
+    The length check alone is not enough: six non-numeric pieces would reach ``int()`` and
+    raise, which would turn a cosmetic attribute into a failed write.
+    """
+    resolved = SelafinDriver._date_fields(start_date)
+
+    assert resolved is None, f"a non-numeric date must be refused, got {resolved}"
+
+
+def test_date_fields_accepts_the_shape_the_reader_writes():
+    """The reader's own ISO-8601 output round-trips back into the six-int record."""
+    assert SelafinDriver._date_fields("1993-07-14T06:30:15") == [1993, 7, 14, 6, 30, 15]
+
+
+def test_derive_iparam_sets_the_boundary_count_and_date_flag():
+    """IPARAM is derived from what is actually written, never asserted independently."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _derive_iparam
+
+    with_date = _derive_iparam(np.array([0, 4, 0, 7]), True)
+    without = _derive_iparam(np.zeros(4, dtype=int), False)
+
+    assert with_date == [1, 0, 0, 0, 0, 0, 0, 2, 0, 1], f"got {with_date}"
+    assert without == [1, 0, 0, 0, 0, 0, 0, 0, 0, 0], f"got {without}"
+
+
+def test_a_connectivity_without_a_recorded_base_is_written_1_based(tmp_path):
+    """With no recorded base, IKLE is written 1-based -- the format's own convention.
+
+    A mesh built in memory has never been through a Selafin read, so it carries no base to
+    restore; assuming 0 would write node ids the format reserves.
+    """
+    source = _read(_SLF)
+    conn = type(
+        "_Conn",
+        (),
+        {
+            "data": np.asarray(source.mesh.face_node_connectivity.data),
+            "original_start_index": None,
+        },
+    )()
+    mesh = type(
+        "_Mesh",
+        (),
+        {
+            "face_node_connectivity": conn,
+            "node_x": np.asarray(source.mesh.node_x),
+            "node_y": np.asarray(source.mesh.node_y),
+        },
+    )()
+    dataset = type(
+        "_Dataset",
+        (),
+        {
+            "mesh": mesh,
+            "data_variable_names": [],
+            "variable_names": [],
+            "global_attributes": {},
+            "time_values": None,
+            "get": staticmethod(lambda name: None),
+        },
+    )()
+
+    out = tmp_path / "based.slf"
+    with pytest.warns(UserWarning, match="all-zero IPOBO"):
+        SelafinDriver().write(dataset, str(out))
+
+    back = _read(out)
+    assert back.mesh.n_node == source.mesh.n_node
+    np.testing.assert_array_equal(
+        np.asarray(back.mesh.face_node_connectivity.data),
+        np.asarray(source.mesh.face_node_connectivity.data),
+    )
+
+
+def test_a_mesh_with_no_node_variables_writes_no_timesteps(tmp_path):
+    """Geometry with nothing to report over time writes zero time records.
+
+    The time axis exists only to carry variable slabs, so a mesh with no node variables gets
+    none -- not one empty step.
+    """
+    source = _read(_SLF)
+    dataset = type(
+        "_Dataset",
+        (),
+        {
+            "mesh": source.mesh,
+            "data_variable_names": [],
+            "variable_names": [],
+            "global_attributes": {"title": "geometry only"},
+            "time_values": None,
+            "get": staticmethod(lambda name: None),
+        },
+    )()
+
+    out = tmp_path / "geometry.slf"
+    with pytest.warns(UserWarning, match="all-zero IPOBO"):
+        SelafinDriver().write(dataset, str(out))
+
+    title, _iparam, _date, _ipobo = _header_of(out)
+    back = _read(out)
+    steps = 0 if back.time_values is None else len(np.asarray(back.time_values))
+    assert title == "geometry only", f"the title should survive, got {title!r}"
+    assert back.data_variable_names == []
+    assert steps == 0, f"a mesh with no variables should write no steps, got {steps}"
+
+
+def test_a_non_node_located_node_z_is_left_alone(tmp_path):
+    """The node_z warning is for a node-located field; a face-located one is not it.
+
+    ``node_z`` is dropped because Selafin stores only x/y per node. A variable that happens
+    to share the name but lives on faces is not that field, so it is neither warned about nor
+    treated as geometry.
+    """
+    source = _read(_SLF)
+    face_z = source.with_variable(
+        "node_z", np.zeros(source.mesh.n_face), location="face"
+    )
+
+    out = tmp_path / "face_z.slf"
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        SelafinDriver().write(face_z, str(out))
+
+    # Matched on the message's own wording, not on "node_z": the IPOBO warning quotes the
+    # output path, and tmp_path carries this test's name.
+    about_z = [str(w.message) for w in caught if "bed " in str(w.message)]
+    assert not about_z, f"unexpected node_z warning: {about_z}"
+    assert _read(out).data_variable_names == ["WATER DEPTH"]

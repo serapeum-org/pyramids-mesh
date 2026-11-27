@@ -536,3 +536,53 @@ def test_selafin_can_open_declines_a_file_truncated_inside_its_header(tmp_path):
     truncated.write_bytes(source.read_bytes()[:104])
 
     assert SelafinDriver().can_open(str(truncated)) is False
+
+
+def test_selafin_peek_header_refuses_an_empty_file(tmp_path):
+    """An empty file has no title record, which the peek reports rather than assuming.
+
+    ``_read_record`` answers ``None`` at a clean end of file, so this is the one shape that
+    reaches the peek's own guard; a file cut mid-record raises from the helper instead.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _peek_header
+
+    path = tmp_path / "empty.slf"
+    path.write_bytes(b"")
+
+    with pytest.raises(ValueError, match="ends before its title record"):
+        _peek_header(str(path), "<")
+
+
+def test_selafin_can_open_declines_a_bare_length_word(tmp_path):
+    """A length word announcing a title that is not there is declined, not claimed.
+
+    ``detect_endianness`` only reads that first word, so the probe passes; the sniff has to
+    go further before answering, and a failed peek means the file is not readable.
+    """
+    path = tmp_path / "stub.slf"
+    path.write_bytes(np.array([80], dtype="<i4").tobytes())
+
+    assert SelafinDriver().can_open(str(path)) is False
+
+
+def test_selafin_peek_header_refuses_a_file_cut_between_its_name_records(tmp_path):
+    """A header that stops part-way through the variable names is declined, not guessed."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _peek_header
+
+    source = Path(
+        _write(
+            tmp_path,
+            variable_names=[
+                "WATER DEPTH     M               ",
+                "VELOCITY U      M/S             ",
+            ],
+            values=[[[0.0] * 4, [0.0] * 4], [[1.0] * 4, [1.0] * 4]],
+        )
+    )
+    # title record (4+80+4) + nbv record (4+8+4) + one of the two 32-byte name records
+    cut = tmp_path / "cut.slf"
+    cut.write_bytes(source.read_bytes()[: 88 + 16 + 40])
+
+    with pytest.raises(ValueError, match="ends inside its variable-name records"):
+        _peek_header(str(cut), "<")
+    assert SelafinDriver().can_open(str(cut)) is False
