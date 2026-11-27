@@ -920,9 +920,7 @@ E3T 1 1 2 3 {columns}
         return
 
     dataset = TwoDmDriver().read(path)
-    materials = {
-        name for name in dataset.variable_names if name.startswith("material")
-    }
+    materials = {name for name in dataset.variable_names if name.startswith("material")}
     assert len(materials) == declared, f"got {sorted(materials)}"
 
 

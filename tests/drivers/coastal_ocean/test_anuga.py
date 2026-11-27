@@ -291,9 +291,7 @@ def test_sww_committed_fixture_reads_and_matches_the_builder(tmp_path):
         from_file.mesh.face_node_connectivity.data.tolist()
         == from_builder.mesh.face_node_connectivity.data.tolist()
     )
-    assert sorted(from_file.variable_names) == sorted(
-        from_builder.variable_names
-    )
+    assert sorted(from_file.variable_names) == sorted(from_builder.variable_names)
     assert (
         from_file.get("stage").data.tolist() == from_builder.get("stage").data.tolist()
     )
