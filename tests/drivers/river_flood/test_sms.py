@@ -1054,6 +1054,11 @@ E3T 1 1 2 3 1
         e3t = [ln for ln in out.read_text().splitlines() if ln.startswith("E3T")][0]
         assert e3t.split()[-1] == "0"
 
+    def test_writer_column_none_when_absent(self):
+        """`_writer_column` returns None when the named column is absent."""
+        dataset = type("_Dataset", (), {"variable_names": ()})()
+        assert TwoDmDriver._writer_column(dataset, "node_z", 3) is None
+
     def test_write_declares_write_capabilities(self):
         """The driver advertises write_mesh and write_data so to_file dispatches to it."""
         caps = set(TwoDmDriver.capabilities)

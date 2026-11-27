@@ -692,6 +692,11 @@ class TestPlyWriter:
         with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
             PlyDriver().write(ds, str(tmp_path / "out.ply"))
 
+    def test_writer_node_z_none_when_absent(self):
+        """`_writer_node_z` returns None when the dataset carries no node_z column."""
+        dataset = type("_Dataset", (), {"variable_names": ()})()
+        assert interchange._writer_node_z(dataset, 3) is None
+
     def test_declares_write_mesh(self):
         """The driver advertises the write_mesh capability."""
         assert "write_mesh" in PlyDriver.capabilities
