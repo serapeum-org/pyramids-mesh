@@ -5,11 +5,11 @@ left behind a loader that seeks straight to a record, while the topology and the
 time records are read eagerly. Fortran unformatted records with undeclared endianness and
 an optional double-precision variant, read through the helpers in ``_binary.py``.
 
-The record layout here was read from the Selafin format specification. One detail could
-not be checked against a vendor file -- the row-versus-column order of the ``IKLE``
-connectivity block -- so it is read row-major (one element's nodes contiguous) and
-called out in the driver's documented limitations. See ``planning/design.md`` section
-20.1.
+The record layout here was read from the Selafin format specification and has since been
+checked against real files from two independent writers -- including the row-versus-column
+order of the ``IKLE`` connectivity block, which is read row-major (one element's nodes
+contiguous). ``tests/drivers/coastal_ocean/test_selafin_vendor.py`` holds that check. See
+``planning/design.md`` section 20.1.
 """
 
 from __future__ import annotations
@@ -86,7 +86,9 @@ class SelafinDriver(BaseDriver):
           ``NPOIN`` and prism ``IKLE`` cannot be read as a flat 2D mesh without returning
           all planes' nodes under 6-node faces. A full 3D read needs the layered mesh
           model pyramids does not have yet (design section 21.1), so the file is refused
-          rather than yielding a plausible, wrong mesh.
+          rather than yielding a plausible, wrong mesh. The test is the plane count alone,
+          which a single layer extracted from a 3D run inherits from its parent -- so such
+          a file is refused although its elements are plain triangles (issue #137).
         - **A parallel sub-domain file is refused.** A non-zero interface-point count
           (``IPARAM[8]``) means local numbering within one partition, so the connectivity
           would index a sub-domain rather than the whole mesh. It is keyed on interface
@@ -94,10 +96,14 @@ class SelafinDriver(BaseDriver):
           ordinary serial meshes, and keying on it would refuse them.
         - **Selafin variables are node-located, always.** The location is not inferred
           from an array length.
-        - **The IKLE row/column order could not be checked against a vendor file.** It is
-          read row-major -- one element's ``NDP`` node ids contiguous -- as the format
-          specifies. A real file that stores it transposed would give a scrambled mesh; this is
-          the detail a vendor sample should confirm.
+        - **The IKLE row/column order is row-major**, one element's ``NDP`` node ids
+          contiguous, as the format specifies -- confirmed against real files from two
+          independent writers. On a TELEMAC 2D result (648 nodes, 1030 triangles) the
+          row-major reading gives 1030 counter-clockwise triangles whose areas sum to the
+          domain footprint exactly, while the transposed reading inverts 537 of them and
+          covers 89 times the domain. The same holds for a BlueKenue-written mesh. A
+          fixture cannot settle this -- a transposed writer and a transposed reader agree
+          with each other -- so the check lives in the ``vendor_data`` suite.
         - There is no CRS in the format, so ``crs`` is ``None``; it is never inferred
           from the coordinate magnitudes.
 
@@ -598,17 +604,22 @@ class _SelafinReader:
         For one, ``NPOIN`` is the full 3D node count and ``IKLE`` is prism connectivity,
         so reading them as a flat 2D mesh yields all planes' nodes with 6-node "faces":
         plausible and wrong. A full 3D read needs the layered mesh model pyramids does
-        not have yet (design section 21.1), and extracting the surface plane cannot be
-        done faithfully without a vendor file to verify the plane ordering against, so
-        the file is refused rather than read as a malformed 2D mesh.
+        not have yet (design section 21.1), and extracting one plane out of a layered mesh
+        is a mesh operation, which belongs upstream rather than in a format driver
+        (ADR-0005), so the file is refused rather than read as a malformed 2D mesh.
+
+        Keying on the plane count alone is too blunt: a file holding a single layer
+        extracted from a 3D run keeps its parent's plane count while its elements are
+        plain triangles, and is refused although it reads correctly. ``NDP`` is the
+        reliable test -- see issue #137.
         """
         planes = int(self.iparam[_IPARAM_PLANES])
         if planes > 1:
             raise FileFormatNotSupportedError(
                 f"{self.path!r} is a layered 3D Selafin file ({planes} planes); only 2D "
                 f"meshes are read. A 3D read needs the layered mesh model pyramids does "
-                f"not have yet, and the surface plane cannot be extracted faithfully "
-                f"without a vendor file to verify the plane ordering."
+                f"not have yet, and extracting a single plane is a mesh operation that "
+                f"belongs upstream rather than in a format driver."
             )
 
     def _read_data(

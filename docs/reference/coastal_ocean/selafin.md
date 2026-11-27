@@ -55,24 +55,55 @@ base), the variable names and units, and the time steps.
   data to catch it.
 - **A layered 3D file is refused.** `IPARAM[6]` is the plane count; 0 and 1 both mean 2D,
   and a value above 1 is a real 3D file. Its `NPOIN` and prism `IKLE` cannot be read as a
-  flat 2D mesh without returning all planes' nodes under 6-node faces, and a faithful
-  surface extraction needs a vendor file to verify the plane ordering, so it is refused
-  rather than read as a malformed 2D mesh. A full 3D read needs the layered mesh model
-  pyramids does not have yet (design §21.1).
+  flat 2D mesh without returning all planes' nodes under 6-node faces, and extracting one
+  plane out of a layered mesh is a mesh operation that belongs upstream rather than in a
+  format driver (ADR-0005), so it is refused rather than read as a malformed 2D mesh. A
+  full 3D read needs the layered mesh model pyramids does not have yet (design §21.1).
+  The test is the plane count alone, which is too blunt: a file holding a single layer
+  extracted from a 3D run inherits its parent's plane count while its elements are plain
+  triangles, and is refused although it reads correctly —
+  [#137](https://github.com/serapeum-org/pyramids-mesh/issues/137) tracks keying the guard
+  on `NDP` instead.
 - **A parallel sub-domain file is refused.** A non-zero interface-point count
   (`IPARAM[8]`) means local numbering within one partition, so the connectivity would
   index a sub-domain rather than the whole mesh. It is keyed on interface points alone —
   the boundary-point field is a mesh property, nonzero for ordinary serial meshes. Merge
   the partitions before reading.
 - **Variables are node-located, always** — never inferred from an array length.
-- **The IKLE row/column order could not be checked against a vendor file.** It is read
-  row-major (one element's `NDP` node ids contiguous), as the format specifies. A real file that
-  stored it transposed would give a scrambled mesh; this is the detail a vendor sample
-  should confirm, tracked for the `vendor_data` suite.
+- **The IKLE row/column order is row-major** (one element's `NDP` node ids contiguous), as
+  the format specifies — and it is checked against real files rather than assumed. A
+  fixture cannot settle it, because a transposed writer paired with a transposed reader
+  round-trips perfectly; a real file can. On a TELEMAC 2D result (648 nodes, 1030
+  triangles) the row-major reading gives 1030 counter-clockwise triangles whose areas sum
+  to the domain footprint exactly, while the transposed reading inverts 537 of them and
+  covers 89× the domain. A BlueKenue-written mesh (12,814 nodes, 25,007 triangles) agrees.
+  See `tests/drivers/coastal_ocean/test_selafin_vendor.py`.
 - **A partial final timestep is dropped with a warning** — a run killed mid-write leaves
   a dangling time record, and only whole steps are read.
 - There is no CRS in the format, so `crs` is `None`; it is never inferred from the
   coordinate magnitudes.
+
+## Vendor-file checks
+
+Every other Selafin test builds its fixture with `write_selafin` and reads it back, so the reader
+and the writer share one set of assumptions about the record layout and cannot contradict each
+other. `tests/drivers/coastal_ocean/test_selafin_vendor.py` breaks that circle by running the
+reader over files written by TELEMAC itself and by BlueKenue:
+
+```bash
+pytest tests/drivers/coastal_ocean/test_selafin_vendor.py -m vendor_data
+```
+
+The samples are fetched on first use into `examples/data/real-data/selafin/` and are not
+committed — they are large and carry their own licences. The default suite deselects these tests
+with `-m "not vendor_data"`.
+
+| Sample | Source | Licence | What it covers |
+|---|---|---|---|
+| `r2d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | TELEMAC 2D output: 648 nodes, 1030 triangles, 17 steps, 5 variables; the `IKLE` order |
+| `qgismesh.slf` | `hydro-informatics/telemac` | BSD-3-Clause | BlueKenue/QGIS geometry: a second, independent writer, in projected UTM coordinates |
+| `r3d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | a genuine layered 3D file (`NDP=6`, 21 planes) — the refusal path |
+| `r3d_bump_extracted_bottom_layer.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | one layer extracted from a 3D run; currently refused, see [#137](https://github.com/serapeum-org/pyramids-mesh/issues/137) |
 
 ## API
 
