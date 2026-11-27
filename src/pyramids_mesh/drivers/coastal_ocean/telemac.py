@@ -232,6 +232,38 @@ class SelafinDriver(BaseDriver):
             ('node', (2, 4), 'M')
             >>> second_step
             [1.5, 1.25, 1.75, 1.125]
+
+        - The header fields the file carries about itself arrive with it. The title and the
+          start date are global attributes, and the boundary numbering is a node variable,
+          so a write can put all three back:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+            ...     SelafinDriver,
+            ...     write_selafin,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "run.slf")
+            ...     write_selafin(
+            ...         path,
+            ...         node_x=[0.0, 1.0, 1.0, 0.0],
+            ...         node_y=[0.0, 0.0, 1.0, 1.0],
+            ...         ikle=[[1, 2, 3], [1, 3, 4]],
+            ...         variable_names=["WATER DEPTH     M               "],
+            ...         times=[0.0],
+            ...         values=[[[0.5, 0.25, 0.75, 0.125]]],
+            ...         title="Rouse profile test",
+            ...         ipobo=[1, 2, 0, 3],
+            ...         date=[1993, 7, 14, 6, 30, 15],
+            ...     )
+            ...     dataset = SelafinDriver().read(path)
+            >>> dataset.global_attributes["title"]
+            'Rouse profile test'
+            >>> dataset.global_attributes["start_date"]
+            '1993-07-14T06:30:15'
+            >>> dataset.get("boundary_node_number").data.tolist()
+            [1.0, 2.0, 0.0, 3.0]
     """
 
     name = "selafin"
@@ -324,6 +356,75 @@ class SelafinDriver(BaseDriver):
             FileFormatNotSupportedError: If the dataset has no face connectivity, if its
                 faces do not all share one vertex count (Selafin needs a uniform ``NDP``),
                 or if ``precision`` is neither ``"single"`` nor ``"double"``.
+
+        Warns:
+            UserWarning: If the dataset carries no boundary numbering, so ``IPOBO`` is
+                written as zeros, or if a node-located ``node_z`` is dropped.
+
+        Examples:
+            - A written file keeps the dataset's own title, start date and boundary
+              numbering, so read -> write -> read is still the model's file and not this
+              package's:
+
+                >>> import os
+                >>> import tempfile
+                >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+                ...     SelafinDriver,
+                ...     write_selafin,
+                ... )
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     source = os.path.join(directory, "source.slf")
+                ...     write_selafin(
+                ...         source,
+                ...         node_x=[0.0, 1.0, 1.0, 0.0],
+                ...         node_y=[0.0, 0.0, 1.0, 1.0],
+                ...         ikle=[[1, 2, 3], [1, 3, 4]],
+                ...         variable_names=["WATER DEPTH     M               "],
+                ...         times=[0.0],
+                ...         values=[[[0.5, 0.25, 0.75, 0.125]]],
+                ...         title="Rouse profile test",
+                ...         ipobo=[1, 2, 0, 3],
+                ...         date=[1993, 7, 14, 6, 30, 15],
+                ...     )
+                ...     copy = os.path.join(directory, "copy.slf")
+                ...     SelafinDriver().write(SelafinDriver().read(source), copy)
+                ...     restored = SelafinDriver().read(copy)
+                >>> restored.global_attributes["title"]
+                'Rouse profile test'
+                >>> restored.global_attributes["start_date"]
+                '1993-07-14T06:30:15'
+                >>> restored.global_attributes["n_boundary_nodes"]
+                3
+
+            - The boundary numbering is mesh metadata, so it goes back into the ``IPOBO``
+              record rather than becoming a sixth result; the written file still declares
+              the one variable it started with:
+
+                >>> import os
+                >>> import tempfile
+                >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+                ...     SelafinDriver,
+                ...     write_selafin,
+                ... )
+                >>> with tempfile.TemporaryDirectory() as directory:
+                ...     source = os.path.join(directory, "source.slf")
+                ...     write_selafin(
+                ...         source,
+                ...         node_x=[0.0, 1.0, 1.0, 0.0],
+                ...         node_y=[0.0, 0.0, 1.0, 1.0],
+                ...         ikle=[[1, 2, 3], [1, 3, 4]],
+                ...         variable_names=["WATER DEPTH     M               "],
+                ...         times=[0.0],
+                ...         values=[[[0.5, 0.25, 0.75, 0.125]]],
+                ...         ipobo=[1, 2, 0, 3],
+                ...     )
+                ...     copy = os.path.join(directory, "copy.slf")
+                ...     SelafinDriver().write(SelafinDriver().read(source), copy)
+                ...     restored = SelafinDriver().read(copy)
+                >>> restored.variable_names
+                ['WATER DEPTH', 'boundary_node_number']
+                >>> restored.get("boundary_node_number").data.tolist()
+                [1.0, 2.0, 0.0, 3.0]
         """
         mesh = dataset.mesh
         connectivity = getattr(mesh, "face_node_connectivity", None)
@@ -632,6 +733,63 @@ def write_selafin(
     Raises:
         ValueError: If ``values`` does not match the timestep and variable counts, or if
             ``ipobo`` or ``date`` has the wrong length.
+
+    Examples:
+        - A named title and a boundary numbering come back off the file, and ``IPARAM`` is
+          derived from them rather than passed separately, so the header cannot claim one
+          thing while the records show another:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+            ...     SelafinDriver,
+            ...     write_selafin,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "flume.slf")
+            ...     write_selafin(
+            ...         path,
+            ...         node_x=[0.0, 1.0, 1.0, 0.0],
+            ...         node_y=[0.0, 0.0, 1.0, 1.0],
+            ...         ikle=[[1, 2, 3], [1, 3, 4]],
+            ...         variable_names=["WATER DEPTH     M               "],
+            ...         times=[0.0],
+            ...         values=[[[0.5, 0.25, 0.75, 0.125]]],
+            ...         title="flume test",
+            ...         ipobo=[1, 2, 0, 3],
+            ...     )
+            ...     dataset = SelafinDriver().read(path)
+            >>> dataset.global_attributes["title"], dataset.global_attributes["n_boundary_nodes"]
+            ('flume test', 3)
+
+        - Left out, neither is declared: the file gets the neutral default title, no date
+          record and an all-zero ``IPOBO``, which is a mesh with no boundary nodes rather
+          than one claiming boundary nodes it does not have:
+
+            >>> import os
+            >>> import tempfile
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+            ...     SelafinDriver,
+            ...     write_selafin,
+            ... )
+            >>> with tempfile.TemporaryDirectory() as directory:
+            ...     path = os.path.join(directory, "plain.slf")
+            ...     write_selafin(
+            ...         path,
+            ...         node_x=[0.0, 1.0, 1.0, 0.0],
+            ...         node_y=[0.0, 0.0, 1.0, 1.0],
+            ...         ikle=[[1, 2, 3], [1, 3, 4]],
+            ...         variable_names=["WATER DEPTH     M               "],
+            ...         times=[0.0],
+            ...         values=[[[0.5, 0.25, 0.75, 0.125]]],
+            ...     )
+            ...     dataset = SelafinDriver().read(path)
+            >>> dataset.global_attributes["title"]
+            'pyramids-mesh'
+            >>> "start_date" in dataset.global_attributes
+            False
+            >>> dataset.variable_names
+            ['WATER DEPTH']
     """
     if len(values) != len(times):
         raise ValueError("values must hold one entry per timestep")
@@ -800,12 +958,19 @@ class _SelafinReader:
     def _read_header(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Read every header record in order, up to the first timestep.
 
+        Record order is fixed, so the reads are sequential and each guard fires as soon as
+        the field it judges is in hand: the parallel guard right after ``IPARAM``, and the
+        3D guard only after the dimensions record, since it is keyed on ``NDP``. The title,
+        the date record and ``IPOBO`` are kept on the reader as they go past rather than
+        being read and dropped, because the writer restores them.
+
         Returns:
             tuple: ``(node_x, node_y, faces)`` -- coordinates with the IPARAM origin
                 applied, and the 1-based connectivity reshaped to ``(NELEM, NDP)``.
 
         Raises:
-            FileFormatNotSupportedError: If the file declares a parallel sub-domain.
+            FileFormatNotSupportedError: If the file declares a parallel sub-domain, if it
+                is a layered 3D mesh, or if a header record is missing.
         """
         with open(self.path, "rb") as handle:
             title_bytes = self._read_raw(handle)
