@@ -32,8 +32,8 @@ def test_node_z_is_geometry_not_a_written_data_variable(tmp_path):
     out = tmp_path / "with_z.slf"
     SelafinDriver().write(with_z, str(out))
     back = _read(str(out))
-    assert "node_z" not in back.data_variable_names
-    assert "WATER DEPTH" in back.data_variable_names
+    assert "node_z" not in back.variable_names
+    assert "WATER DEPTH" in back.variable_names
 
 
 def test_dropping_node_z_warns(tmp_path):
@@ -85,8 +85,8 @@ def test_round_trip_preserves_mesh_and_results(tmp_path):
         back.mesh.face_node_connectivity.original_start_index
         == original.mesh.face_node_connectivity.original_start_index
     )
-    assert list(back.data_variable_names) == list(original.data_variable_names)
-    name = list(original.data_variable_names)[0]
+    assert list(back.variable_names) == list(original.variable_names)
+    name = list(original.variable_names)[0]
     assert back.get(name).units == original.get(name).units
     np.testing.assert_allclose(back.get(name).data, original.get(name).data)
     np.testing.assert_allclose(list(back.time_values), list(original.time_values))
@@ -149,7 +149,7 @@ def test_write_refuses_mixed_element_widths(tmp_path):
     dataset = type(
         "_Dataset",
         (),
-        {"mesh": fake_mesh, "data_variable_names": [], "time_values": None},
+        {"mesh": fake_mesh, "variable_names": [], "time_values": None},
     )()
     with pytest.raises(FileFormatNotSupportedError, match="same node count"):
         SelafinDriver().write(dataset, str(tmp_path / "mixed.slf"))

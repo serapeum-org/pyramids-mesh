@@ -94,7 +94,7 @@ def test_sample_faces_are_counter_clockwise():
 def test_sample_node_z_is_node_located():
     """The node elevation comes back as a node-located ``node_z`` variable over 65 nodes."""
     dataset = _read(_SAMPLE)
-    assert list(dataset.data_variable_names) == ["node_z"]
+    assert list(dataset.variable_names) == ["node_z"]
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     assert node_z.shape == (65,)

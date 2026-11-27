@@ -167,7 +167,7 @@ def test_mike21_boundary_code_is_not_carried(tmp_path):
     """The node boundary code is read for width but not turned into a variable."""
     dataset = Mike21Driver().read(_write(tmp_path, _UNIT_SQUARE))
 
-    assert dataset.data_variable_names == ["node_z"]
+    assert dataset.variable_names == ["node_z"]
 
 
 def test_mike21_clockwise_face_is_reversed(tmp_path):
@@ -774,7 +774,7 @@ class TestMike21Writer:
                 "node_y": np.arange(6, dtype=float),
             },
         )()
-        ds = type("_Dataset", (), {"mesh": mesh, "data_variable_names": ()})()
+        ds = type("_Dataset", (), {"mesh": mesh, "variable_names": ()})()
         with pytest.raises(FileFormatNotSupportedError, match="triangle"):
             Mike21Driver().write(ds, str(tmp_path / "out.mesh"))
 

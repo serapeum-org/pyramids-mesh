@@ -155,7 +155,7 @@ end_header
         """The geometry is planar; z survives only as the ``node_z`` variable."""
         dataset = PlyDriver().read(_write(tmp_path, _ASCII_PLY))
 
-        assert "node_z" in dataset.data_variable_names
+        assert "node_z" in dataset.variable_names
         assert float(dataset.mesh.node_x[2]) == 1.0
 
     def test_ply_face_with_two_vertices_is_refused(self, tmp_path):

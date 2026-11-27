@@ -120,8 +120,8 @@ def test_sww_elevation_read_from_z_name(tmp_path):
     """Elevation stored under ``z`` rather than ``elevation`` is still node_z."""
     dataset = SwwDriver().read(_write(tmp_path, elevation_name="z"))
 
-    assert "node_z" in dataset.data_variable_names
-    assert "z" not in dataset.data_variable_names
+    assert "node_z" in dataset.variable_names
+    assert "z" not in dataset.variable_names
 
 
 def test_sww_variable_location_resolved_by_dimension_name(tmp_path):
@@ -153,7 +153,7 @@ def test_sww_variable_on_foreign_dimension_is_skipped_with_warning(tmp_path):
     with pytest.warns(UserWarning, match="neither the node nor the face dimension"):
         result = SwwDriver().read(path)
 
-    assert "boundary_flux" not in result.data_variable_names
+    assert "boundary_flux" not in result.variable_names
 
 
 def test_sww_stage_keeps_its_time_axis(tmp_path):
@@ -210,7 +210,7 @@ def test_sww_lazy_read_defers_values(tmp_path):
     """A lazy read reports a source for every variable without loading its values."""
     dataset = SwwDriver().read(_write(tmp_path), lazy=True)
 
-    for name in dataset.data_variable_names:
+    for name in dataset.variable_names:
         variable = dataset.get(name)
         assert variable.has_data_source, name
         assert variable._data is None, name
@@ -291,8 +291,8 @@ def test_sww_committed_fixture_reads_and_matches_the_builder(tmp_path):
         from_file.mesh.face_node_connectivity.data.tolist()
         == from_builder.mesh.face_node_connectivity.data.tolist()
     )
-    assert sorted(from_file.data_variable_names) == sorted(
-        from_builder.data_variable_names
+    assert sorted(from_file.variable_names) == sorted(
+        from_builder.variable_names
     )
     assert (
         from_file.get("stage").data.tolist() == from_builder.get("stage").data.tolist()
@@ -351,8 +351,8 @@ def test_sww_empty_crs_attribute_leaves_crs_none(tmp_path):
 def test_sww_without_elevation_has_no_node_z(tmp_path):
     """A SWW carrying no elevation array produces no ``node_z`` variable."""
     dataset = SwwDriver().read(_write(tmp_path, elevation=None))
-    assert "node_z" not in dataset.data_variable_names
-    assert "stage" in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
+    assert "stage" in dataset.variable_names
 
 
 def test_sww_elevation_on_foreign_dimension_is_skipped_not_crashed(tmp_path):
@@ -370,7 +370,7 @@ def test_sww_elevation_on_foreign_dimension_is_skipped_not_crashed(tmp_path):
     with pytest.warns(UserWarning, match="neither the node nor the face dimension"):
         dataset = SwwDriver().read(path)
 
-    assert "node_z" not in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 _IMPORTABLE_INVALID_WKT = (
@@ -404,8 +404,8 @@ def test_sww_both_elevation_and_z_warns_and_keeps_elevation(tmp_path):
     with pytest.warns(UserWarning, match="only 'elevation' becomes node_z"):
         result = SwwDriver().read(path)
 
-    assert "node_z" in result.data_variable_names
-    assert "z" not in result.data_variable_names
+    assert "node_z" in result.variable_names
+    assert "z" not in result.variable_names
 
 
 def test_sww_negative_volumes_index_is_refused(tmp_path):

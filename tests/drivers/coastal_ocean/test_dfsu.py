@@ -66,7 +66,7 @@ def test_item_is_face_located_over_time():
 
 def test_all_items_are_present():
     """Every DFSU item becomes a variable; node_z rides alongside."""
-    names = _read().data_variable_names
+    names = _read().variable_names
     assert "Surface elevation" in names
     assert "Depth averaged U velocity" in names
     assert "Depth averaged V velocity" in names

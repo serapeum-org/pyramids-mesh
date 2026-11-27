@@ -100,7 +100,7 @@ def test_bare_mesh_without_results(tmp_path):
     dataset = AdcircDriver().read(str(grid))
     assert dataset.mesh.n_face == 5780
     assert dataset.get("node_z") is not None
-    assert "zeta" not in dataset.data_variable_names
+    assert "zeta" not in dataset.variable_names
 
 
 def test_reached_through_a_directory(tmp_path):

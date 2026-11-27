@@ -279,7 +279,7 @@ def test_2dm_material_becomes_face_variable(tmp_path):
     )
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "material" in dataset.data_variable_names
+    assert "material" in dataset.variable_names
     material = dataset.get("material")
     assert material.location == "face"
     np.testing.assert_allclose(material.data, [4.0, 7.0])
@@ -466,7 +466,7 @@ E3T 1 1 2 3 1
 """
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "node_z" in dataset.data_variable_names
+    assert "node_z" in dataset.variable_names
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     np.testing.assert_allclose(node_z.data, [1.5, 2.5, 3.5])
@@ -705,7 +705,7 @@ E3T 1 1 2 3 1
 """
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "node_z" not in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 def test_2dm_face_without_material_defaults_to_zero(tmp_path):
@@ -732,7 +732,7 @@ E3T 1 1 2 3 5 111 222 333
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
     np.testing.assert_allclose(dataset.get("material").data, [5.0])
-    assert "material_2" not in dataset.data_variable_names
+    assert "material_2" not in dataset.variable_names
 
 
 def test_2dm_keywords_are_matched_case_insensitively(tmp_path):
@@ -921,7 +921,7 @@ E3T 1 1 2 3 {columns}
 
     dataset = TwoDmDriver().read(path)
     materials = {
-        name for name in dataset.data_variable_names if name.startswith("material")
+        name for name in dataset.variable_names if name.startswith("material")
     }
     assert len(materials) == declared, f"got {sorted(materials)}"
 

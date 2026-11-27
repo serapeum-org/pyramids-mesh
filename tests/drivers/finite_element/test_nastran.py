@@ -141,7 +141,7 @@ def test_committed_sample_faces_are_not_clockwise():
 def test_committed_sample_node_z_from_x3_column():
     """The GRID X3 column, non-zero in this deck, becomes a node_z variable."""
     dataset = _read(_CYLINDER)
-    assert "node_z" in set(dataset.data_variable_names)
+    assert "node_z" in set(dataset.variable_names)
     assert dataset.get("node_z").location == "node"
 
 
@@ -331,7 +331,7 @@ def test_deck_without_grid_is_refused(tmp_path):
 def test_flat_deck_carries_no_node_z(tmp_path):
     """An all-zero X3 column gains no meaningless node_z, matching the exodus reader."""
     dataset = _read(_write(tmp_path, _MINIMAL))
-    assert "node_z" not in set(dataset.data_variable_names)
+    assert "node_z" not in set(dataset.variable_names)
 
 
 # -- can_open and the FEFLOW collision ----------------------------------------------

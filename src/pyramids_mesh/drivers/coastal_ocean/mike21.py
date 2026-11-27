@@ -131,7 +131,7 @@ class Mike21Driver(BaseDriver):
             ...     path = os.path.join(directory, "domain.mesh")
             ...     build_minimal_fixture_mike21(path)
             ...     dataset = Mike21Driver().read(path)
-            >>> dataset.data_variable_names
+            >>> dataset.variable_names
             ['node_z']
             >>> dataset.get("node_z").location
             'node'
@@ -315,7 +315,7 @@ class Mike21Driver(BaseDriver):
 
 def _writer_node_z(dataset, expected: int):
     """Return the ``node_z`` column for a writer, or ``None`` when absent or mis-sized."""
-    if "node_z" not in dataset.data_variable_names:
+    if "node_z" not in dataset.variable_names:
         return None
     values = np.asarray(dataset.get("node_z").data, dtype=np.float64)
     return values if values.shape == (expected,) else None

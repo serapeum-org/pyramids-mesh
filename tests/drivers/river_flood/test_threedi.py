@@ -75,7 +75,7 @@ def test_per_cell_variable_is_face_located_over_time():
 
 def test_flow_line_variables_are_not_shipped():
     """Results on the flow-line dimension are not placed on the mesh."""
-    names = _read().data_variable_names
+    names = _read().variable_names
     # Mesh2D_q / Mesh2D_au live on nMesh2D_lines, not the cells
     assert "Mesh2D_s1" in names
     assert "Mesh2D_q" not in names
