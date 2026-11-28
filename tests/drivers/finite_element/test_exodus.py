@@ -93,7 +93,7 @@ def test_two_dimensional_file_has_no_node_z():
     """A 2D (``num_dim == 2``) file carries no ``coordz``, so there is no ``node_z``."""
     dataset = _read(_QUAD)
     assert ExodusDriver()._parse(str(_QUAD), lazy=False).node_z is None
-    assert "node_z" not in set(dataset.data_variable_names)
+    assert "node_z" not in set(dataset.variable_names)
 
 
 class _FakeArray:

@@ -80,7 +80,7 @@ def test_cell_scalar_is_face_located_over_time():
 
 def test_vector_attribute_is_skipped():
     """The vector attribute ``u`` is left out (2D scalar ships first), not mislabelled."""
-    names = list(_read().data_variable_names)
+    names = list(_read().variable_names)
     assert "phi" in names
     assert "a" in names
     assert "u" not in names

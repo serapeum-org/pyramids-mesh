@@ -279,7 +279,7 @@ def test_2dm_material_becomes_face_variable(tmp_path):
     )
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "material" in dataset.data_variable_names
+    assert "material" in dataset.variable_names
     material = dataset.get("material")
     assert material.location == "face"
     np.testing.assert_allclose(material.data, [4.0, 7.0])
@@ -466,7 +466,7 @@ E3T 1 1 2 3 1
 """
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "node_z" in dataset.data_variable_names
+    assert "node_z" in dataset.variable_names
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     np.testing.assert_allclose(node_z.data, [1.5, 2.5, 3.5])
@@ -705,7 +705,7 @@ E3T 1 1 2 3 1
 """
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
-    assert "node_z" not in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 def test_2dm_face_without_material_defaults_to_zero(tmp_path):
@@ -732,7 +732,7 @@ E3T 1 1 2 3 5 111 222 333
     dataset = TwoDmDriver().read(_write(tmp_path, text))
 
     np.testing.assert_allclose(dataset.get("material").data, [5.0])
-    assert "material_2" not in dataset.data_variable_names
+    assert "material_2" not in dataset.variable_names
 
 
 def test_2dm_keywords_are_matched_case_insensitively(tmp_path):
@@ -920,9 +920,7 @@ E3T 1 1 2 3 {columns}
         return
 
     dataset = TwoDmDriver().read(path)
-    materials = {
-        name for name in dataset.data_variable_names if name.startswith("material")
-    }
+    materials = {name for name in dataset.variable_names if name.startswith("material")}
     assert len(materials) == declared, f"got {sorted(materials)}"
 
 
@@ -1055,6 +1053,11 @@ E3T 1 1 2 3 1
         dataset.to_file(str(out), driver="2dm")
         e3t = [ln for ln in out.read_text().splitlines() if ln.startswith("E3T")][0]
         assert e3t.split()[-1] == "0"
+
+    def test_writer_column_none_when_absent(self):
+        """`_writer_column` returns None when the named column is absent."""
+        dataset = type("_Dataset", (), {"variable_names": ()})()
+        assert TwoDmDriver._writer_column(dataset, "node_z", 3) is None
 
     def test_write_declares_write_capabilities(self):
         """The driver advertises write_mesh and write_data so to_file dispatches to it."""

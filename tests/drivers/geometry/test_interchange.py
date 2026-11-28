@@ -155,7 +155,7 @@ end_header
         """The geometry is planar; z survives only as the ``node_z`` variable."""
         dataset = PlyDriver().read(_write(tmp_path, _ASCII_PLY))
 
-        assert "node_z" in dataset.data_variable_names
+        assert "node_z" in dataset.variable_names
         assert float(dataset.mesh.node_x[2]) == 1.0
 
     def test_ply_face_with_two_vertices_is_refused(self, tmp_path):
@@ -691,6 +691,11 @@ class TestPlyWriter:
         ds = type("_Dataset", (), {"mesh": mesh})()
         with pytest.raises(FileFormatNotSupportedError, match="no face connectivity"):
             PlyDriver().write(ds, str(tmp_path / "out.ply"))
+
+    def test_writer_node_z_none_when_absent(self):
+        """`_writer_node_z` returns None when the dataset carries no node_z column."""
+        dataset = type("_Dataset", (), {"variable_names": ()})()
+        assert interchange._writer_node_z(dataset, 3) is None
 
     def test_declares_write_mesh(self):
         """The driver advertises the write_mesh capability."""

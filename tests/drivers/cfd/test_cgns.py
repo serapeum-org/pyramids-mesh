@@ -78,7 +78,7 @@ def test_faces_are_quads_zero_based_and_rebased():
 def test_coordinate_z_is_carried_as_node_z():
     """The 3D grid's CoordinateZ becomes a node_z variable."""
     dataset = _read()
-    assert "node_z" in set(dataset.data_variable_names)
+    assert "node_z" in set(dataset.variable_names)
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     assert node_z.shape == (1218,)
@@ -106,7 +106,7 @@ def test_minimal_quadtri_reads_mixed_surface_skin():
     assert int((connectivity == -1).sum()) == 2
     element_types = dataset.global_attributes["element_types"]
     assert sorted(element_types) == ["QUAD_4", "QUAD_4", "TRI_3", "TRI_3"]
-    assert "node_z" in set(dataset.data_variable_names)
+    assert "node_z" in set(dataset.variable_names)
 
 
 def test_minimal_quadtri_drops_orphan_interior_nodes_issue_97():

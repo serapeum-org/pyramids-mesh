@@ -86,7 +86,7 @@ def test_face_is_counter_clockwise():
 def test_cell_centered_and_extra_vars_are_skipped():
     """Only geometry is read: the sample's node and cell data variables are not carried."""
     dataset = _read(_SAMPLE)
-    assert list(dataset.data_variable_names) == []
+    assert list(dataset.variable_names) == []
     assert dataset.mesh.crs is None
 
 
@@ -420,7 +420,7 @@ def test_varlocation_range_and_empty_spec_part(tmp_path):
     mesh = _read(path).mesh
     assert mesh.n_node == 4
     assert mesh.n_face == 1
-    assert list(_read(path).data_variable_names) == []
+    assert list(_read(path).variable_names) == []
 
 
 def test_varlocation_without_a_cellcentered_location(tmp_path):
@@ -497,7 +497,7 @@ def test_varlocation_group_with_nested_parentheses(tmp_path):
     dataset = _read(path)
     assert dataset.mesh.n_face == 1
     # The third variable is cell-centred, and only geometry is kept, so it is skipped.
-    assert list(dataset.data_variable_names) == []
+    assert list(dataset.variable_names) == []
 
 
 def test_unterminated_varlocation_group_is_refused(tmp_path):

@@ -199,7 +199,7 @@ class TwoDmDriver(BaseDriver):
             ...     path = os.path.join(directory, "domain.2dm")
             ...     build_minimal_fixture(path)
             ...     dataset = TwoDmDriver().read(path)
-            >>> sorted(dataset.data_variable_names)
+            >>> sorted(dataset.variable_names)
             ['material', 'node_z']
             >>> dataset.get("node_z").location
             'node'
@@ -239,7 +239,7 @@ class TwoDmDriver(BaseDriver):
             ...         print("ND 3 1.0 1.0", file=handle)
             ...         print("E3T 1 1 2 3 1", file=handle)
             ...     dataset = TwoDmDriver().read(path)
-            >>> sorted(dataset.data_variable_names)
+            >>> sorted(dataset.variable_names)
             ['material']
     """
 
@@ -497,7 +497,7 @@ class TwoDmDriver(BaseDriver):
         The length is checked so a stale variable cannot write a column that does not
         line up with the nodes or faces; a mismatch drops it rather than writing garbage.
         """
-        if name not in dataset.data_variable_names:
+        if name not in dataset.variable_names:
             return None
         values = np.asarray(dataset.get(name).data)
         if values.shape != (expected,):
@@ -571,7 +571,7 @@ class DatDriver(BaseDriver):
             ...     build_minimal_fixture(mesh_path)
             ...     build_minimal_fixture_dat(dat_path)
             ...     attached = MeshDataset.read_file(mesh_path).attach_data(dat_path)
-            >>> sorted(attached.data_variable_names)
+            >>> sorted(attached.variable_names)
             ['depth', 'material', 'node_z']
             >>> depth = attached.get("depth")
             >>> depth.location, depth.shape
@@ -752,7 +752,7 @@ class DatDriver(BaseDriver):
             FileFormatNotSupportedError: If the dataset carries no data variables, or its
                 variables mix node and face locations (a DAT file is single-location).
         """
-        names = list(dataset.data_variable_names)
+        names = list(dataset.variable_names)
         actives = {
             name[: -len("_active")]: dataset.get(name)
             for name in names

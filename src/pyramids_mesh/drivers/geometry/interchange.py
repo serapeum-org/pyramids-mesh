@@ -754,7 +754,7 @@ def _struct_char(code: str) -> str:
 
 def _writer_node_z(dataset, expected: int):
     """Return the ``node_z`` column for a writer, or ``None`` when absent or mis-sized."""
-    if "node_z" not in dataset.data_variable_names:
+    if "node_z" not in dataset.variable_names:
         return None
     values = np.asarray(dataset.get("node_z").data, dtype=np.float64)
     return values if values.shape == (expected,) else None

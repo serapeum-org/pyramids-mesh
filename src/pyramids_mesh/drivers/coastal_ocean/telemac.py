@@ -238,7 +238,7 @@ class SelafinDriver(BaseDriver):
             )
         node_x = np.asarray(mesh.node_x, dtype=np.float64).tolist()
         node_y = np.asarray(mesh.node_y, dtype=np.float64).tolist()
-        if "node_z" in dataset.data_variable_names:
+        if "node_z" in dataset.variable_names:
             z = dataset.get("node_z")
             if z is not None and z.location == "node":
                 warnings.warn(
@@ -248,7 +248,7 @@ class SelafinDriver(BaseDriver):
                 )
         node_pairs = [
             (name, dataset.get(name))
-            for name in dataset.data_variable_names
+            for name in dataset.variable_names
             if dataset.get(name).location == "node" and name != "node_z"
         ]
         names = [self._selafin_name(name, var.units) for name, var in node_pairs]
@@ -361,7 +361,7 @@ def build_minimal_fixture_selafin(path: str) -> None:
             ...     dataset = SelafinDriver().read(path)
             >>> dataset.mesh.n_node
             4
-            >>> dataset.data_variable_names
+            >>> dataset.variable_names
             ['WATER DEPTH']
     """
     write_selafin(

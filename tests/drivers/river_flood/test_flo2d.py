@@ -76,7 +76,7 @@ def test_max_depth_column_is_a_static_face_variable():
 
 def test_vector_quantity_is_skipped_scalar_magnitude_kept():
     """The Velocity vector quantity is skipped; the scalar Velocity MAG is kept."""
-    names = list(_read().data_variable_names)
+    names = list(_read().variable_names)
     assert "Velocity MAG" in names
     assert "Velocity" not in names
 
@@ -156,7 +156,7 @@ def test_results_hdf5_without_the_timdep_group_yields_no_time_series(tmp_path):
     shutil.copy(_DATA / "DEPFP.OUT", proj / "DEPFP.OUT")
     # a real HDF5 that genuinely has no 'TIMDEP NETCDF OUTPUT RESULTS' group
     shutil.copy(_DATA.parent / "xdmf" / "out.h5", proj / "TIMDEP.HDF5")
-    names = list(_read(proj).data_variable_names)
+    names = list(_read(proj).variable_names)
     assert "max_floodplain_depth" in names
     assert "FLOW DEPTH" not in names
 

@@ -87,7 +87,7 @@ def test_medit_elevation_becomes_node_z_for_3d():
     """A 3D file's vertex z column becomes a node-located ``node_z`` variable."""
     dataset = _read(_CUBE)
 
-    assert list(dataset.data_variable_names) == ["node_z"]
+    assert list(dataset.variable_names) == ["node_z"]
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     assert node_z.shape == (39,)
@@ -183,7 +183,7 @@ def test_medit_2d_file_has_no_node_z(tmp_path):
 
     assert dataset.mesh.n_node == 4
     assert dataset.mesh.n_face == 2
-    assert list(dataset.data_variable_names) == []
+    assert list(dataset.variable_names) == []
 
 
 def test_medit_dimension_value_on_its_own_line(tmp_path):
