@@ -17,6 +17,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import warnings
+from datetime import datetime, timedelta
 
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
@@ -484,7 +485,7 @@ class SelafinDriver(BaseDriver):
             double=self._resolve_precision(options.get("precision")),
             title=dataset.global_attributes.get("title"),
             ipobo=ipobo,
-            date=self._date_fields(dataset.global_attributes.get("start_date")),
+            date=self._date_fields(dataset.global_attributes.get("start_date"), path),
         )
 
     @staticmethod
@@ -521,29 +522,57 @@ class SelafinDriver(BaseDriver):
         return None
 
     @staticmethod
-    def _date_fields(start_date) -> list[int] | None:
+    def _date_fields(start_date: object, path: str) -> list[int] | None:
         """Convert an ISO-8601 ``start_date`` attribute into the six-int date record.
 
-        Only the shape the reader writes is accepted -- ``YYYY-MM-DDTHH:MM:SS`` -- and
-        anything else answers ``None`` so a stray attribute cannot desynchronise the file
-        by half a record.
+        Parsed with :meth:`datetime.datetime.fromisoformat` rather than split on
+        separators: splitting on ``"-"`` cannot read a negative year, and nothing but a
+        real parser agrees with :meth:`_SelafinReader._start_date_iso`, which is this
+        function's inverse. The two have to agree exactly -- the reader's own output must
+        survive a write -- and the only way to guarantee that is for both to go through
+        ``datetime``.
+
+        An unusable value is dropped rather than written, because a half-written date
+        record would desynchronise every record after it. Dropping it is announced: unlike
+        an absent ``start_date``, a present-but-unusable one means the caller believes the
+        file carries a date that it will not.
 
         Args:
             start_date: The dataset's ``start_date`` attribute, or ``None``.
+            path: The output path, for the warning message.
 
         Returns:
             list[int] | None: ``[year, month, day, hour, minute, second]``, or ``None``.
         """
-        if not isinstance(start_date, str):
+        if start_date is None:
             return None
-        date_part, _, time_part = start_date.partition("T")
-        pieces = date_part.split("-") + time_part.split(":")
-        if len(pieces) != _DATE_FIELDS:
+        if isinstance(start_date, datetime):
+            stamp = start_date
+        elif isinstance(start_date, str):
+            try:
+                stamp = datetime.fromisoformat(start_date)
+            except ValueError as error:
+                warnings.warn(
+                    f"{path!r} is written without a date record: its 'start_date' "
+                    f"attribute {start_date!r} is not an ISO-8601 instant ({error}).",
+                    stacklevel=4,
+                )
+                return None
+        else:
+            warnings.warn(
+                f"{path!r} is written without a date record: its 'start_date' attribute "
+                f"is a {type(start_date).__name__}, not an ISO-8601 string.",
+                stacklevel=4,
+            )
             return None
-        try:
-            return [int(piece) for piece in pieces]
-        except ValueError:
-            return None
+        return [
+            stamp.year,
+            stamp.month,
+            stamp.day,
+            stamp.hour,
+            stamp.minute,
+            stamp.second,
+        ]
 
     @staticmethod
     def _node_series(node_pairs, n_times: int) -> list:
@@ -941,9 +970,19 @@ class _SelafinReader:
     def _start_date_iso(self) -> str | None:
         """Return the start instant as an ISO-8601 string, or ``None`` when absent.
 
-        The date record is six ints -- year, month, day, hour, minute, second. A file
-        without the ``IPARAM[9]`` flag has no record at all, and one written as all zeros
-        is a placeholder rather than year zero, so both answer ``None``.
+        The date record is six ints -- year, month, day, hour, minute, second -- and a file
+        without the ``IPARAM[9]`` flag has none at all. The record is **validated as a
+        calendar instant** rather than formatted blindly, because formatting is not
+        parsing: a partial record such as ``[1993, 0, 0, 12, 0, 0]`` formats cleanly into
+        ``'1993-00-00T12:00:00'``, which looks like a timestamp and which no date parser
+        accepts. Publishing that under a name documented as ISO-8601 would hand every
+        downstream ``datetime.fromisoformat`` a crash on a file that read without complaint.
+        :class:`datetime.datetime` is the validator, so month 0, day 0, hour 24, a negative
+        field and a year outside 1-9999 are all rejected by construction.
+
+        An all-zero record is TELEMAC's "no date" placeholder and is common, so it answers
+        ``None`` quietly. Any other unusable record is a surprise worth a warning, since
+        something was there and is being dropped.
 
         Returns:
             str | None: ``"YYYY-MM-DDTHH:MM:SS"``, or ``None`` when the file declares no
@@ -954,7 +993,24 @@ class _SelafinReader:
         year, month, day, hour, minute, second = (int(v) for v in self.date)
         if (year, month, day) == (0, 0, 0):
             return None
-        return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}"
+        try:
+            if (hour, minute, second) == (24, 0, 0):
+                # ISO-8601's end-of-day hour, which datetime() refuses and
+                # datetime.fromisoformat() -- the writer's parser -- rolls into the next
+                # day. Normalised here so the two agree on it rather than one dropping
+                # what the other accepts.
+                stamp = datetime(year, month, day) + timedelta(days=1)
+            else:
+                stamp = datetime(year, month, day, hour, minute, second)
+        except (ValueError, OverflowError) as error:
+            warnings.warn(
+                f"{self.path!r} declares a date record that is not a calendar instant "
+                f"({[year, month, day, hour, minute, second]}: {error}); no 'start_date' "
+                f"is reported, so the time values stay relative.",
+                stacklevel=5,
+            )
+            return None
+        return stamp.isoformat()
 
     def _read_header(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Read every header record in order, up to the first timestep.

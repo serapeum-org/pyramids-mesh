@@ -257,24 +257,62 @@ def test_the_writer_restores_the_date_record_and_its_flag(tmp_path):
     assert _read(out).global_attributes["start_date"] == "1993-07-14T06:30:15"
 
 
-@pytest.mark.parametrize("start_date", ["not-a-date", "1993-07-14", 19930714, None])
-def test_an_unusable_start_date_writes_no_date_record(tmp_path, start_date):
-    """A malformed attribute writes no record rather than half of one.
+@pytest.mark.parametrize("start_date", ["not-a-date", "1993-13-01T00:00:00", 19930714])
+def test_an_unusable_start_date_writes_no_date_record_and_warns(tmp_path, start_date):
+    """An unusable attribute writes no record rather than half of one, and says so.
 
     The flag and the record have to agree: setting the flag without a readable date would
-    desynchronise every record after it.
+    desynchronise every record after it. Dropping it silently is the worse failure, though
+    -- the caller believes the file carries a date it will not -- so it warns.
     """
     src = _read(_SLF)
-    if start_date is None:
-        src.global_attributes.pop("start_date", None)
-    else:
-        src.global_attributes["start_date"] = start_date
+    src.global_attributes["start_date"] = start_date
     out = tmp_path / "undated.slf"
-    src.to_file(str(out), driver="selafin")
 
+    with pytest.warns(UserWarning, match="without a date record"):
+        src.to_file(str(out), driver="selafin")
+
+    _title, iparam, date, _ipobo = _header_of(out)
+    assert iparam[9] == 0, f"the date flag must stay clear, got {iparam[9]}"
+    assert date is None
+
+
+def test_an_absent_start_date_writes_no_record_and_stays_quiet(tmp_path):
+    """No attribute at all is the ordinary case and must not warn.
+
+    Only a present-but-unusable value is worth a warning; an in-memory mesh simply has no
+    date, which is not a problem to report.
+    """
+    src = _read(_SLF)
+    src.global_attributes.pop("start_date", None)
+    out = tmp_path / "undated.slf"
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        src.to_file(str(out), driver="selafin")
+
+    about_dates = [str(w.message) for w in caught if "date record" in str(w.message)]
+    assert not about_dates, f"an absent start_date must not warn: {about_dates}"
     _title, iparam, date, _ipobo = _header_of(out)
     assert iparam[9] == 0
     assert date is None
+
+
+def test_a_date_only_start_date_is_written_as_midnight(tmp_path):
+    """``YYYY-MM-DD`` is a real instant, so it is written rather than dropped.
+
+    ``datetime.fromisoformat`` accepts it, and refusing a value a date parser accepts would
+    lose a date the dataset really carries.
+    """
+    src = _read(_SLF)
+    src.global_attributes["start_date"] = "1993-07-14"
+    out = tmp_path / "midnight.slf"
+    src.to_file(str(out), driver="selafin")
+
+    _title, iparam, date, _ipobo = _header_of(out)
+    assert iparam[9] == 1
+    assert date == [1993, 7, 14, 0, 0, 0], f"got {date}"
+    assert _read(out).global_attributes["start_date"] == "1993-07-14T00:00:00"
 
 
 def test_the_boundary_variable_is_not_written_as_a_result(tmp_path):
@@ -390,22 +428,43 @@ def test_boundary_numbering_is_taken_when_it_matches_the_node_count():
         "abcd-ef-ghTij:kl:mn",
         "1993-07-14T06:30:xx",
         "----T::",
+        "1993-00-00T12:00:00",
+        "1993-07-14T99:99:99",
+        19930714,
     ],
 )
-def test_date_fields_refuses_six_pieces_that_are_not_numbers(start_date):
-    """A date of the right shape but the wrong content writes no record.
+def test_date_fields_refuses_anything_that_is_not_an_instant(start_date):
+    """A value that is not a calendar instant is refused, whatever its shape.
 
-    The length check alone is not enough: six non-numeric pieces would reach ``int()`` and
-    raise, which would turn a cosmetic attribute into a failed write.
+    Splitting on separators accepted all of these: the three month-0/hour-24 strings parse
+    into six integers and would be written as a date record no reader could interpret.
     """
-    resolved = SelafinDriver._date_fields(start_date)
+    with pytest.warns(UserWarning, match="without a date record"):
+        resolved = SelafinDriver._date_fields(start_date, "out.slf")
 
-    assert resolved is None, f"a non-numeric date must be refused, got {resolved}"
+    assert resolved is None, f"a non-instant must be refused, got {resolved}"
 
 
-def test_date_fields_accepts_the_shape_the_reader_writes():
-    """The reader's own ISO-8601 output round-trips back into the six-int record."""
-    assert SelafinDriver._date_fields("1993-07-14T06:30:15") == [1993, 7, 14, 6, 30, 15]
+@pytest.mark.parametrize(
+    "date_record",
+    [
+        [1993, 7, 14, 6, 30, 15],
+        [1, 1, 1, 0, 0, 0],
+        [9999, 12, 31, 23, 59, 59],
+        [2024, 2, 29, 12, 0, 0],
+    ],
+)
+def test_the_reader_and_the_writer_agree_on_every_instant(tmp_path, date_record):
+    """Whatever the reader emits, the writer parses back to the same six ints.
+
+    The two are each other's inverse, so the property that matters is the round trip rather
+    than one hand-written happy case -- including a leap day and both ends of the year
+    range ``datetime`` allows.
+    """
+    path = _write_dated(tmp_path, date_record)
+    start_date = _read(path).global_attributes["start_date"]
+
+    assert SelafinDriver._date_fields(start_date, "out.slf") == date_record
 
 
 def test_derive_iparam_sets_the_boundary_count_and_date_flag():
@@ -522,3 +581,35 @@ def test_a_non_node_located_node_z_is_left_alone(tmp_path):
     about_z = [str(w.message) for w in caught if "bed " in str(w.message)]
     assert not about_z, f"unexpected node_z warning: {about_z}"
     assert _read(out).data_variable_names == ["WATER DEPTH"]
+
+
+def _write_dated(tmp_path, date_record):
+    """Write a minimal Selafin file carrying ``date_record`` and return its path."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    path = tmp_path / f"dated_{'_'.join(str(v) for v in date_record)}.slf"
+    write_selafin(
+        str(path),
+        node_x=[0.0, 1.0, 1.0, 0.0],
+        node_y=[0.0, 0.0, 1.0, 1.0],
+        ikle=[[1, 2, 3], [1, 3, 4]],
+        variable_names=["WATER DEPTH     M               "],
+        times=[0.0],
+        values=[[[0.5, 0.25, 0.75, 0.125]]],
+        date=date_record,
+    )
+    return path
+
+
+def test_the_end_of_day_hour_is_normalised_rather_than_dropped(tmp_path):
+    """A date record with hour 24 is ISO-8601's end of day, not a corrupt field.
+
+    ``datetime()`` refuses it and ``datetime.fromisoformat()`` -- the writer's parser --
+    rolls it into the next day. The reader normalises it the same way so the two agree:
+    dropping what the other end accepts would lose a usable date.
+    """
+    path = _write_dated(tmp_path, [1993, 7, 14, 24, 0, 0])
+    start_date = _read(path).global_attributes["start_date"]
+
+    assert start_date == "1993-07-15T00:00:00", f"got {start_date}"
+    assert SelafinDriver._date_fields(start_date, "out.slf") == [1993, 7, 15, 0, 0, 0]
