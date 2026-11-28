@@ -397,7 +397,7 @@ def test_boundary_numbering_of_the_wrong_length_is_ignored_with_a_warning():
     dataset assembled by hand or resized after a read: writing a short array into the IPOBO
     record would desynchronise every record after it, so it is dropped like an absent one.
     """
-    variable = SimpleNamespace(data=np.array([1, 2]))
+    variable = SimpleNamespace(data=np.array([1, 2]), location="node")
     dataset = SimpleNamespace(
         data_variable_names=["boundary_node_number"],
         get=lambda name: variable,
@@ -410,7 +410,7 @@ def test_boundary_numbering_of_the_wrong_length_is_ignored_with_a_warning():
 
 def test_boundary_numbering_is_taken_when_it_matches_the_node_count():
     """A correctly sized boundary variable is passed through as plain ints."""
-    variable = SimpleNamespace(data=np.array([1.0, 0.0, 2.0, 0.0]))
+    variable = SimpleNamespace(data=np.array([1, 0, 2, 0]), location="node")
     dataset = SimpleNamespace(
         data_variable_names=["boundary_node_number"],
         get=lambda name: variable,
@@ -694,3 +694,89 @@ def test_a_non_integer_origin_attribute_is_ignored(tmp_path):
     np.testing.assert_allclose(
         np.asarray(_read(out).mesh.node_x), np.asarray(source.mesh.node_x)
     )
+
+
+def test_an_ipobo_entry_too_large_for_int32_is_refused(tmp_path):
+    """A numbering that cannot be stored is refused rather than narrowed.
+
+    Every integer record in the file is int32, so ``2**31`` becomes ``-2147483648`` on the
+    way in -- a plausible-looking boundary number rather than an obviously lost one.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    with pytest.raises(ValueError, match="fit in the int32"):
+        write_selafin(
+            str(tmp_path / "wrapped.slf"),
+            node_x=[0.0, 1.0, 1.0, 0.0],
+            node_y=[0.0, 0.0, 1.0, 1.0],
+            ikle=[[1, 2, 3], [1, 3, 4]],
+            variable_names=[],
+            times=[],
+            values=[],
+            ipobo=[1, 2, 0, 2**31],
+        )
+
+
+def test_an_explicit_date_flag_without_a_date_is_refused(tmp_path):
+    """A flag with no record behind it would leave every later record one short."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    with pytest.raises(ValueError, match="no date was given"):
+        write_selafin(
+            str(tmp_path / "flagged.slf"),
+            node_x=[0.0, 1.0, 1.0, 0.0],
+            node_y=[0.0, 0.0, 1.0, 1.0],
+            ikle=[[1, 2, 3], [1, 3, 4]],
+            variable_names=[],
+            times=[],
+            values=[],
+            iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        )
+
+
+def test_a_date_under_a_cleared_explicit_flag_is_refused(tmp_path):
+    """The inverse contradiction is refused too, rather than silently dropping the date."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    with pytest.raises(ValueError, match="clears the date flag"):
+        write_selafin(
+            str(tmp_path / "unflagged.slf"),
+            node_x=[0.0, 1.0, 1.0, 0.0],
+            node_y=[0.0, 0.0, 1.0, 1.0],
+            ikle=[[1, 2, 3], [1, 3, 4]],
+            variable_names=[],
+            times=[],
+            values=[],
+            iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            date=[1993, 7, 14, 6, 30, 15],
+        )
+
+
+def test_a_face_located_boundary_variable_is_not_written_as_ipobo(tmp_path):
+    """IPOBO is one entry per node, so a same-named face field is not it.
+
+    The warning has to say which problem it hit: "carries no numbering" would send the
+    reader looking for a missing variable rather than a mislocated one.
+    """
+    variable = SimpleNamespace(data=np.zeros(2), location="face")
+    dataset = SimpleNamespace(
+        data_variable_names=["boundary_node_number"],
+        get=lambda name: variable,
+    )
+
+    with pytest.warns(UserWarning, match="is face-located"):
+        numbering = SelafinDriver._boundary_numbering(dataset, 4, "faces.slf")
+
+    assert numbering is None
+
+
+def test_a_wrong_sized_boundary_variable_reports_the_sizes(tmp_path):
+    """The warning names the mismatch rather than claiming the numbering is absent."""
+    variable = SimpleNamespace(data=np.array([1, 2]), location="node")
+    dataset = SimpleNamespace(
+        data_variable_names=["boundary_node_number"],
+        get=lambda name: variable,
+    )
+
+    with pytest.warns(UserWarning, match="has 2 entries for 4 nodes"):
+        SelafinDriver._boundary_numbering(dataset, 4, "short.slf")

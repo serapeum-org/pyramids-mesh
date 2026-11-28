@@ -112,9 +112,14 @@ def test_selafin_quad_ndp4_reads(tmp_path):
 
 @pytest.mark.parametrize("date_flag", [0, 1])
 def test_selafin_date_record_present_and_absent(tmp_path, date_flag):
-    """The file reads whether or not the optional date record is present."""
+    """The file reads whether or not the optional date record is present.
+
+    The flag and the record have to agree, so the date is passed exactly when the flag is
+    set -- a flag with nothing behind it would leave every later record one short.
+    """
     iparam = [1, 0, 0, 0, 0, 0, 0, 0, 0, date_flag]
-    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam))
+    date = [2000, 1, 1, 0, 0, 0] if date_flag else None
+    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam, date=date))
 
     assert dataset.mesh.n_node == 4
     assert dataset.get("WATER DEPTH").shape == (2, 4)
@@ -523,7 +528,12 @@ def test_selafin_can_open_still_accepts_a_serial_2d_file(tmp_path):
     assert SelafinDriver().can_open(_write(tmp_path)) is True
     assert (
         SelafinDriver().can_open(
-            _write(tmp_path, name="dated.slf", iparam=[1, 0, 0, 0, 0, 0, 1, 264, 0, 1])
+            _write(
+                tmp_path,
+                name="dated.slf",
+                iparam=[1, 0, 0, 0, 0, 0, 1, 264, 0, 1],
+                date=[2000, 1, 1, 0, 0, 0],
+            )
         )
         is True
     )
@@ -586,3 +596,53 @@ def test_selafin_peek_header_refuses_a_file_cut_between_its_name_records(tmp_pat
     with pytest.raises(ValueError, match="ends inside its variable-name records"):
         _peek_header(str(cut), "<")
     assert SelafinDriver().can_open(str(cut)) is False
+
+
+def test_selafin_an_undefined_element_width_is_not_diagnosed_as_3d(tmp_path):
+    """NDP 5 is no Selafin element at all, so it is not reported as a layered 3D file.
+
+    Keying the message on "not 2D" sent the reader looking for a 3D file that is not there;
+    only NDP 6 prisms are 3D, and anything else is a corrupt or unknown variant.
+    """
+    nx = [float(i) for i in range(5)]
+    ny = [0.0, 1.0, 2.0, 3.0, 4.0]
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 4, 5]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[[0.0] * 5]],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="no elements for"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_prisms_are_still_diagnosed_as_layered_3d(tmp_path):
+    """NDP 6 keeps the 3D diagnosis, naming the prisms and the plane count."""
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+        iparam=[1, 0, 0, 0, 0, 0, 3, 0, 0, 0],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="NDP=6 prisms over 3 plane"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_boundary_numbering_is_integral(tmp_path):
+    """IPOBO is an ordering, so it is surfaced as integers rather than floats."""
+    dataset = SelafinDriver().read(_write(tmp_path, ipobo=[1, 2, 0, 3]))
+    numbering = np.asarray(dataset.get("boundary_node_number").data)
+
+    assert numbering.dtype.kind == "i", (
+        f"expected an integer dtype, got {numbering.dtype}"
+    )
+    assert numbering.tolist() == [1, 2, 0, 3]

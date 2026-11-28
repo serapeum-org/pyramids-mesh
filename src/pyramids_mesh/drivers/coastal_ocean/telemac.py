@@ -69,6 +69,15 @@ _IPARAM_BOUNDARY_POINTS = 7
 # separates the two. A file holding one layer extracted from a 3D run keeps its parent's
 # plane count in IPARAM[6] while its elements are plain triangles.
 _SURFACE_ELEMENT_WIDTHS = (3, 4)
+# The width of a layered 3D file's prisms, kept apart from "any other width" so the two are
+# reported as what they are: a 3D file this driver will not read, versus a width Selafin
+# has no element for at all.
+_PRISM_ELEMENT_WIDTH = 6
+
+# Every integer record in the file is int32, so a value outside this range cannot be
+# stored and must not be narrowed silently.
+_INT32_MIN = -(2**31)
+_INT32_MAX = 2**31 - 1
 
 # The node variable the boundary numbering (IPOBO) is carried on. One integer per node,
 # non-zero on a boundary node: an ordering, not a mask, and not derivable from the
@@ -265,7 +274,7 @@ class SelafinDriver(BaseDriver):
             >>> dataset.global_attributes["start_date"]
             '1993-07-14T06:30:15'
             >>> dataset.get("boundary_node_number").data.tolist()
-            [1.0, 2.0, 0.0, 3.0]
+            [1, 2, 0, 3]
     """
 
     name = "selafin"
@@ -435,7 +444,7 @@ class SelafinDriver(BaseDriver):
                 >>> restored.data_variable_names
                 ['WATER DEPTH', 'boundary_node_number']
                 >>> restored.get("boundary_node_number").data.tolist()
-                [1.0, 2.0, 0.0, 3.0]
+                [1, 2, 0, 3]
         """
         mesh = dataset.mesh
         connectivity = getattr(mesh, "face_node_connectivity", None)
@@ -523,16 +532,31 @@ class SelafinDriver(BaseDriver):
         Returns:
             list[int] | None: one entry per node, or ``None`` to write zeros.
         """
+        reason = f"the dataset carries no {_BOUNDARY_VARIABLE!r}"
         if _BOUNDARY_VARIABLE in dataset.data_variable_names:
             variable = dataset.get(_BOUNDARY_VARIABLE)
+            location = getattr(variable, "location", None)
             array = np.asarray(variable.data).reshape(-1)
-            if array.size == n_node:
+            if location != "node":
+                # IPOBO is one entry per node by definition; a same-named face or edge
+                # field is a different quantity and writing it would mislabel it.
+                reason = (
+                    f"the dataset's {_BOUNDARY_VARIABLE!r} is {location}-located, and "
+                    f"IPOBO is one entry per node"
+                )
+            elif array.size != n_node:
+                # Say which it is. Reporting "carries no numbering" for a numbering that is
+                # merely the wrong size sends the reader looking for the wrong problem.
+                reason = (
+                    f"the dataset's {_BOUNDARY_VARIABLE!r} has {array.size} entries for "
+                    f"{n_node} nodes"
+                )
+            else:
                 return [int(v) for v in array]
         warnings.warn(
-            f"{path!r} is written with an all-zero IPOBO record: the dataset carries no "
-            f"{_BOUNDARY_VARIABLE!r}, and a boundary numbering cannot be derived from the "
-            f"topology. TELEMAC needs it to attach boundary conditions, so the file is "
-            f"geometry only.",
+            f"{path!r} is written with an all-zero IPOBO record: {reason}, and a boundary "
+            f"numbering cannot be derived from the topology. TELEMAC needs it to attach "
+            f"boundary conditions, so the file is geometry only.",
             stacklevel=3,
         )
         return None
@@ -885,6 +909,29 @@ def write_selafin(
         )
     if date is not None and len(date) != _DATE_FIELDS:
         raise ValueError(f"date must hold {_DATE_FIELDS} fields, got {len(date)}")
+    if ipobo is not None:
+        # Every record in the file is int32. A numbering that does not fit wraps silently
+        # (2**31 becomes -2147483648), which would look like a plausible boundary number
+        # rather than a lost one, so it is refused.
+        out_of_range = [v for v in ipobo if not _INT32_MIN <= int(v) <= _INT32_MAX]
+        if out_of_range:
+            raise ValueError(
+                f"ipobo entries must fit in the int32 the record stores; "
+                f"{out_of_range[:3]} do not"
+            )
+    if date is not None and iparam is not None and iparam[_IPARAM_DATE_FLAG] != 1:
+        # The flag and the record have to agree, and only the caller knows which it meant.
+        # Writing the date under a zero flag leaves a record no reader will look for, and
+        # dropping it loses what was asked for -- so neither is guessed.
+        raise ValueError(
+            "a date was given but the explicit iparam clears the date flag "
+            f"(IPARAM[9] = {iparam[_IPARAM_DATE_FLAG]}); set it to 1 or drop the date"
+        )
+    if date is None and iparam is not None and iparam[_IPARAM_DATE_FLAG] == 1:
+        raise ValueError(
+            "the explicit iparam sets the date flag (IPARAM[9] = 1) but no date was "
+            "given; pass date= or clear the flag"
+        )
     ndp = len(ikle[0])
     float_code = f"{endian}{'f8' if double else 'f4'}"
     marker = _FORMAT_DOUBLE if double else _FORMAT_SINGLE
@@ -913,8 +960,9 @@ def write_selafin(
             handle.write(record(f"{name:<32}"[:_NAME_LENGTH].encode("latin-1")))
         handle.write(record(np.array(params, dtype=f"{endian}i4").tobytes()))
         if params[_IPARAM_DATE_FLAG] == 1:
-            stamp = date if date is not None else [2000, 1, 1, 0, 0, 0]
-            handle.write(record(np.array(stamp, f"{endian}i4").tobytes()))
+            # date is guaranteed present here: the flag is either derived from it or
+            # validated against it above, so there is nothing to invent.
+            handle.write(record(np.array(date, f"{endian}i4").tobytes()))
         handle.write(
             record(np.array([len(ikle), npoin, ndp, 1], dtype=f"{endian}i4").tobytes())
         )
@@ -1193,11 +1241,21 @@ class _SelafinReader:
         if self.ndp in _SURFACE_ELEMENT_WIDTHS:
             return
         planes = int(self.iparam[_IPARAM_PLANES])
+        if self.ndp == _PRISM_ELEMENT_WIDTH:
+            raise FileFormatNotSupportedError(
+                f"{self.path!r} is a layered 3D Selafin file (NDP=6 prisms over {planes} "
+                f"plane(s)); only 2D meshes are read. A 3D read needs the layered mesh "
+                f"model pyramids does not have yet, and extracting a single plane is a "
+                f"mesh operation that belongs upstream rather than in a format driver."
+            )
+        # Not 6 either: diagnosing this as "3D" would send the reader looking for a
+        # layered file that is not there. NDP 1, 2, 5 and 8 are no element Selafin
+        # defines, so the honest report is the width itself.
         raise FileFormatNotSupportedError(
-            f"{self.path!r} is a layered 3D Selafin file (NDP={self.ndp}, {planes} "
-            f"plane(s)); only 2D meshes are read. A 3D read needs the layered mesh model "
-            f"pyramids does not have yet, and extracting a single plane is a mesh "
-            f"operation that belongs upstream rather than in a format driver."
+            f"{self.path!r} declares an element width Selafin has no elements for "
+            f"(NDP={self.ndp}); 3- and 4-node 2D elements are read, and 6-node prisms are "
+            f"refused as layered 3D. A file reaching here is either corrupt or a variant "
+            f"this driver has not seen."
         )
 
     def _read_data(
@@ -1253,7 +1311,7 @@ class _SelafinReader:
         return ParsedVariable(
             location="node",
             shape=(self.npoin,),
-            values=self.ipobo.astype(np.float64),
+            values=self.ipobo.astype(np.int64),
             units=None,
             attributes={
                 "long_name": "TELEMAC boundary node numbering (IPOBO)",
