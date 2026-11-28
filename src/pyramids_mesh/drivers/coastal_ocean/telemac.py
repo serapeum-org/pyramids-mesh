@@ -339,15 +339,24 @@ class SelafinDriver(BaseDriver):
         (double precision) by default, so the round trip is lossless; pass
         ``precision="single"`` for the smaller, lossy ``float32`` layout.
 
-        The header is restored rather than stamped with this package's defaults: the
-        dataset's ``title`` and ``start_date`` attributes become the title and date
-        records, and the ``boundary_node_number`` variable becomes ``IPOBO``, with
-        ``IPARAM[7]`` and the ``IPARAM[9]`` date flag derived from what is actually
-        written. So a file read and written again is still the model's own file. Two
-        consequences: ``boundary_node_number`` is mesh metadata and is never emitted as a
-        result slab, and a dataset built in memory has no boundary numbering to restore --
-        a boundary *ordering* cannot be derived from the node set -- so zeros are written
-        and a warning says the output is geometry only.
+        Four header fields are restored rather than stamped with this package's defaults:
+        the ``title`` and ``start_date`` attributes become the title and date records, the
+        ``boundary_node_number`` variable becomes ``IPOBO``, and the ``x_origin``/
+        ``y_origin`` attributes become ``IPARAM[2]``/``IPARAM[3]`` with the node
+        coordinates written as offsets from them. ``IPARAM[7]`` and the ``IPARAM[9]`` flag
+        are derived from what is actually written, so the header cannot claim what the
+        records do not carry. A file read and written again is therefore still the model's
+        own file.
+
+        Restoring the origin is what keeps ``precision="single"`` usable on a projected
+        mesh: absolute coordinates spend the float32 mantissa on the large constant, so the
+        same mesh lost 0.125 m in y before this. Three consequences worth knowing:
+        ``boundary_node_number`` is mesh metadata and is never emitted as a result slab; a
+        dataset built in memory has no boundary numbering to restore -- a boundary
+        *ordering* cannot be derived from the node set -- so zeros are written and a
+        warning says the output is geometry only; and the plane count ``IPARAM[6]`` is
+        **not** carried forward, because what is written is a single 2D layer whatever it
+        was extracted from.
 
         Args:
             dataset: The :class:`~pyramids.netcdf.ugrid.MeshDataset` to write.
@@ -446,8 +455,14 @@ class SelafinDriver(BaseDriver):
                 f"cannot write {path!r} to Selafin: every element must have the same node "
                 f"count, but the mesh mixes widths {sorted(widths)}"
             )
-        node_x = np.asarray(mesh.node_x, dtype=np.float64).tolist()
-        node_y = np.asarray(mesh.node_y, dtype=np.float64).tolist()
+        # The reader added the origin, so writing absolute coordinates against a zero
+        # origin preserves the values -- but only at float64. At float32 the whole mantissa
+        # goes on the large constant: a projected mesh loses decimetres. Subtracting the
+        # origin again and declaring it keeps the offsets small, which is how the source
+        # file stored them losslessly in the first place.
+        origin = self._coordinate_origin(dataset)
+        node_x = (np.asarray(mesh.node_x, dtype=np.float64) - origin[0]).tolist()
+        node_y = (np.asarray(mesh.node_y, dtype=np.float64) - origin[1]).tolist()
         if "node_z" in dataset.data_variable_names:
             z = dataset.get("node_z")
             if z is not None and z.location == "node":
@@ -484,6 +499,7 @@ class SelafinDriver(BaseDriver):
             values=values,
             double=self._resolve_precision(options.get("precision")),
             title=dataset.global_attributes.get("title"),
+            origin=origin,
             ipobo=ipobo,
             date=self._date_fields(dataset.global_attributes.get("start_date"), path),
         )
@@ -520,6 +536,34 @@ class SelafinDriver(BaseDriver):
             stacklevel=3,
         )
         return None
+
+    @staticmethod
+    def _coordinate_origin(dataset: MeshDataset) -> tuple[int, int]:
+        """Return the ``IPARAM[2]``/``IPARAM[3]`` origin the coordinates are offsets from.
+
+        Selafin stores an integer origin and float offsets from it, and the reader folds
+        the two together into absolute coordinates. Writing those absolute values against
+        a zero origin is exact at ``float64`` and lossy at ``float32``: a projected mesh
+        spends the mantissa on the constant rather than the detail. Taking the origin back
+        out restores the split the source file used.
+
+        Non-integer or missing attributes answer ``(0, 0)``, which is the right answer for
+        a mesh built in memory -- its coordinates are simply absolute.
+
+        Args:
+            dataset: The dataset being written.
+
+        Returns:
+            tuple[int, int]: the x and y origin to declare and subtract.
+        """
+        origin = []
+        for key in ("x_origin", "y_origin"):
+            value = dataset.global_attributes.get(key, 0)
+            try:
+                origin.append(int(value))
+            except (TypeError, ValueError):
+                origin.append(0)
+        return origin[0], origin[1]
 
     @staticmethod
     def _date_fields(start_date: object, path: str) -> list[int] | None:
@@ -682,17 +726,26 @@ def build_minimal_fixture_selafin(path: str) -> None:
     )
 
 
-def _derive_iparam(boundary: np.ndarray, has_date: bool) -> list[int]:
+def _derive_iparam(
+    boundary: np.ndarray, has_date: bool, origin: tuple[int, int] = (0, 0)
+) -> list[int]:
     """Build the ``IPARAM`` array a written file's own records imply.
 
-    ``IPARAM[0]`` is 1 by convention, ``IPARAM[7]`` is the boundary-point count, and
-    ``IPARAM[9]`` flags a following date record. Everything else stays zero: the
-    coordinates are written absolute, so the x/y origins are zero, and nothing written
-    here is layered or partitioned.
+    ``IPARAM[0]`` is 1 by convention, ``IPARAM[2]``/``IPARAM[3]`` are the coordinate
+    origin the written offsets are measured from, ``IPARAM[7]`` is the boundary-point
+    count, and ``IPARAM[9]`` flags a following date record. Each is derived from what is
+    actually written rather than taken on trust, so the header cannot claim a boundary
+    count, an origin or a date that the records do not carry.
+
+    The rest stays zero deliberately. ``IPARAM[6]`` (plane count) and ``IPARAM[8]``
+    (interface points) describe a layered or partitioned file, and nothing written through
+    here is either -- carrying a source file's plane count forward would label a
+    single-layer mesh as part of a 3D run it is no longer part of.
 
     Args:
         boundary: The ``IPOBO`` numbering about to be written.
         has_date: Whether a date record follows ``IPARAM``.
+        origin: The ``(x, y)`` origin the node coordinates are offsets from.
 
     Returns:
         list[int]: the ten-entry ``IPARAM`` array.
@@ -709,6 +762,7 @@ def _derive_iparam(boundary: np.ndarray, has_date: bool) -> list[int]:
     params[0] = 1
     params[_IPARAM_BOUNDARY_POINTS] = int(np.count_nonzero(boundary))
     params[_IPARAM_DATE_FLAG] = 1 if has_date else 0
+    params[_IPARAM_X_ORIGIN], params[_IPARAM_Y_ORIGIN] = int(origin[0]), int(origin[1])
     return params
 
 
@@ -727,6 +781,7 @@ def write_selafin(
     title: str | None = None,
     ipobo: list[int] | None = None,
     date: list[int] | None = None,
+    origin: tuple[int, int] = (0, 0),
 ) -> None:
     """Write a Selafin file, with every variant the driver and its tests need.
 
@@ -842,7 +897,7 @@ def write_selafin(
     params = (
         list(iparam)
         if iparam is not None
-        else _derive_iparam(boundary, date is not None)
+        else _derive_iparam(boundary, date is not None, origin)
     )
 
     def record(payload: bytes) -> bytes:
@@ -965,6 +1020,15 @@ class _SelafinReader:
         n_boundary = 0 if self.ipobo is None else int(np.count_nonzero(self.ipobo))
         if n_boundary:
             attributes["n_boundary_nodes"] = n_boundary
+        # The origin the stored offsets were measured from. The node coordinates are
+        # absolute, so this is not needed to place the mesh -- it is kept so a writer can
+        # restore the integer-origin/small-offset split, which is what keeps
+        # precision="single" from spending the mantissa on a large constant.
+        x_origin = int(self.iparam[_IPARAM_X_ORIGIN])
+        y_origin = int(self.iparam[_IPARAM_Y_ORIGIN])
+        if x_origin or y_origin:
+            attributes["x_origin"] = x_origin
+            attributes["y_origin"] = y_origin
         return attributes
 
     def _start_date_iso(self) -> str | None:

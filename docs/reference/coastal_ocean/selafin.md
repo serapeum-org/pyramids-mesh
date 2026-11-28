@@ -31,9 +31,18 @@ base), the variable names and units, the time steps, **and the header**: the tit
 date record and the boundary numbering.
 
 - **The header is restored, not stamped.** The dataset's `title` and `start_date`
-  attributes become the title and date records, and `boundary_node_number` becomes `IPOBO`;
-  `IPARAM[7]` and the `IPARAM[9]` date flag are derived from what is actually written, so
-  the header cannot claim one thing while the records show another.
+  attributes become the title and date records, `boundary_node_number` becomes `IPOBO`, and
+  `x_origin`/`y_origin` become `IPARAM[2]`/`IPARAM[3]` with the coordinates written as
+  offsets from them. `IPARAM[7]` and the `IPARAM[9]` date flag are derived from what is
+  actually written, so the header cannot claim one thing while the records show another.
+  What is *not* carried forward: the plane count `IPARAM[6]`, because what is written is a
+  single 2D layer whatever it came from, and `NBV2` — a second variable block is read as
+  ordinary variables and written back as one block, so the split is not preserved.
+- **Restoring the origin is what makes `precision="single"` usable** on a projected mesh.
+  Absolute coordinates spend the whole float32 mantissa on the large constant: the same
+  mesh lost 0.125 m in y before the origin was carried through. The source file stored those
+  coordinates losslessly at float32 precisely because the constant lived in the integer
+  origin.
 - **An in-memory mesh has no boundary numbering**, and a boundary *ordering* cannot be
   derived from the node set, so zeros are written and a warning says the output is geometry
   only — TELEMAC needs `IPOBO` to attach boundary conditions.
@@ -56,8 +65,15 @@ date record and the boundary numbering.
 - **`IKLE` connectivity is 1-based**; it arrives 0-based, with the base recorded for a
   writer to restore.
 - **The title and the date record are kept**, as the `title` and `start_date` global
-  attributes (`start_date` as ISO-8601). Without the date, a time axis of seconds has
-  nothing to anchor it to. Either key is omitted rather than faked when the file has none.
+  attributes. Without the date, a time axis of seconds has nothing to anchor it to. Either
+  key is omitted rather than faked when the file has none — and `start_date` is only
+  published when the six-int record is a **real calendar instant**, because formatting is
+  not parsing: a partial record like `[1993, 0, 0, 12, 0, 0]` formats cleanly into
+  `'1993-00-00T12:00:00'`, which no date parser accepts. A record that is not an instant is
+  dropped with a warning; ISO-8601's end-of-day hour 24 is normalised to the next midnight.
+- **The coordinate origin is kept**, as `x_origin`/`y_origin`, when the file declares one.
+  The node coordinates are absolute, so it is not needed to place the mesh — it is kept so
+  a writer can restore the integer-origin/small-offset split.
 - **`IPOBO` is kept**, on the `boundary_node_number` node variable, with
   `n_boundary_nodes` on the dataset. It is an ordering TELEMAC uses to attach boundary
   conditions, not a mask, and not recoverable from the topology. It is read from its own

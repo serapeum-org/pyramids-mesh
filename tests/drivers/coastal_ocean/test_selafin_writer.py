@@ -613,3 +613,84 @@ def test_the_end_of_day_hour_is_normalised_rather_than_dropped(tmp_path):
 
     assert start_date == "1993-07-15T00:00:00", f"got {start_date}"
     assert SelafinDriver._date_fields(start_date, "out.slf") == [1993, 7, 15, 0, 0, 0]
+
+
+def _write_with_origin(tmp_path, name="origin.slf"):
+    """Write a Selafin file whose coordinates are small offsets from a projected origin."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    path = tmp_path / name
+    write_selafin(
+        str(path),
+        node_x=[0.0, 1000.25, 1000.5, 0.75],
+        node_y=[0.0, 0.5, 1000.125, 1000.0],
+        ikle=[[1, 2, 3], [1, 3, 4]],
+        variable_names=["WATER DEPTH     M               "],
+        times=[0.0],
+        values=[[[0.5, 0.25, 0.75, 0.125]]],
+        iparam=[1, 0, 315000, 5345000, 0, 0, 0, 0, 0, 0],
+    )
+    return path
+
+
+def test_the_coordinate_origin_reaches_the_dataset(tmp_path):
+    """The origin is kept so a writer can restore the split the file used.
+
+    The node coordinates are absolute, so the origin is not needed to place the mesh; it is
+    needed to write the mesh back the way it was stored.
+    """
+    dataset = _read(_write_with_origin(tmp_path))
+
+    assert dataset.global_attributes["x_origin"] == 315000
+    assert dataset.global_attributes["y_origin"] == 5345000
+    assert np.asarray(dataset.mesh.node_x)[0] == pytest.approx(315000.0)
+
+
+def test_a_file_without_an_origin_declares_none(tmp_path):
+    """A zero origin adds no attribute, so nothing suggests a split that is not there."""
+    dataset = _read(_SLF)
+
+    assert "x_origin" not in dataset.global_attributes
+    assert "y_origin" not in dataset.global_attributes
+
+
+def test_the_origin_is_restored_so_single_precision_stays_exact(tmp_path):
+    """Writing offsets from the declared origin keeps `precision="single"` lossless here.
+
+    Folding the origin into the coordinates and writing float32 spends the whole mantissa
+    on the large constant: the same mesh lost 0.125 m in y before this. The source file
+    stored those coordinates losslessly at float32 precisely because the constant lived in
+    the integer origin, so the writer puts it back there.
+    """
+    source = _read(_write_with_origin(tmp_path))
+
+    for precision in ("double", "single"):
+        out = tmp_path / f"{precision}.slf"
+        source.to_file(str(out), driver="selafin", precision=precision)
+        back = _read(out)
+
+        _title, iparam, _date, _ipobo = _header_of(out)
+        assert iparam[2:4] == [315000, 5345000], f"{precision}: got {iparam[2:4]}"
+        np.testing.assert_allclose(
+            np.asarray(source.mesh.node_x), np.asarray(back.mesh.node_x), atol=0
+        )
+        np.testing.assert_allclose(
+            np.asarray(source.mesh.node_y), np.asarray(back.mesh.node_y), atol=0
+        )
+
+
+def test_a_non_integer_origin_attribute_is_ignored(tmp_path):
+    """A nonsense origin attribute writes a zero origin rather than failing the write."""
+    source = _read(_SLF)
+    source.global_attributes["x_origin"] = "not-a-number"
+    source.global_attributes["y_origin"] = None
+    out = tmp_path / "bad_origin.slf"
+
+    with pytest.warns(UserWarning, match="all-zero IPOBO"):
+        source.to_file(str(out), driver="selafin")
+
+    _title, iparam, _date, _ipobo = _header_of(out)
+    assert iparam[2:4] == [0, 0], f"got {iparam[2:4]}"
+    np.testing.assert_allclose(
+        np.asarray(_read(out).mesh.node_x), np.asarray(source.mesh.node_x)
+    )
