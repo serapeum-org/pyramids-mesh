@@ -112,19 +112,21 @@ other. `tests/drivers/coastal_ocean/test_selafin_vendor.py` breaks that circle b
 reader over files written by TELEMAC itself and by BlueKenue:
 
 ```bash
-pytest tests/drivers/coastal_ocean/test_selafin_vendor.py -m vendor_data
+pytest tests/drivers/coastal_ocean/test_selafin_vendor.py
 ```
 
-The samples are fetched on first use into `examples/data/real-data/selafin/` and are not
-committed — they are large and carry their own licences. The default suite deselects these tests
-with `-m "not vendor_data"`.
+The four samples are committed under `tests/data/selafin/` like every other fixture, so these
+tests run offline in the ordinary suite — no marker, no download, nothing to remember. A check
+that only runs when someone asks for it by name is not a check.
+`tests/data/selafin/README.md` records each file's source, licence and what it covers; this
+package is GPL-3.0, which is what makes redistributing the GPL-3.0 samples below compatible.
 
 | Sample | Source | Licence | What it covers |
 |---|---|---|---|
 | `r2d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | TELEMAC 2D output: 648 nodes, 1030 triangles, 17 steps, 5 variables; the `IKLE` order |
 | `qgismesh.slf` | `hydro-informatics/telemac` | BSD-3-Clause | BlueKenue/QGIS geometry: a second, independent writer, in projected UTM coordinates |
 | `r3d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | a genuine layered 3D file (`NDP=6`, 21 planes) — the refusal path |
-| `r3d_bump_extracted_bottom_layer.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | one layer extracted from a 3D run; currently refused, see [#137](https://github.com/serapeum-org/pyramids-mesh/issues/137) |
+| `r3d_bump_extracted_bottom_layer.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | one layer extracted from a 3D run — `NDP=3` triangles under `IPARAM[6] = 5`; the file that forced the guard onto `NDP` |
 
 ## API
 

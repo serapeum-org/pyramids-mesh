@@ -1,4 +1,4 @@
-"""Vendor-file tests for the TELEMAC Selafin driver.
+"""Tests for the TELEMAC Selafin driver against real files, not fixtures of our own.
 
 Every other Selafin test builds its fixture with ``write_selafin`` and reads it back, so the
 reader and the writer share one set of assumptions about the record layout and cannot
@@ -11,19 +11,14 @@ transposed writer paired with a transposed reader round-trips perfectly. A real 
 it: read row-major the elements tessellate the domain exactly once, and read column-major they
 do not.
 
-Marked ``vendor_data`` because the samples are fetched rather than committed; the default suite
-deselects them with ``-m "not vendor_data"``.
-
-Sources, both openly downloadable:
-    - ``oceanmodeling/xarray-selafin`` ``tests/data/`` (GPL-3.0) -- openTELEMAC validation output.
-    - ``hydro-informatics/telemac`` (BSD-3-Clause) -- TELEMAC tutorial runs and BlueKenue/QGIS
-      geometry, i.e. a second, independent writer of the format.
+The four samples are committed under ``tests/data/selafin/`` like every other fixture, so these
+run offline in the ordinary suite with no marker and no download -- a check that only runs when
+someone remembers to ask for it is not a check. ``tests/data/selafin/README.md`` records each
+file's source, licence and what it covers.
 """
 
 import pyramids  # noqa: F401  # isort:skip
 
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -34,55 +29,23 @@ from pyramids.netcdf.ugrid import MeshDataset, UnsupportedMeshFormatError
 from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
 from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
 
-pytestmark = pytest.mark.vendor_data
-
-# Where a fetched sample is kept, so a second run does not download it again. The docs-facing
-# real-data directory, which is deliberately untracked -- the samples are large and carry their
-# own licences.
-_SAMPLE_DIR = (
-    Path(__file__).resolve().parents[3] / "examples" / "data" / "real-data" / "selafin"
-)
-
-_XARRAY_SELAFIN = (
-    "https://raw.githubusercontent.com/oceanmodeling/xarray-selafin/main/tests/data/"
-)
-_HYDRO_INFORMATICS = "https://raw.githubusercontent.com/hydro-informatics/telemac/main/"
-
-# name -> the URL it is fetched from when it is not already on disk.
-_SAMPLES = {
-    # TELEMAC 2D output: 648 nodes, 1030 triangles, 17 steps, 5 node variables.
-    "r2d_tidal_flats.slf": _XARRAY_SELAFIN + "r2d_tidal_flats.slf",
-    # A genuine layered 3D file: NDP=6 prisms over 21 planes.
-    "r3d_tidal_flats.slf": _XARRAY_SELAFIN + "r3d_tidal_flats.slf",
-    # One layer extracted from a 3D run: NDP=3 triangles, but IPARAM[6] still says 5 planes.
-    "r3d_bump_extracted_bottom_layer.slf": (
-        _XARRAY_SELAFIN + "r3d_bump_extracted_bottom_layer.slf"
-    ),
-    # Geometry written by BlueKenue / QGIS rather than by TELEMAC: a second writer, in UTM.
-    "qgismesh.slf": _HYDRO_INFORMATICS + "bk-slf/qgismesh.slf",
-}
+_SAMPLE_DIR = Path(__file__).resolve().parents[2] / "data" / "selafin"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def sample():
-    """Return a resolver for a vendor sample, downloading it once if it is absent.
+    """Return a resolver from a sample's name to its committed path.
+
+    A fixture rather than a module constant so a missing file fails the test that needs it
+    with the path it looked for, instead of at import time for the whole module.
 
     Returns:
-        Callable[[str], str]: maps a name in :data:`_SAMPLES` to a local path.
+        Callable[[str], str]: maps a file name under ``tests/data/selafin`` to its path.
     """
 
     def resolve(name: str) -> str:
         path = _SAMPLE_DIR / name
-        if not path.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            url = _SAMPLES[name]
-            try:
-                urllib.request.urlretrieve(url, path)  # noqa: S310 - a pinned https URL
-            except (
-                urllib.error.URLError,
-                OSError,
-            ) as error:  # pragma: no cover - network
-                pytest.skip(f"could not fetch the vendor sample {url}: {error}")
+        assert path.exists(), f"missing committed sample: {path}"
         return str(path)
 
     return resolve

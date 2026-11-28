@@ -183,7 +183,8 @@ class SelafinDriver(BaseDriver):
           domain footprint exactly, while the transposed reading inverts 537 of them and
           covers 89 times the domain. The same holds for a BlueKenue-written mesh. A
           fixture cannot settle this -- a transposed writer and a transposed reader agree
-          with each other -- so the check lives in the ``vendor_data`` suite.
+          with each other -- so the check runs against real files committed under
+          ``tests/data/selafin/``, in the ordinary suite.
         - There is no CRS in the format, so ``crs`` is ``None``; it is never inferred
           from the coordinate magnitudes.
 
