@@ -112,9 +112,14 @@ def test_selafin_quad_ndp4_reads(tmp_path):
 
 @pytest.mark.parametrize("date_flag", [0, 1])
 def test_selafin_date_record_present_and_absent(tmp_path, date_flag):
-    """The file reads whether or not the optional date record is present."""
+    """The file reads whether or not the optional date record is present.
+
+    The flag and the record have to agree, so the date is passed exactly when the flag is
+    set -- a flag with nothing behind it would leave every later record one short.
+    """
     iparam = [1, 0, 0, 0, 0, 0, 0, 0, 0, date_flag]
-    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam))
+    date = [2000, 1, 1, 0, 0, 0] if date_flag else None
+    dataset = SelafinDriver().read(_write(tmp_path, iparam=iparam, date=date))
 
     assert dataset.mesh.n_node == 4
     assert dataset.get("WATER DEPTH").shape == (2, 4)
@@ -370,3 +375,305 @@ def test_selafin_lazy_loader_translates_a_short_read(tmp_path):
     loader = _SelafinLoader(str(path), [0], 100, endian="<", double=False)
     with pytest.raises(FileFormatNotSupportedError, match="not a readable Selafin"):
         loader()
+
+
+def test_selafin_single_layer_extraction_reads_despite_the_plane_count(tmp_path):
+    """A triangular mesh is read even when IPARAM[6] claims several planes.
+
+    TELEMAC's single-layer extraction copies the parent run's plane count into the header
+    while writing plain triangles, so the plane count cannot decide what the elements are.
+    NDP can: 3 here, so the file is a 2D surface mesh and is read as one.
+    """
+    path = _write(tmp_path, iparam=[1, 0, 0, 0, 0, 0, 5, 0, 0, 0])
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.mesh.n_node == 4
+    assert dataset.mesh.n_face == 2
+    assert dataset.mesh.face_node_connectivity.data.shape == (2, 3)
+
+
+def test_selafin_quad_mesh_reads_despite_the_plane_count(tmp_path):
+    """The same holds for 4-node quadrilaterals, the other 2D element width."""
+    path = _write(
+        tmp_path,
+        ikle=[[1, 2, 3, 4]],
+        iparam=[1, 0, 0, 0, 0, 0, 7, 0, 0, 0],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.mesh.face_node_connectivity.data.shape == (1, 4)
+
+
+def test_selafin_prism_mesh_is_refused_whatever_the_plane_count(tmp_path):
+    """NDP=6 is a layered mesh and is refused even when the plane count says 2D.
+
+    The mirror of the extraction case: a header claiming one plane does not make prism
+    connectivity readable as a flat 2D mesh, so the element width decides here too.
+    """
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+        iparam=[1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="NDP=6"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_title_reaches_the_dataset(tmp_path):
+    """The title record is the run's own name for itself and is kept, stripped of padding."""
+    path = _write(tmp_path, title="Rouse profile test")
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.global_attributes["title"] == "Rouse profile test"
+
+
+def test_selafin_blank_title_adds_no_attribute(tmp_path):
+    """A title record of pure padding is absent, not an empty string."""
+    path = _write(tmp_path, title="   ")
+    dataset = SelafinDriver().read(path)
+
+    assert "title" not in dataset.global_attributes
+
+
+def test_selafin_date_record_becomes_the_start_date(tmp_path):
+    """The date record anchors the time axis, so it is carried as an ISO-8601 string."""
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=[1993, 7, 14, 6, 30, 15],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert dataset.global_attributes["start_date"] == "1993-07-14T06:30:15"
+
+
+def test_selafin_absent_date_record_leaves_no_start_date(tmp_path):
+    """Without the IPARAM[9] flag there is no date record and no attribute to add."""
+    dataset = SelafinDriver().read(_write(tmp_path))
+
+    assert "start_date" not in dataset.global_attributes
+
+
+def test_selafin_zero_date_record_is_a_placeholder_not_year_zero(tmp_path):
+    """An all-zero date record is a placeholder; reporting year 0 would be worse than none."""
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=[0, 0, 0, 0, 0, 0],
+    )
+    dataset = SelafinDriver().read(path)
+
+    assert "start_date" not in dataset.global_attributes
+
+
+def test_selafin_boundary_numbering_is_carried_on_a_node_variable(tmp_path):
+    """IPOBO is an ordering that cannot be rederived, so the read keeps it.
+
+    It arrives as a static node variable rather than as an attribute, which is what lets the
+    writer put it back into its own record.
+    """
+    path = _write(tmp_path, ipobo=[1, 2, 0, 3])
+    dataset = SelafinDriver().read(path)
+
+    numbering = np.asarray(dataset.get("boundary_node_number").data)
+    assert numbering.tolist() == [1.0, 2.0, 0.0, 3.0]
+    assert dataset.get("boundary_node_number").location == "node"
+    assert dataset.global_attributes["n_boundary_nodes"] == 3
+
+
+def test_selafin_all_zero_boundary_record_adds_no_variable(tmp_path):
+    """A mesh with no boundary numbering gains nothing from an array of zeros."""
+    dataset = SelafinDriver().read(_write(tmp_path))
+
+    assert "boundary_node_number" not in dataset.variable_names
+    assert "n_boundary_nodes" not in dataset.global_attributes
+
+
+def test_selafin_can_open_declines_a_layered_3d_file(tmp_path):
+    """can_open answers for readability: a file the read refuses is not claimed.
+
+    Auto-detection trusts can_open, so claiming a prism file and then throwing from read
+    would turn a clean "no driver" into a hard failure part-way through dispatch.
+    """
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+    )
+    assert SelafinDriver().can_open(path) is False
+
+
+def test_selafin_can_open_declines_a_parallel_subdomain_file(tmp_path):
+    """A non-zero interface-point count means local numbering, so the file is not claimed."""
+    path = _write(tmp_path, iparam=[1, 0, 0, 0, 0, 0, 0, 0, 7, 0])
+
+    assert SelafinDriver().can_open(path) is False
+
+
+def test_selafin_can_open_still_accepts_a_serial_2d_file(tmp_path):
+    """The added header checks must not start declining ordinary files."""
+    assert SelafinDriver().can_open(_write(tmp_path)) is True
+    assert (
+        SelafinDriver().can_open(
+            _write(
+                tmp_path,
+                name="dated.slf",
+                iparam=[1, 0, 0, 0, 0, 0, 1, 264, 0, 1],
+                date=[2000, 1, 1, 0, 0, 0],
+            )
+        )
+        is True
+    )
+
+
+def test_selafin_can_open_declines_a_file_truncated_inside_its_header(tmp_path):
+    """A first record that parses does not make the rest of the header readable."""
+    source = Path(_write(tmp_path))
+    truncated = tmp_path / "truncated.slf"
+    truncated.write_bytes(source.read_bytes()[:104])
+
+    assert SelafinDriver().can_open(str(truncated)) is False
+
+
+def test_selafin_peek_header_refuses_an_empty_file(tmp_path):
+    """An empty file has no title record, which the peek reports rather than assuming.
+
+    ``_read_record`` answers ``None`` at a clean end of file, so this is the one shape that
+    reaches the peek's own guard; a file cut mid-record raises from the helper instead.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _peek_header
+
+    path = tmp_path / "empty.slf"
+    path.write_bytes(b"")
+
+    with pytest.raises(ValueError, match="ends before its title record"):
+        _peek_header(str(path), "<")
+
+
+def test_selafin_can_open_declines_a_bare_length_word(tmp_path):
+    """A length word announcing a title that is not there is declined, not claimed.
+
+    ``detect_endianness`` only reads that first word, so the probe passes; the sniff has to
+    go further before answering, and a failed peek means the file is not readable.
+    """
+    path = tmp_path / "stub.slf"
+    path.write_bytes(np.array([80], dtype="<i4").tobytes())
+
+    assert SelafinDriver().can_open(str(path)) is False
+
+
+def test_selafin_peek_header_refuses_a_file_cut_between_its_name_records(tmp_path):
+    """A header that stops part-way through the variable names is declined, not guessed."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _peek_header
+
+    source = Path(
+        _write(
+            tmp_path,
+            variable_names=[
+                "WATER DEPTH     M               ",
+                "VELOCITY U      M/S             ",
+            ],
+            values=[[[0.0] * 4, [0.0] * 4], [[1.0] * 4, [1.0] * 4]],
+        )
+    )
+    # title record (4+80+4) + nbv record (4+8+4) + one of the two 32-byte name records
+    cut = tmp_path / "cut.slf"
+    cut.write_bytes(source.read_bytes()[: 88 + 16 + 40])
+
+    with pytest.raises(ValueError, match="ends inside its variable-name records"):
+        _peek_header(str(cut), "<")
+    assert SelafinDriver().can_open(str(cut)) is False
+
+
+def test_selafin_an_unread_element_width_is_not_diagnosed_as_3d(tmp_path):
+    """NDP 5 is not a layered 3D file, so it is not reported as one.
+
+    Keying the message on "not 2D" sent the reader looking for a 3D file that is not there.
+    Only NDP 6 prisms are 3D; NDP 2 is a 1-D network TELEMAC also writes as Selafin, and
+    anything else is corrupt or a variant this driver has not seen.
+    """
+    nx = [float(i) for i in range(5)]
+    ny = [0.0, 1.0, 2.0, 3.0, 4.0]
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 4, 5]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[[0.0] * 5]],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="does not read"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_prisms_are_still_diagnosed_as_layered_3d(tmp_path):
+    """NDP 6 keeps the 3D diagnosis, naming the prisms and the plane count."""
+    nx = [0.0, 1.0, 1.0, 0.0] * 2
+    ny = [0.0, 0.0, 1.0, 1.0] * 2
+    path = _write(
+        tmp_path,
+        node_x=nx,
+        node_y=ny,
+        ikle=[[1, 2, 3, 5, 6, 7]],
+        variable_names=["Z               M               "],
+        times=[0.0],
+        values=[[list(range(8))]],
+        iparam=[1, 0, 0, 0, 0, 0, 3, 0, 0, 0],
+    )
+    with pytest.raises(FileFormatNotSupportedError, match="NDP=6 prisms over 3 plane"):
+        SelafinDriver().read(path)
+
+
+def test_selafin_boundary_numbering_is_integral(tmp_path):
+    """IPOBO is an ordering, so it is surfaced as integers rather than floats."""
+    dataset = SelafinDriver().read(_write(tmp_path, ipobo=[1, 2, 0, 3]))
+    numbering = np.asarray(dataset.get("boundary_node_number").data)
+
+    assert numbering.dtype.kind == "i", (
+        f"expected an integer dtype, got {numbering.dtype}"
+    )
+    assert numbering.tolist() == [1, 2, 0, 3]
+
+
+@pytest.mark.parametrize(
+    "date_record",
+    [
+        [1993, 0, 0, 12, 0, 0],
+        [1993, 7, 14, 99, 99, 99],
+        [1993, 13, 1, 0, 0, 0],
+        [-5, 1, 1, 0, 0, 0],
+        [1993, 2, 30, 0, 0, 0],
+    ],
+)
+def test_selafin_a_date_record_that_is_not_an_instant_warns_and_is_dropped(
+    tmp_path, date_record
+):
+    """A record that is not a calendar instant is dropped, and the drop is announced.
+
+    Formatting is not parsing: ``[1993, 0, 0, 12, 0, 0]`` formats cleanly into
+    '1993-00-00T12:00:00', which looks like a timestamp and which no date parser accepts.
+    Unlike the all-zero placeholder this is a surprise, so it warns rather than going quiet.
+    """
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=date_record,
+    )
+    with pytest.warns(UserWarning, match="not a calendar instant"):
+        dataset = SelafinDriver().read(path)
+
+    assert "start_date" not in dataset.global_attributes

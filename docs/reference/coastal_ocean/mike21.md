@@ -34,8 +34,9 @@ A triangle in a quad mesh is padded with a trailing `0` node id. Since ids are 1
 - **The projection field and the node-record column order are read as the format
   specifies, but could not be checked against a vendor file.** If a real Mike21 mesh orders its
   node columns differently, the coordinates would be wrong in a plausible way. This is
-  the part of the driver a vendor sample should confirm — tracked for the `vendor_data`
-  suite.
+  the part of the driver a vendor sample should confirm. No Mike21 sample is committed yet;
+  the Selafin driver settled the equivalent question by committing real files under
+  `tests/data/selafin/`, which is the pattern to follow when one turns up.
 - **The projection is mapped to a CRS only when it is real.** A WKT string or an EPSG
   code the vendored PROJ validates is carried; a DHI-internal name such as `UTM-32` or
   `LONG/LAT` carries no datum and leaves `crs` as `None` rather than being guessed at.

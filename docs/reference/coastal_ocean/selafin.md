@@ -27,8 +27,27 @@ dataset.to_file("small.slf", driver="selafin", precision="single")  # smaller, l
 
 The writer emits the same Fortran-record layout the reader parses, so a read → write →
 read round trip preserves the nodes, the connectivity (and its recorded 1-based `IKLE`
-base), the variable names and units, and the time steps.
+base), the variable names and units, the time steps, **and the header**: the title, the
+date record and the boundary numbering.
 
+- **The header is restored, not stamped.** The dataset's `title` and `start_date`
+  attributes become the title and date records, `boundary_node_number` becomes `IPOBO`, and
+  `x_origin`/`y_origin` become `IPARAM[2]`/`IPARAM[3]` with the coordinates written as
+  offsets from them. `IPARAM[7]` and the `IPARAM[9]` date flag are derived from what is
+  actually written, so the header cannot claim one thing while the records show another.
+  What is *not* carried forward: the plane count `IPARAM[6]`, because what is written is a
+  single 2D layer whatever it came from, and `NBV2` — a second variable block is read as
+  ordinary variables and written back as one block, so the split is not preserved.
+- **Restoring the origin is what makes `precision="single"` usable** on a projected mesh.
+  Absolute coordinates spend the whole float32 mantissa on the large constant: the same
+  mesh lost 0.125 m in y before the origin was carried through. The source file stored those
+  coordinates losslessly at float32 precisely because the constant lived in the integer
+  origin.
+- **An in-memory mesh has no boundary numbering**, and a boundary *ordering* cannot be
+  derived from the node set, so zeros are written and a warning says the output is geometry
+  only — TELEMAC needs `IPOBO` to attach boundary conditions.
+- **`boundary_node_number` is never written as a result.** It is mesh metadata that goes
+  back into its own record; it reappears on the next read for the same reason.
 - **Only node-located variables are written** — the format has no face-located storage.
 - **Every face must share a vertex count**: Selafin stores a single element width (`NDP`),
   so a mixed tri/quad mesh is refused rather than written with a scrambled `IKLE`.
@@ -45,6 +64,24 @@ base), the variable names and units, and the time steps.
   16-char unit. Splitting on whitespace instead would lose a multi-word name's tail.
 - **`IKLE` connectivity is 1-based**; it arrives 0-based, with the base recorded for a
   writer to restore.
+- **The title and the date record are kept**, as the `title` and `start_date` global
+  attributes. Without the date, a time axis of seconds has nothing to anchor it to. Either
+  key is omitted rather than faked when the file has none — and `start_date` is only
+  published when the six-int record is a **real calendar instant**, because formatting is
+  not parsing: a partial record like `[1993, 0, 0, 12, 0, 0]` formats cleanly into
+  `'1993-00-00T12:00:00'`, which no date parser accepts. A record that is not an instant is
+  dropped with a warning; ISO-8601's end-of-day hour 24 is normalised to the next midnight.
+- **The coordinate origin is kept**, as `x_origin`/`y_origin`, when the file declares one.
+  The node coordinates are absolute, so it is not needed to place the mesh — it is kept so
+  a writer can restore the integer-origin/small-offset split.
+- **`IPOBO` is kept**, on the `boundary_node_number` node variable, with
+  `n_boundary_nodes` on the dataset. It is an ordering TELEMAC uses to attach boundary
+  conditions, not a mask, and not recoverable from the topology. It is read from its own
+  record rather than trusted to `IPARAM[7]` — BlueKenue writes a populated record while
+  leaving that count at zero — and a record of all zeros adds no variable at all.
+- **`can_open` answers for readability, not just for the format.** Auto-detection trusts
+  it, so the sniff reads the same header fields the read-time guards use and declines a
+  layered 3D or parallel file instead of claiming it and then throwing.
 
 ## Documented limitations
 
@@ -53,26 +90,59 @@ base), the variable names and units, and the time steps.
   are added to the node coordinates. Read without adding them, the mesh sits near zero
   instead of at its real location — plausible and completely wrong, with nothing in the
   data to catch it.
-- **A layered 3D file is refused.** `IPARAM[6]` is the plane count; 0 and 1 both mean 2D,
-  and a value above 1 is a real 3D file. Its `NPOIN` and prism `IKLE` cannot be read as a
-  flat 2D mesh without returning all planes' nodes under 6-node faces, and a faithful
-  surface extraction needs a vendor file to verify the plane ordering, so it is refused
-  rather than read as a malformed 2D mesh. A full 3D read needs the layered mesh model
-  pyramids does not have yet (design §21.1).
+- **A layered 3D file is refused, keyed on `NDP`.** The element width says what *this*
+  file's elements are: 3-node triangles or 4-node quadrilaterals are a 2D surface mesh,
+  6-node prisms a layered 3D one whose `NPOIN` is the full 3D node count. Reading prisms as
+  flat 2D returns every plane's nodes under 6-node faces, and extracting one plane out of a
+  layered mesh is a mesh operation that belongs upstream rather than in a format driver
+  (ADR-0005), so it is refused rather than read as a malformed 2D mesh. A full 3D read
+  needs the layered mesh model pyramids does not have yet (design §21.1).
+  The plane count `IPARAM[6]` is deliberately **not** the test, only part of the message: a
+  file holding a single layer extracted from a 3D run inherits its parent's plane count
+  while its elements are plain triangles, so keying on the count refused a mesh that reads
+  perfectly well.
 - **A parallel sub-domain file is refused.** A non-zero interface-point count
   (`IPARAM[8]`) means local numbering within one partition, so the connectivity would
   index a sub-domain rather than the whole mesh. It is keyed on interface points alone —
   the boundary-point field is a mesh property, nonzero for ordinary serial meshes. Merge
   the partitions before reading.
 - **Variables are node-located, always** — never inferred from an array length.
-- **The IKLE row/column order could not be checked against a vendor file.** It is read
-  row-major (one element's `NDP` node ids contiguous), as the format specifies. A real file that
-  stored it transposed would give a scrambled mesh; this is the detail a vendor sample
-  should confirm, tracked for the `vendor_data` suite.
+- **The IKLE row/column order is row-major** (one element's `NDP` node ids contiguous), as
+  the format specifies — and it is checked against real files rather than assumed. A
+  fixture cannot settle it, because a transposed writer paired with a transposed reader
+  round-trips perfectly; a real file can. On a TELEMAC 2D result (648 nodes, 1030
+  triangles) the row-major reading gives 1030 counter-clockwise triangles whose areas sum
+  to the domain footprint exactly, while the transposed reading inverts 537 of them and
+  covers 89× the domain. A BlueKenue-written mesh (12,814 nodes, 25,007 triangles) agrees.
+  See `tests/drivers/coastal_ocean/test_selafin_vendor.py`.
 - **A partial final timestep is dropped with a warning** — a run killed mid-write leaves
   a dangling time record, and only whole steps are read.
 - There is no CRS in the format, so `crs` is `None`; it is never inferred from the
   coordinate magnitudes.
+
+## Vendor-file checks
+
+Every other Selafin test builds its fixture with `write_selafin` and reads it back, so the reader
+and the writer share one set of assumptions about the record layout and cannot contradict each
+other. `tests/drivers/coastal_ocean/test_selafin_vendor.py` breaks that circle by running the
+reader over files written by TELEMAC itself and by BlueKenue:
+
+```bash
+pytest tests/drivers/coastal_ocean/test_selafin_vendor.py
+```
+
+The four samples are committed under `tests/data/selafin/` like every other fixture, so these
+tests run offline in the ordinary suite — no marker, no download, nothing to remember. A check
+that only runs when someone asks for it by name is not a check.
+`tests/data/selafin/README.md` records each file's source, licence and what it covers; this
+package is GPL-3.0, which is what makes redistributing the GPL-3.0 samples below compatible.
+
+| Sample | Source | Licence | What it covers |
+|---|---|---|---|
+| `r2d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | TELEMAC 2D output: 648 nodes, 1030 triangles, 17 steps, 5 variables; the `IKLE` order |
+| `qgismesh.slf` | `hydro-informatics/telemac` | BSD-3-Clause | BlueKenue/QGIS geometry: a second, independent writer, in projected UTM coordinates |
+| `r3d_bump.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | a genuine layered 3D file (`NDP=6` prisms, 10,480 elements over 5 planes) — the refusal path |
+| `r3d_bump_extracted_bottom_layer.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | one layer extracted from a 3D run — `NDP=3` triangles under `IPARAM[6] = 5`; the file that forced the guard onto `NDP` |
 
 ## API
 
