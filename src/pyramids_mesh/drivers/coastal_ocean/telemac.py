@@ -799,6 +799,117 @@ def build_minimal_fixture_selafin(path: str) -> None:
     )
 
 
+def _validate_write_arguments(
+    *,
+    npoin: int,
+    times: list[float],
+    values: list,
+    ipobo: list[int] | None,
+    date: list[int] | None,
+    iparam: list[int] | None,
+    origin: tuple[int, int],
+) -> None:
+    """Refuse every argument combination that cannot be written, before a file is opened.
+
+    All of it happens up front, and that is the point: the output is opened ``"wb"``, which
+    truncates it, so a check that runs inside the write turns a rejected call into a
+    destroyed file. An ``OverflowError`` from narrowing the origin used to leave a 104-byte
+    stub where a valid file had been.
+
+    Args:
+        npoin: The node count every per-node array must match.
+        times: The time values.
+        values: ``values[t][v]`` blocks, one entry per timestep.
+        ipobo: The boundary numbering, or ``None``.
+        date: The six-int date record, or ``None``.
+        iparam: An explicit ``IPARAM``, or ``None`` to derive it.
+        origin: The coordinate origin to declare.
+
+    Raises:
+        ValueError: On a length mismatch, a value no int32 record can hold, or an explicit
+            ``iparam`` that contradicts ``date`` or ``origin``.
+    """
+    if len(values) != len(times):
+        raise ValueError("values must hold one entry per timestep")
+    if ipobo is not None and len(ipobo) != npoin:
+        raise ValueError(
+            f"ipobo must hold one entry per node: got {len(ipobo)} for {npoin} nodes"
+        )
+    if date is not None and len(date) != _DATE_FIELDS:
+        raise ValueError(f"date must hold {_DATE_FIELDS} fields, got {len(date)}")
+    _refuse_values_int32_cannot_hold(ipobo, origin)
+    _refuse_contradictory_iparam(iparam, date, origin)
+
+
+def _refuse_values_int32_cannot_hold(
+    ipobo: list[int] | None, origin: tuple[int, int]
+) -> None:
+    """Refuse integers the file's int32 records would wrap rather than store.
+
+    ``2**31`` becomes ``-2147483648`` on the way in, which reads back as a plausible
+    boundary number or origin rather than an obviously lost one.
+
+    Args:
+        ipobo: The boundary numbering, or ``None``.
+        origin: The coordinate origin to declare.
+
+    Raises:
+        ValueError: If any value is outside the int32 range.
+    """
+    if any(not _INT32_MIN <= int(v) <= _INT32_MAX for v in origin):
+        raise ValueError(
+            f"the coordinate origin must fit in the int32 IPARAM stores; "
+            f"got {tuple(origin)}"
+        )
+    if ipobo is None:
+        return
+    out_of_range = [v for v in ipobo if not _INT32_MIN <= int(v) <= _INT32_MAX]
+    if out_of_range:
+        raise ValueError(
+            f"ipobo entries must fit in the int32 the record stores; "
+            f"{out_of_range[:3]} do not"
+        )
+
+
+def _refuse_contradictory_iparam(
+    iparam: list[int] | None, date: list[int] | None, origin: tuple[int, int]
+) -> None:
+    """Refuse an explicit ``IPARAM`` that disagrees with the records it describes.
+
+    An explicit ``iparam`` carries the date flag and the origin itself, so honouring a
+    ``date`` or ``origin`` argument as well would mean one of the two silently losing. Only
+    the caller knows which they meant, so neither is guessed: the flag with no record
+    behind it leaves every later record one short, and a record under a cleared flag is one
+    no reader will look for.
+
+    Args:
+        iparam: The explicit ``IPARAM``, or ``None`` when it is derived.
+        date: The six-int date record, or ``None``.
+        origin: The coordinate origin argument.
+
+    Raises:
+        ValueError: On any of the three contradictions.
+    """
+    if iparam is None:
+        return
+    flag = iparam[_IPARAM_DATE_FLAG]
+    if date is not None and flag != 1:
+        raise ValueError(
+            "a date was given but the explicit iparam clears the date flag "
+            f"(IPARAM[9] = {flag}); set it to 1 or drop the date"
+        )
+    if date is None and flag == 1:
+        raise ValueError(
+            "the explicit iparam sets the date flag (IPARAM[9] = 1) but no date was "
+            "given; pass date= or clear the flag"
+        )
+    if tuple(origin) != (0, 0):
+        raise ValueError(
+            "pass either an explicit iparam (which carries IPARAM[2]/IPARAM[3] itself) or "
+            f"an origin, not both; got origin={tuple(origin)}"
+        )
+
+
 def _title_record(title: object, marker: str, path: str) -> bytes:
     """Build the 80-byte title record: 72 bytes of text then the 8-byte format marker.
 
@@ -1029,52 +1140,16 @@ def write_selafin(
             >>> dataset.variable_names
             ['WATER DEPTH']
     """
-    if len(values) != len(times):
-        raise ValueError("values must hold one entry per timestep")
     npoin = len(node_x)
-    if ipobo is not None and len(ipobo) != npoin:
-        raise ValueError(
-            f"ipobo must hold one entry per node: got {len(ipobo)} for {npoin} nodes"
-        )
-    if date is not None and len(date) != _DATE_FIELDS:
-        raise ValueError(f"date must hold {_DATE_FIELDS} fields, got {len(date)}")
-    if any(not _INT32_MIN <= int(v) <= _INT32_MAX for v in origin):
-        # Checked here, with ipobo, rather than at the np.array() call inside the open
-        # block: an OverflowError there leaves a half-written file at the destination.
-        raise ValueError(
-            f"the coordinate origin must fit in the int32 IPARAM stores; got {tuple(origin)}"
-        )
-    if ipobo is not None:
-        # Every record in the file is int32. A numbering that does not fit wraps silently
-        # (2**31 becomes -2147483648), which would look like a plausible boundary number
-        # rather than a lost one, so it is refused.
-        out_of_range = [v for v in ipobo if not _INT32_MIN <= int(v) <= _INT32_MAX]
-        if out_of_range:
-            raise ValueError(
-                f"ipobo entries must fit in the int32 the record stores; "
-                f"{out_of_range[:3]} do not"
-            )
-    if date is not None and iparam is not None and iparam[_IPARAM_DATE_FLAG] != 1:
-        # The flag and the record have to agree, and only the caller knows which it meant.
-        # Writing the date under a zero flag leaves a record no reader will look for, and
-        # dropping it loses what was asked for -- so neither is guessed.
-        raise ValueError(
-            "a date was given but the explicit iparam clears the date flag "
-            f"(IPARAM[9] = {iparam[_IPARAM_DATE_FLAG]}); set it to 1 or drop the date"
-        )
-    if date is None and iparam is not None and iparam[_IPARAM_DATE_FLAG] == 1:
-        raise ValueError(
-            "the explicit iparam sets the date flag (IPARAM[9] = 1) but no date was "
-            "given; pass date= or clear the flag"
-        )
-    if iparam is not None and tuple(origin) != (0, 0):
-        # An explicit iparam carries its own IPARAM[2]/[3], so honouring origin as well
-        # would mean one of them silently losing. The date flag above is refused for the
-        # same reason: the caller knows which they meant, and this function does not.
-        raise ValueError(
-            "pass either an explicit iparam (which carries IPARAM[2]/IPARAM[3] itself) or "
-            f"an origin, not both; got origin={tuple(origin)}"
-        )
+    _validate_write_arguments(
+        npoin=npoin,
+        times=times,
+        values=values,
+        ipobo=ipobo,
+        date=date,
+        iparam=iparam,
+        origin=origin,
+    )
     ndp = len(ikle[0])
     float_code = f"{endian}{'f8' if double else 'f4'}"
     marker = _FORMAT_DOUBLE if double else _FORMAT_SINGLE

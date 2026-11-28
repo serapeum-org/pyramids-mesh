@@ -171,8 +171,10 @@ def test_crs_is_never_inferred_from_projected_coordinates(sample):
 
 def test_a_genuine_layered_3d_file_is_refused(sample):
     """A real 3D file (``NDP=6`` prisms, 5 planes) is refused rather than read as flat 2D."""
+    path = sample("r3d_bump.slf")
+
     with pytest.raises(UnsupportedMeshFormatError, match="layered 3D"):
-        MeshDataset.read_file(sample("r3d_bump.slf"), driver="selafin")
+        MeshDataset.read_file(path, driver="selafin")
 
 
 def test_a_single_layer_extracted_from_a_3d_run_reads_as_2d(sample):
@@ -332,9 +334,10 @@ def test_the_boundary_numbering_is_not_written_as_a_result_series(tmp_path, samp
 def test_refusing_a_file_is_the_documented_error_type(sample):
     """The 3D refusal is a format error, not a bare ``ValueError`` from the record helpers."""
     driver = SelafinDriver()
+    path = sample("r3d_bump.slf")
 
     with pytest.raises(FileFormatNotSupportedError):
-        driver.read(sample("r3d_bump.slf"))
+        driver.read(path)
 
 
 def test_the_shared_header_helper_agrees_with_the_driver(sample):
