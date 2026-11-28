@@ -847,7 +847,13 @@ def write_selafin(
         ipobo: The boundary-node numbering, one entry per node. Defaults to all zeros,
             which declares a mesh with no boundary nodes.
         date: ``[year, month, day, hour, minute, second]`` for the date record. Written
-            only when the effective ``IPARAM[9]`` is 1.
+            only when the effective ``IPARAM[9]`` is 1, and required when an explicit
+            ``iparam`` sets that flag -- the two may not disagree.
+        origin: The ``(x, y)`` origin to declare in ``IPARAM[2]``/``IPARAM[3]``. The node
+            coordinates passed here are the offsets from it, already relative, so this
+            function neither adds nor subtracts it. Keeping a large constant in the origin
+            is what lets ``double=False`` store a projected mesh without losing
+            centimetres to the float32 mantissa.
 
     Raises:
         ValueError: If ``values`` does not match the timestep and variable counts, or if
