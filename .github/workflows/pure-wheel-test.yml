@@ -104,7 +104,7 @@ jobs:
 
       - name: Run core tests (not vendor_data)
         # -o pythonpath= clears the `pythonpath = ["src"]` setting so the tests
-        # import the INSTALLED wheel, not the source tree. vendor_data tests need
+        # import the INSTALLED wheel, not the source tree. vendor_data tests would need
         # fetched sample files that are not present here, so they are deselected.
         run: pytest -vvv -sv -o pythonpath= -m "not vendor_data" tests/
 

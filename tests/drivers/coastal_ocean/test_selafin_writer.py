@@ -648,11 +648,14 @@ def test_the_origin_is_restored_so_single_precision_stays_exact(tmp_path):
 
         _title, iparam, _date, _ipobo = _header_of(out)
         assert iparam[2:4] == [315000, 5345000], f"{precision}: got {iparam[2:4]}"
-        np.testing.assert_allclose(
-            np.asarray(source.mesh.node_x), np.asarray(back.mesh.node_x), atol=0
+        # Exact, not approximate: assert_allclose keeps rtol=1e-7 even at atol=0, which
+        # at y around 5,345,000 is a 0.53 m tolerance -- wide enough for the 0.125 m loss
+        # this test exists to catch.
+        np.testing.assert_array_equal(
+            np.asarray(source.mesh.node_x), np.asarray(back.mesh.node_x)
         )
-        np.testing.assert_allclose(
-            np.asarray(source.mesh.node_y), np.asarray(back.mesh.node_y), atol=0
+        np.testing.assert_array_equal(
+            np.asarray(source.mesh.node_y), np.asarray(back.mesh.node_y)
         )
 
 

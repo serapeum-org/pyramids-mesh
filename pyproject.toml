@@ -305,9 +305,11 @@ addopts = "--ignore=src/pyramids_mesh/drivers/coastal_ocean/mike.py"
 markers = [
     "slow: mark test as slow (deselect with '-m \"not slow\"')",
     "fast: mark test as fast (deselect with '-m \"not fast\"')",
-    # A test needing a vendor sample file rather than a hand-built fixture. Those
-    # files are binary and large, so they are fetched in CI and never committed;
-    # the default run deselects them with '-m \"not vendor_data\"'.
+    # A test needing a vendor sample too large to commit, fetched rather than stored.
+    # Registered but currently unused: the Selafin samples turned out small enough to
+    # commit (tests/data/selafin/, 1.7 MB), so those tests are ordinary offline tests
+    # with no marker. The '-m \"not vendor_data\"' selections below and in CI are kept
+    # for the next format whose only real sample is too big, and deselect nothing today.
     "vendor_data: test needing a fetched vendor sample file"
 ]
 

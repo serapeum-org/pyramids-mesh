@@ -15,6 +15,8 @@ specification.
 
 import pyramids  # noqa: F401  # isort:skip
 
+import os
+
 from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
 
 _TITLE_LENGTH = 80
@@ -56,7 +58,7 @@ def read_header(path) -> dict:
             >>> set(header["ipobo"])
             {0}
     """
-    endian = detect_endianness(str(path), expect_first_record=_TITLE_LENGTH)
+    endian = detect_endianness(os.fspath(path), expect_first_record=_TITLE_LENGTH)
     with open(path, "rb") as handle:
         title_record = _read_record(handle, endian).decode("latin-1")
         nbv = read_record_ints(handle, endian, 2).tolist()

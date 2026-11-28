@@ -17,7 +17,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import warnings
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
@@ -115,6 +115,7 @@ def _peek_header(path: str, endian: str) -> tuple[np.ndarray, int]:
             >>> import tempfile
             >>> from pyramids_mesh._binary import detect_endianness
             >>> from pyramids_mesh.drivers.coastal_ocean.telemac import (
+            ...     _IPARAM_INTERFACE_POINTS,
             ...     _peek_header,
             ...     build_minimal_fixture_selafin,
             ... )
@@ -509,6 +510,9 @@ class SelafinDriver(BaseDriver):
         else:
             times = []
         values = self._node_series(node_pairs, len(times))
+        # Resolved before the boundary check, which warns: an invalid precision must not
+        # first emit an IPOBO warning about a file that is never written.
+        double = self._resolve_precision(options.get("precision"))
         ipobo = self._boundary_numbering(dataset, len(node_x), path)
         write_selafin(
             path,
@@ -518,7 +522,7 @@ class SelafinDriver(BaseDriver):
             variable_names=names,
             times=times,
             values=values,
-            double=self._resolve_precision(options.get("precision")),
+            double=double,
             title=dataset.global_attributes.get("title"),
             origin=origin,
             ipobo=ipobo,
@@ -651,7 +655,7 @@ class SelafinDriver(BaseDriver):
             # The record has six integer fields and no offset, so an offset cannot be
             # stored. Dropping it would move the anchor by that offset; converting to UTC
             # keeps the instant, which is the thing the time axis is measured from.
-            shifted = stamp.astimezone(timezone.utc).replace(tzinfo=None)
+            shifted = stamp.astimezone(UTC).replace(tzinfo=None)
             warnings.warn(
                 f"{path!r} is written with its start_date converted to UTC "
                 f"({stamp.isoformat()} -> {shifted.isoformat()}): the Selafin date record "
@@ -1051,6 +1055,14 @@ def write_selafin(
             "the explicit iparam sets the date flag (IPARAM[9] = 1) but no date was "
             "given; pass date= or clear the flag"
         )
+    if iparam is not None and tuple(origin) != (0, 0):
+        # An explicit iparam carries its own IPARAM[2]/[3], so honouring origin as well
+        # would mean one of them silently losing. The date flag above is refused for the
+        # same reason: the caller knows which they meant, and this function does not.
+        raise ValueError(
+            "pass either an explicit iparam (which carries IPARAM[2]/IPARAM[3] itself) or "
+            f"an origin, not both; got origin={tuple(origin)}"
+        )
     ndp = len(ikle[0])
     float_code = f"{endian}{'f8' if double else 'f4'}"
     marker = _FORMAT_DOUBLE if double else _FORMAT_SINGLE
@@ -1366,13 +1378,14 @@ class _SelafinReader:
                 f"mesh operation that belongs upstream rather than in a format driver."
             )
         # Not 6 either: diagnosing this as "3D" would send the reader looking for a
-        # layered file that is not there. NDP 1, 2, 5 and 8 are no element Selafin
-        # defines, so the honest report is the width itself.
+        # layered file that is not there. NDP 2 is a real width -- a 1-D network, which
+        # TELEMAC also writes as Selafin -- so the message names the width rather than
+        # claiming the format has no element of it.
         raise FileFormatNotSupportedError(
-            f"{self.path!r} declares an element width Selafin has no elements for "
-            f"(NDP={self.ndp}); 3- and 4-node 2D elements are read, and 6-node prisms are "
-            f"refused as layered 3D. A file reaching here is either corrupt or a variant "
-            f"this driver has not seen."
+            f"{self.path!r} declares an element width this driver does not read "
+            f"(NDP={self.ndp}); 3- and 4-node 2D elements are read, 6-node prisms are "
+            f"refused as layered 3D, and NDP=2 is a 1-D network, which needs the 1-D mesh "
+            f"model rather than a 2D read."
         )
 
     def _read_data(

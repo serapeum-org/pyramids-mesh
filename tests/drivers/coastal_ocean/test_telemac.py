@@ -598,11 +598,12 @@ def test_selafin_peek_header_refuses_a_file_cut_between_its_name_records(tmp_pat
     assert SelafinDriver().can_open(str(cut)) is False
 
 
-def test_selafin_an_undefined_element_width_is_not_diagnosed_as_3d(tmp_path):
-    """NDP 5 is no Selafin element at all, so it is not reported as a layered 3D file.
+def test_selafin_an_unread_element_width_is_not_diagnosed_as_3d(tmp_path):
+    """NDP 5 is not a layered 3D file, so it is not reported as one.
 
-    Keying the message on "not 2D" sent the reader looking for a 3D file that is not there;
-    only NDP 6 prisms are 3D, and anything else is a corrupt or unknown variant.
+    Keying the message on "not 2D" sent the reader looking for a 3D file that is not there.
+    Only NDP 6 prisms are 3D; NDP 2 is a 1-D network TELEMAC also writes as Selafin, and
+    anything else is corrupt or a variant this driver has not seen.
     """
     nx = [float(i) for i in range(5)]
     ny = [0.0, 1.0, 2.0, 3.0, 4.0]
@@ -615,7 +616,7 @@ def test_selafin_an_undefined_element_width_is_not_diagnosed_as_3d(tmp_path):
         times=[0.0],
         values=[[[0.0] * 5]],
     )
-    with pytest.raises(FileFormatNotSupportedError, match="no elements for"):
+    with pytest.raises(FileFormatNotSupportedError, match="does not read"):
         SelafinDriver().read(path)
 
 

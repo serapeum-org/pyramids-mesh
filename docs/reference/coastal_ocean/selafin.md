@@ -141,7 +141,7 @@ package is GPL-3.0, which is what makes redistributing the GPL-3.0 samples below
 |---|---|---|---|
 | `r2d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | TELEMAC 2D output: 648 nodes, 1030 triangles, 17 steps, 5 variables; the `IKLE` order |
 | `qgismesh.slf` | `hydro-informatics/telemac` | BSD-3-Clause | BlueKenue/QGIS geometry: a second, independent writer, in projected UTM coordinates |
-| `r3d_tidal_flats.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | a genuine layered 3D file (`NDP=6`, 21 planes) — the refusal path |
+| `r3d_bump.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | a genuine layered 3D file (`NDP=6` prisms, 10,480 elements over 5 planes) — the refusal path |
 | `r3d_bump_extracted_bottom_layer.slf` | `oceanmodeling/xarray-selafin` | GPL-3.0 | one layer extracted from a 3D run — `NDP=3` triangles under `IPARAM[6] = 5`; the file that forced the guard onto `NDP` |
 
 ## API

@@ -170,9 +170,9 @@ def test_crs_is_never_inferred_from_projected_coordinates(sample):
 
 
 def test_a_genuine_layered_3d_file_is_refused(sample):
-    """A real 3D file (``NDP=6`` prisms, 21 planes) is refused rather than read as flat 2D."""
+    """A real 3D file (``NDP=6`` prisms, 5 planes) is refused rather than read as flat 2D."""
     with pytest.raises(UnsupportedMeshFormatError, match="layered 3D"):
-        MeshDataset.read_file(sample("r3d_tidal_flats.slf"), driver="selafin")
+        MeshDataset.read_file(sample("r3d_bump.slf"), driver="selafin")
 
 
 def test_a_single_layer_extracted_from_a_3d_run_reads_as_2d(sample):
@@ -255,7 +255,7 @@ def test_can_open_accepts_what_read_accepts_and_declines_what_it_refuses(sample)
     assert driver.can_open(sample("r2d_tidal_flats.slf")) is True
     assert driver.can_open(sample("qgismesh.slf")) is True
     assert driver.can_open(sample("r3d_bump_extracted_bottom_layer.slf")) is True
-    assert driver.can_open(sample("r3d_tidal_flats.slf")) is False
+    assert driver.can_open(sample("r3d_bump.slf")) is False
 
 
 def test_round_trip_of_a_real_file_preserves_every_value(tmp_path, sample):
@@ -334,4 +334,33 @@ def test_refusing_a_file_is_the_documented_error_type(sample):
     driver = SelafinDriver()
 
     with pytest.raises(FileFormatNotSupportedError):
-        driver.read(sample("r3d_tidal_flats.slf"))
+        driver.read(sample("r3d_bump.slf"))
+
+
+def test_the_shared_header_helper_agrees_with_the_driver(sample):
+    """The test helper's record walk matches the driver's on every committed sample.
+
+    The helper is deliberately a separate implementation -- reading a written file back
+    through the code that wrote it would make these tests circular -- which means the two
+    can drift. This pins them together on real files, including the big-endian ones and the
+    one with no date record. Its own doctest is not collected by CI (`--doctest-modules`
+    targets `src/`), so this is what verifies the documented behaviour.
+    """
+    from pyramids_mesh._binary import detect_endianness
+    from pyramids_mesh.drivers.coastal_ocean.telemac import _peek_header
+
+    for name in ("r2d_tidal_flats.slf", "qgismesh.slf", "r3d_bump.slf"):
+        path = sample(name)
+        header = read_header(path)
+        iparam, ndp = _peek_header(
+            path, detect_endianness(path, expect_first_record=80)
+        )
+
+        assert header["ndp"] == ndp, f"{name}: ndp {header['ndp']} vs driver {ndp}"
+        assert header["iparam"] == iparam.tolist(), f"{name}: IPARAM disagrees"
+        assert len(header["ipobo"]) == header["npoin"], f"{name}: IPOBO length"
+
+    # The date record is read exactly when the flag says it is there: qgismesh has no
+    # flag, and reading one anyway would consume the dimensions record.
+    assert read_header(sample("qgismesh.slf"))["date"] is None
+    assert read_header(sample("r2d_tidal_flats.slf"))["date"] == [1900, 1, 1, 0, 0, 0]
