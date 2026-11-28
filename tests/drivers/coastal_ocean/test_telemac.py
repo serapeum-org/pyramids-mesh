@@ -646,3 +646,33 @@ def test_selafin_boundary_numbering_is_integral(tmp_path):
         f"expected an integer dtype, got {numbering.dtype}"
     )
     assert numbering.tolist() == [1, 2, 0, 3]
+
+
+@pytest.mark.parametrize(
+    "date_record",
+    [
+        [1993, 0, 0, 12, 0, 0],
+        [1993, 7, 14, 99, 99, 99],
+        [1993, 13, 1, 0, 0, 0],
+        [-5, 1, 1, 0, 0, 0],
+        [1993, 2, 30, 0, 0, 0],
+    ],
+)
+def test_selafin_a_date_record_that_is_not_an_instant_warns_and_is_dropped(
+    tmp_path, date_record
+):
+    """A record that is not a calendar instant is dropped, and the drop is announced.
+
+    Formatting is not parsing: ``[1993, 0, 0, 12, 0, 0]`` formats cleanly into
+    '1993-00-00T12:00:00', which looks like a timestamp and which no date parser accepts.
+    Unlike the all-zero placeholder this is a surprise, so it warns rather than going quiet.
+    """
+    path = _write(
+        tmp_path,
+        iparam=[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        date=date_record,
+    )
+    with pytest.warns(UserWarning, match="not a calendar instant"):
+        dataset = SelafinDriver().read(path)
+
+    assert "start_date" not in dataset.global_attributes

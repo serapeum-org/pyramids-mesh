@@ -757,3 +757,21 @@ def test_a_wrong_sized_boundary_variable_reports_the_sizes(tmp_path):
 
     with pytest.warns(UserWarning, match="has 2 entries for 4 nodes"):
         SelafinDriver._boundary_numbering(dataset, 4, "short.slf")
+
+
+def test_a_datetime_start_date_is_written_as_the_date_record(tmp_path):
+    """A ``datetime`` attribute is written as-is rather than refused for not being a string.
+
+    The reader publishes ISO-8601 text, but a caller assembling a dataset by hand is more
+    likely to hold a ``datetime``, and it needs no parsing to be usable.
+    """
+    from datetime import datetime
+
+    src = _read(_SLF)
+    src.global_attributes["start_date"] = datetime(1993, 7, 14, 6, 30, 15)
+    out = tmp_path / "from_datetime.slf"
+    src.to_file(str(out), driver="selafin")
+
+    _title, iparam, date, _ipobo = _header_of(out)
+    assert iparam[9] == 1
+    assert date == [1993, 7, 14, 6, 30, 15], f"got {date}"
