@@ -343,7 +343,7 @@ ENDDS
 """
     attached = _attach(mesh, tmp_path, text)
 
-    assert "velocity" not in attached.data_variable_names
+    assert "velocity" not in attached.variable_names
     assert attached.get("velocity_x").data.tolist() == [[1.0, 2.0, 3.0, 4.0]]
     assert attached.get("velocity_y").data.tolist() == [[-1.0, -2.0, -3.0, -4.0]]
     assert attached.get("velocity_x").shape == (1, _N_NODE)
@@ -482,7 +482,7 @@ ENDDS
 """
     attached = _attach(mesh, tmp_path, text)
 
-    assert "dataset_1" in attached.data_variable_names
+    assert "dataset_1" in attached.variable_names
 
 
 def test_dat_unknown_card_is_ignored(mesh, tmp_path):
@@ -498,14 +498,14 @@ def test_dat_quoted_name_with_spaces_is_kept(mesh, tmp_path):
     text = _NEW_DIALECT.replace("NAME depth", 'NAME "water depth"')
     attached = _attach(mesh, tmp_path, text)
 
-    assert "water depth" in attached.data_variable_names
+    assert "water depth" in attached.variable_names
 
 
 def test_dat_attaching_keeps_the_mesh_own_variables(mesh, tmp_path):
     """``attach_data`` adds to the dataset's variables rather than replacing them."""
     attached = _attach(mesh, tmp_path, _NEW_DIALECT)
 
-    assert sorted(attached.data_variable_names) == ["depth", "material", "node_z"]
+    assert sorted(attached.variable_names) == ["depth", "material", "node_z"]
 
 
 def test_dat_can_open_declines_junk_without_raising(tmp_path):
@@ -692,7 +692,7 @@ class TestDatWriter:
     def test_no_data_variables_is_refused(self, tmp_path):
         """A bare mesh with no data variables cannot be written as a DAT."""
         mesh = MeshDataset.read_file(str(_DATA / "minimal.2dm"))
-        bare = mesh.drop_variables(list(mesh.data_variable_names))
+        bare = mesh.drop_variables(list(mesh.variable_names))
         with pytest.raises(FileFormatNotSupportedError, match="no data variables"):
             DatDriver().write(bare, str(tmp_path / "empty.dat"))
 

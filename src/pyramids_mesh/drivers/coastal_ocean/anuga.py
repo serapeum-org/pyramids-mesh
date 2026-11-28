@@ -94,7 +94,7 @@ class SwwDriver(BaseDriver):
             ...     build_minimal_fixture_sww(path)
             ...     dataset = SwwDriver().read(path)
             ...     connectivity = dataset.mesh.face_node_connectivity.data.tolist()
-            ...     names = sorted(dataset.data_variable_names)
+            ...     names = sorted(dataset.variable_names)
             >>> dataset.mesh.n_node, dataset.mesh.n_face
             (4, 2)
             >>> connectivity
@@ -200,7 +200,7 @@ def build_minimal_fixture_sww(path: str) -> None:
             ...     dataset = SwwDriver().read(path)
             >>> dataset.mesh.n_node
             4
-            >>> sorted(dataset.data_variable_names)
+            >>> sorted(dataset.variable_names)
             ['node_z', 'stage']
     """
     write_sww(

@@ -175,7 +175,7 @@ def test_cell_centres_populate_face_xy():
 def test_summary_water_surface_is_a_face_variable():
     """The maximum/minimum water-surface summaries are per-cell face variables."""
     dataset = _read()
-    names = set(dataset.data_variable_names)
+    names = set(dataset.variable_names)
     assert {"Maximum Water Surface", "Minimum Water Surface"} <= names
     wse = dataset.get("Maximum Water Surface")
     assert wse.location == "face"

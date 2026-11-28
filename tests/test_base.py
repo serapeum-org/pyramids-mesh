@@ -63,7 +63,7 @@ def test_node_z_becomes_variable_not_coordinate():
 
     dataset = _StubDriver(parsed).read("mesh.stub")
 
-    assert "node_z" in dataset.data_variable_names
+    assert "node_z" in dataset.variable_names
     assert dataset.get("node_z").location == "node"
     assert not hasattr(dataset.mesh, "node_z")
 
@@ -83,7 +83,7 @@ def test_active_becomes_sibling_variable():
 
     dataset = _StubDriver(parsed).read("mesh.stub")
 
-    assert "wl_active" in dataset.data_variable_names
+    assert "wl_active" in dataset.variable_names
     assert dataset.get("wl_active").location == "face"
 
 

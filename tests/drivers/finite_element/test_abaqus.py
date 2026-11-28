@@ -53,7 +53,7 @@ def test_connectivity_is_label_resolved_to_zero_based():
 def test_planar_deck_has_no_node_z():
     """Every node's z is zero, so no ``node_z`` variable is built."""
     assert AbaqusDriver()._parse(str(_ABAQUS), lazy=False).node_z is None
-    assert "node_z" not in set(_read(_ABAQUS).data_variable_names)
+    assert "node_z" not in set(_read(_ABAQUS).variable_names)
 
 
 def test_volumetric_element_maps_to_a_face(tmp_path):

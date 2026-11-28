@@ -70,8 +70,8 @@ def test_faces_are_counter_clockwise():
 def test_multicomponent_scalar_and_flat_z_are_dropped():
     """The 2-component ``sol`` scalar is skipped, and a flat z gives no ``node_z``."""
     dataset = _read(_CLASSIC)
-    assert "sol" not in dataset.data_variable_names
-    assert "node_z" not in dataset.data_variable_names
+    assert "sol" not in dataset.variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 def test_offsets_form_parses():
@@ -244,7 +244,7 @@ def test_vtu_two_component_points_are_z_padded(tmp_path):
     dataset = _read(path)
     assert dataset.mesh.n_node == 3
     assert dataset.mesh.n_face == 1
-    assert "node_z" not in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 def test_vtu_missing_types_dataarray_is_refused(tmp_path):
@@ -300,7 +300,7 @@ def test_vtu_without_attribute_sections_reads(tmp_path):
     )
     dataset = _read(path)
     assert dataset.mesh.n_face == 1
-    assert list(dataset.data_variable_names) == []
+    assert list(dataset.variable_names) == []
 
 
 def test_vtu_skips_multicomponent_and_nameless_attributes(tmp_path):
@@ -327,7 +327,7 @@ def test_vtu_skips_multicomponent_and_nameless_attributes(tmp_path):
     )
     dataset = _read(path)
     assert dataset.get("good").data.tolist() == [4.0, 5.0, 6.0]
-    assert "vec" not in dataset.data_variable_names
+    assert "vec" not in dataset.variable_names
 
 
 # -- the forward token cursor --------------------------------------------------------

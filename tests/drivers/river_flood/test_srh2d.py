@@ -120,8 +120,8 @@ def test_read_via_srhhydro_matches_read_via_srhgeom():
 def test_read_via_srhhydro_still_carries_the_metadata():
     """The .srhmat / ManningsN metadata is found from the stem when entering via hydro."""
     dataset = _read(_HYDRO)
-    assert "material" in dataset.data_variable_names
-    assert "manning_n" in dataset.data_variable_names
+    assert "material" in dataset.variable_names
+    assert "manning_n" in dataset.variable_names
 
 
 def test_can_open_accepts_both_member_files():
@@ -304,7 +304,7 @@ def test_nodes_without_z_build_a_mesh_with_no_node_z(tmp_path):
         "SRHGEOM 30\nNode 1 0.0 0.0\nNode 2 1.0 0.0\nNode 3 0.0 1.0\nElem 1 1 2 3\n"
     )
     dataset = Srh2dDriver().read(str(geom))
-    assert "node_z" not in dataset.data_variable_names
+    assert "node_z" not in dataset.variable_names
 
 
 def test_build_refuses_a_short_elem_record(tmp_path):
@@ -356,7 +356,7 @@ def test_geometry_without_a_srhmat_carries_no_material(tmp_path):
     geom = tmp_path / "m.srhgeom"
     geom.write_text(_GEOM_BODY)
     dataset = Srh2dDriver().read(str(geom))
-    assert "material" not in dataset.data_variable_names
+    assert "material" not in dataset.variable_names
 
 
 def test_material_without_a_hydro_deck_has_no_manning(tmp_path):
@@ -364,8 +364,8 @@ def test_material_without_a_hydro_deck_has_no_manning(tmp_path):
     (tmp_path / "m.srhgeom").write_text(_GEOM_BODY)
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\nMaterial 2 1\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" in dataset.data_variable_names
-    assert "manning_n" not in dataset.data_variable_names
+    assert "material" in dataset.variable_names
+    assert "manning_n" not in dataset.variable_names
 
 
 def test_manning_dropped_when_a_zone_lacks_a_value(tmp_path):
@@ -374,8 +374,8 @@ def test_manning_dropped_when_a_zone_lacks_a_value(tmp_path):
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\nMaterial 9 1\n")
     (tmp_path / "m.srhhydro").write_text("SRHHYDRO 30\nManningsN 2 0.03\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" in dataset.data_variable_names
-    assert "manning_n" not in dataset.data_variable_names
+    assert "material" in dataset.variable_names
+    assert "manning_n" not in dataset.variable_names
 
 
 def test_material_block_without_an_id_drops_the_map(tmp_path):
@@ -383,7 +383,7 @@ def test_material_block_without_an_id_drops_the_map(tmp_path):
     (tmp_path / "m.srhgeom").write_text(_GEOM_BODY)
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\nMaterial\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" not in dataset.data_variable_names
+    assert "material" not in dataset.variable_names
 
 
 def test_material_continuation_before_any_block_is_ignored(tmp_path):
@@ -391,7 +391,7 @@ def test_material_continuation_before_any_block_is_ignored(tmp_path):
     (tmp_path / "m.srhgeom").write_text(_GEOM_BODY)
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\n10 11\nMaterial 2 1\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" in dataset.data_variable_names
+    assert "material" in dataset.variable_names
 
 
 def test_material_with_a_non_integer_element_drops_the_map(tmp_path):
@@ -399,7 +399,7 @@ def test_material_with_a_non_integer_element_drops_the_map(tmp_path):
     (tmp_path / "m.srhgeom").write_text(_GEOM_BODY)
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\nMaterial 2 1 foo\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" not in dataset.data_variable_names
+    assert "material" not in dataset.variable_names
 
 
 def test_element_assigned_to_two_zones_drops_the_map(tmp_path):
@@ -407,7 +407,7 @@ def test_element_assigned_to_two_zones_drops_the_map(tmp_path):
     (tmp_path / "m.srhgeom").write_text(_GEOM_BODY)
     (tmp_path / "m.srhmat").write_text("SRHMAT 30\nMaterial 2 1\nMaterial 3 1\n")
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" not in dataset.data_variable_names
+    assert "material" not in dataset.variable_names
 
 
 def test_incomplete_material_map_drops_the_variable(tmp_path):
@@ -417,7 +417,7 @@ def test_incomplete_material_map_drops_the_variable(tmp_path):
         "SRHMAT 30\nMaterial 2 1\n"
     )  # element 2 unassigned
     dataset = Srh2dDriver().read(str(tmp_path / "m.srhgeom"))
-    assert "material" not in dataset.data_variable_names
+    assert "material" not in dataset.variable_names
 
 
 def test_manning_by_material_skips_malformed_cards(tmp_path):

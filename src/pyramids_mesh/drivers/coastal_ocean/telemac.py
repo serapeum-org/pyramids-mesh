@@ -449,7 +449,7 @@ class SelafinDriver(BaseDriver):
                 ...     copy = os.path.join(directory, "copy.slf")
                 ...     SelafinDriver().write(SelafinDriver().read(source), copy)
                 ...     restored = SelafinDriver().read(copy)
-                >>> restored.data_variable_names
+                >>> restored.variable_names
                 ['WATER DEPTH', 'boundary_node_number']
                 >>> restored.get("boundary_node_number").data.tolist()
                 [1, 2, 0, 3]
@@ -480,7 +480,7 @@ class SelafinDriver(BaseDriver):
         origin = self._coordinate_origin(dataset)
         node_x = (np.asarray(mesh.node_x, dtype=np.float64) - origin[0]).tolist()
         node_y = (np.asarray(mesh.node_y, dtype=np.float64) - origin[1]).tolist()
-        if "node_z" in dataset.data_variable_names:
+        if "node_z" in dataset.variable_names:
             z = dataset.get("node_z")
             if z is not None and z.location == "node":
                 warnings.warn(
@@ -490,7 +490,7 @@ class SelafinDriver(BaseDriver):
                 )
         node_pairs = [
             (name, dataset.get(name))
-            for name in dataset.data_variable_names
+            for name in dataset.variable_names
             if dataset.get(name).location == "node"
             and name not in ("node_z", _BOUNDARY_VARIABLE)
         ]
@@ -543,7 +543,7 @@ class SelafinDriver(BaseDriver):
             list[int] | None: one entry per node, or ``None`` to write zeros.
         """
         reason = f"the dataset carries no {_BOUNDARY_VARIABLE!r}"
-        if _BOUNDARY_VARIABLE in dataset.data_variable_names:
+        if _BOUNDARY_VARIABLE in dataset.variable_names:
             variable = dataset.get(_BOUNDARY_VARIABLE)
             location = getattr(variable, "location", None)
             array = np.asarray(variable.data).reshape(-1)
@@ -740,7 +740,7 @@ def build_minimal_fixture_selafin(path: str) -> None:
             ...     dataset = SelafinDriver().read(path)
             >>> dataset.mesh.n_node
             4
-            >>> dataset.data_variable_names
+            >>> dataset.variable_names
             ['WATER DEPTH']
     """
     write_selafin(
@@ -913,7 +913,7 @@ def write_selafin(
             'pyramids-mesh'
             >>> "start_date" in dataset.global_attributes
             False
-            >>> dataset.data_variable_names
+            >>> dataset.variable_names
             ['WATER DEPTH']
     """
     if len(values) != len(times):

@@ -226,7 +226,7 @@ def test_selafin_multiword_name_keeps_its_tail(tmp_path):
     names = ["FREE SURFACE    M               "]
     dataset = SelafinDriver().read(_write(tmp_path, variable_names=names))
 
-    assert "FREE SURFACE" in dataset.data_variable_names
+    assert "FREE SURFACE" in dataset.variable_names
 
 
 def test_selafin_time_values_are_read(tmp_path):
@@ -251,8 +251,8 @@ def test_selafin_duplicate_variable_names_are_kept_apart(tmp_path):
         _write(tmp_path, variable_names=names, values=values)
     )
 
-    assert "VELOCITY U" in dataset.data_variable_names
-    assert "VELOCITY U (2)" in dataset.data_variable_names
+    assert "VELOCITY U" in dataset.variable_names
+    assert "VELOCITY U (2)" in dataset.variable_names
 
 
 def test_selafin_partial_final_timestep_warns_and_is_dropped(tmp_path):
@@ -492,7 +492,7 @@ def test_selafin_all_zero_boundary_record_adds_no_variable(tmp_path):
     """A mesh with no boundary numbering gains nothing from an array of zeros."""
     dataset = SelafinDriver().read(_write(tmp_path))
 
-    assert "boundary_node_number" not in dataset.data_variable_names
+    assert "boundary_node_number" not in dataset.variable_names
     assert "n_boundary_nodes" not in dataset.global_attributes
 
 

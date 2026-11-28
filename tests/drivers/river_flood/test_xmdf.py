@@ -83,7 +83,7 @@ def test_final_summary_is_not_read_as_a_timestep(mesh):
     """The ``/Final`` snapshot is skipped, so the temporal dataset is not doubled."""
     attached = mesh.attach_data(str(_XMDF))
 
-    names = list(attached.data_variable_names)
+    names = list(attached.variable_names)
     assert names.count("Minimum dt") == 1
     # three real timesteps, not four (the Final snapshot would have added one)
     assert attached.get("Minimum dt").shape[0] == 3

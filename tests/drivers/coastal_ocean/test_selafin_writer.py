@@ -35,8 +35,8 @@ def test_node_z_is_geometry_not_a_written_data_variable(tmp_path):
     out = tmp_path / "with_z.slf"
     SelafinDriver().write(with_z, str(out))
     back = _read(str(out))
-    assert "node_z" not in back.data_variable_names
-    assert "WATER DEPTH" in back.data_variable_names
+    assert "node_z" not in back.variable_names
+    assert "WATER DEPTH" in back.variable_names
 
 
 def test_dropping_node_z_warns(tmp_path):
@@ -88,8 +88,8 @@ def test_round_trip_preserves_mesh_and_results(tmp_path):
         back.mesh.face_node_connectivity.original_start_index
         == original.mesh.face_node_connectivity.original_start_index
     )
-    assert list(back.data_variable_names) == list(original.data_variable_names)
-    name = list(original.data_variable_names)[0]
+    assert list(back.variable_names) == list(original.variable_names)
+    name = list(original.variable_names)[0]
     assert back.get(name).units == original.get(name).units
     np.testing.assert_allclose(back.get(name).data, original.get(name).data)
     np.testing.assert_allclose(list(back.time_values), list(original.time_values))
@@ -152,7 +152,7 @@ def test_write_refuses_mixed_element_widths(tmp_path):
     dataset = type(
         "_Dataset",
         (),
-        {"mesh": fake_mesh, "data_variable_names": [], "time_values": None},
+        {"mesh": fake_mesh, "variable_names": [], "time_values": None},
     )()
     with pytest.raises(FileFormatNotSupportedError, match="same node count"):
         SelafinDriver().write(dataset, str(tmp_path / "mixed.slf"))
@@ -319,7 +319,7 @@ def test_the_boundary_variable_is_not_written_as_a_result(tmp_path):
         ipobo=[1, 2, 0, 3],
     )
     src = _read(staged)
-    assert "boundary_node_number" in src.data_variable_names
+    assert "boundary_node_number" in src.variable_names
 
     out = tmp_path / "written.slf"
     src.to_file(str(out), driver="selafin")
@@ -327,7 +327,7 @@ def test_the_boundary_variable_is_not_written_as_a_result(tmp_path):
     assert read_header(out)["names"] == ["WATER DEPTH"]
     # It comes back on the re-read, because the writer restored the IPOBO record it belongs
     # in -- not because it was written as a result.
-    assert _read(out).data_variable_names == [
+    assert _read(out).variable_names == [
         "WATER DEPTH",
         "boundary_node_number",
     ]
@@ -376,7 +376,7 @@ def test_boundary_numbering_of_the_wrong_length_is_ignored_with_a_warning():
     """
     variable = SimpleNamespace(data=np.array([1, 2]), location="node")
     dataset = SimpleNamespace(
-        data_variable_names=["boundary_node_number"],
+        variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
     with pytest.warns(UserWarning, match="all-zero IPOBO"):
@@ -389,7 +389,7 @@ def test_boundary_numbering_is_taken_when_it_matches_the_node_count():
     """A correctly sized boundary variable is passed through as plain ints."""
     variable = SimpleNamespace(data=np.array([1, 0, 2, 0]), location="node")
     dataset = SimpleNamespace(
-        data_variable_names=["boundary_node_number"],
+        variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
     numbering = SelafinDriver._boundary_numbering(dataset, 4, "matched.slf")
@@ -484,7 +484,7 @@ def test_a_connectivity_without_a_recorded_base_is_written_1_based(tmp_path):
         (),
         {
             "mesh": mesh,
-            "data_variable_names": [],
+            "variable_names": [],
             "variable_names": [],
             "global_attributes": {},
             "time_values": None,
@@ -516,7 +516,7 @@ def test_a_mesh_with_no_node_variables_writes_no_timesteps(tmp_path):
         (),
         {
             "mesh": source.mesh,
-            "data_variable_names": [],
+            "variable_names": [],
             "variable_names": [],
             "global_attributes": {"title": "geometry only"},
             "time_values": None,
@@ -532,7 +532,7 @@ def test_a_mesh_with_no_node_variables_writes_no_timesteps(tmp_path):
     back = _read(out)
     steps = 0 if back.time_values is None else len(np.asarray(back.time_values))
     assert title == "geometry only", f"the title should survive, got {title!r}"
-    assert back.data_variable_names == []
+    assert back.variable_names == []
     assert steps == 0, f"a mesh with no variables should write no steps, got {steps}"
 
 
@@ -557,7 +557,7 @@ def test_a_non_node_located_node_z_is_left_alone(tmp_path):
     # output path, and tmp_path carries this test's name.
     about_z = [str(w.message) for w in caught if "bed " in str(w.message)]
     assert not about_z, f"unexpected node_z warning: {about_z}"
-    assert _read(out).data_variable_names == ["WATER DEPTH"]
+    assert _read(out).variable_names == ["WATER DEPTH"]
 
 
 def _write_dated(tmp_path, date_record):
@@ -737,7 +737,7 @@ def test_a_face_located_boundary_variable_is_not_written_as_ipobo(tmp_path):
     """
     variable = SimpleNamespace(data=np.zeros(2), location="face")
     dataset = SimpleNamespace(
-        data_variable_names=["boundary_node_number"],
+        variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
 
@@ -751,7 +751,7 @@ def test_a_wrong_sized_boundary_variable_reports_the_sizes(tmp_path):
     """The warning names the mismatch rather than claiming the numbering is absent."""
     variable = SimpleNamespace(data=np.array([1, 2]), location="node")
     dataset = SimpleNamespace(
-        data_variable_names=["boundary_node_number"],
+        variable_names=["boundary_node_number"],
         get=lambda name: variable,
     )
 

@@ -167,7 +167,7 @@ def test_variable_shape_matches_its_loaded_array(driver, minimal_file):
     if not isinstance(result, MeshDataset):
         pytest.skip("a 1D network carries no data variables")
 
-    for name in result.data_variable_names:
+    for name in result.variable_names:
         variable = result.get(name)
         assert tuple(variable.shape) == tuple(np.asarray(variable.data).shape), name
 
@@ -180,7 +180,7 @@ def test_lazy_driver_defers_its_values(driver, minimal_file):
     if not isinstance(result, MeshDataset):
         pytest.skip("a 1D network carries no data variables")
 
-    for name in result.data_variable_names:
+    for name in result.variable_names:
         variable = result.get(name)
         assert variable.has_data_source, name
         assert variable._data is None, name

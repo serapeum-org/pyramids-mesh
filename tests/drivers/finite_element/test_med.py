@@ -62,7 +62,7 @@ def test_faces_are_zero_based_rebased_and_padded():
 def test_coordinate_z_is_carried_as_node_z():
     """The 3D cylinder's z column becomes a node_z variable."""
     dataset = _read()
-    assert "node_z" in set(dataset.data_variable_names)
+    assert "node_z" in set(dataset.variable_names)
     node_z = dataset.get("node_z")
     assert node_z.location == "node"
     assert node_z.shape == (33,)
