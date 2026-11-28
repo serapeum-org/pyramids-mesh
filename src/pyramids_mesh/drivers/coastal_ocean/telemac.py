@@ -117,8 +117,10 @@ def _peek_header(path: str, endian: str) -> tuple[np.ndarray, int]:
             >>> with tempfile.TemporaryDirectory() as directory:
             ...     path = os.path.join(directory, "model.slf")
             ...     build_minimal_fixture_selafin(path)
-            ...     iparam, ndp = _peek_header(path, detect_endianness(path, expect_first_record=80))
-            >>> ndp, int(iparam[8])
+            ...     iparam, ndp = _peek_header(
+            ...         path, detect_endianness(path, expect_first_record=80)
+            ...     )
+            >>> ndp, int(iparam[_IPARAM_INTERFACE_POINTS])
             (3, 0)
     """
     with open(path, "rb") as handle:
@@ -295,11 +297,17 @@ class SelafinDriver(BaseDriver):
         those would have auto-detection hand the file to a driver that then throws, so the
         header fields the read-time guards use are read here too and the file is declined.
 
+        The sniff reads the header prefix and stops at the dimensions record, so it rules
+        out the *variants* this driver will not read -- not every way a file can fail. A
+        file truncated after that point, or corrupt in its connectivity or its data slabs,
+        is still claimed here and reported by :meth:`read`; a sniff that proved readability
+        outright would have to read the whole file, which is not what dispatch can afford.
+
         Args:
             path: The file to inspect.
 
         Returns:
-            bool: ``True`` when the file is Selafin **and** is a serial 2D mesh.
+            bool: ``True`` when the header declares a serial 2D Selafin mesh.
         """
         try:
             endian = detect_endianness(path, expect_first_record=_TITLE_LENGTH)
@@ -514,7 +522,9 @@ class SelafinDriver(BaseDriver):
         )
 
     @staticmethod
-    def _boundary_numbering(dataset: MeshDataset, n_node: int, path: str):
+    def _boundary_numbering(
+        dataset: MeshDataset, n_node: int, path: str
+    ) -> list[int] | None:
         """Return the ``IPOBO`` numbering to write, or ``None`` when the dataset has none.
 
         A dataset read from a Selafin file carries the numbering on the
@@ -1190,8 +1200,6 @@ class _SelafinReader:
 
     def _read_raw(self, handle) -> bytes:
         """Read one record's raw payload bytes, for the title and name records."""
-        from pyramids_mesh._binary import _read_record
-
         payload = _read_record(handle, self.endian)
         if payload is None:
             raise FileFormatNotSupportedError(
