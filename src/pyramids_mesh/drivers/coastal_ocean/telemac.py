@@ -17,7 +17,7 @@ from __future__ import annotations
 import pyramids  # noqa: F401  # isort:skip
 
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 from pyramids.base._errors import FileFormatNotSupportedError
@@ -38,6 +38,10 @@ from pyramids_mesh._binary import (
 # first. Decoded as latin-1 because every byte is a valid code point there and the field
 # is padding, not real text.
 _TITLE_LENGTH = 80
+# The free-text part: the last 8 bytes are the format marker, which the text must not
+# grow into -- a reader takes the float width from it.
+_TITLE_TEXT_LENGTH = 72
+_DEFAULT_TITLE = "pyramids-mesh"
 _FORMAT_DOUBLE = "SERAFIND"
 _FORMAT_SINGLE = "SERAFIN"
 
@@ -567,7 +571,7 @@ class SelafinDriver(BaseDriver):
             f"{path!r} is written with an all-zero IPOBO record: {reason}, and a boundary "
             f"numbering cannot be derived from the topology. TELEMAC needs it to attach "
             f"boundary conditions, so the file is geometry only.",
-            stacklevel=3,
+            stacklevel=5,
         )
         return None
 
@@ -633,16 +637,35 @@ class SelafinDriver(BaseDriver):
                 warnings.warn(
                     f"{path!r} is written without a date record: its 'start_date' "
                     f"attribute {start_date!r} is not an ISO-8601 instant ({error}).",
-                    stacklevel=4,
+                    stacklevel=5,
                 )
                 return None
         else:
             warnings.warn(
                 f"{path!r} is written without a date record: its 'start_date' attribute "
                 f"is a {type(start_date).__name__}, not an ISO-8601 string.",
-                stacklevel=4,
+                stacklevel=5,
             )
             return None
+        if stamp.tzinfo is not None:
+            # The record has six integer fields and no offset, so an offset cannot be
+            # stored. Dropping it would move the anchor by that offset; converting to UTC
+            # keeps the instant, which is the thing the time axis is measured from.
+            shifted = stamp.astimezone(timezone.utc).replace(tzinfo=None)
+            warnings.warn(
+                f"{path!r} is written with its start_date converted to UTC "
+                f"({stamp.isoformat()} -> {shifted.isoformat()}): the Selafin date record "
+                f"has no time-zone field, and dropping the offset would move the time "
+                f"axis by it.",
+                stacklevel=5,
+            )
+            stamp = shifted
+        if stamp.microsecond:
+            warnings.warn(
+                f"{path!r} is written with the sub-second part of its start_date dropped "
+                f"({stamp.isoformat()}): the Selafin date record stores whole seconds.",
+                stacklevel=5,
+            )
         return [
             stamp.year,
             stamp.month,
@@ -758,6 +781,80 @@ def build_minimal_fixture_selafin(path: str) -> None:
             [[1.5, 1.25, 1.75, 1.125]],
         ],
     )
+
+
+def _title_record(title: object, marker: str, path: str) -> bytes:
+    """Build the 80-byte title record: 72 bytes of text then the 8-byte format marker.
+
+    The record is fixed-width, and the marker is what tells a reader whether every float in
+    the file is 4 or 8 bytes wide. So the text cannot be allowed to grow into it: a 73-
+    character title pushed the marker off the end and produced a file nothing could read,
+    with the failure surfacing as a record-length error from the wrong part of the file. The
+    text is therefore measured and truncated here, and every way a title can fail is
+    reported as a warning rather than an exception, because losing a title is not worth
+    failing a write that is otherwise fine.
+
+    Encoded latin-1, which is the format's encoding: it has no code point for a typographic
+    dash or any non-Latin script, so unencodable characters are replaced rather than raising
+    ``UnicodeEncodeError`` from inside an already-opened output file.
+
+    Args:
+        title: The free-text title, or ``None`` for the package default.
+        marker: ``SERAFIN`` or ``SERAFIND``.
+        path: The output path, for the warning messages.
+
+    Returns:
+        bytes: exactly 80 bytes.
+
+    Examples:
+        - A short title is padded, and the marker occupies the last eight bytes:
+
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import _title_record
+            >>> record = _title_record("flume test", "SERAFIN", "out.slf")
+            >>> len(record)
+            80
+            >>> record[:10].decode("latin-1"), record[72:].decode("latin-1")
+            ('flume test', 'SERAFIN ')
+
+        - An over-long title is truncated so the marker survives, rather than being written
+          over it:
+
+            >>> import warnings
+            >>> from pyramids_mesh.drivers.coastal_ocean.telemac import _title_record
+            >>> with warnings.catch_warnings():
+            ...     warnings.simplefilter("ignore")
+            ...     record = _title_record("T" * 100, "SERAFIND", "out.slf")
+            >>> len(record), record[72:].decode("latin-1")
+            (80, 'SERAFIND')
+    """
+    if title is None:
+        text = _DEFAULT_TITLE
+    elif isinstance(title, str):
+        text = title
+    else:
+        warnings.warn(
+            f"{path!r} is written with the default title: a Selafin title is free text, "
+            f"and this dataset's is a {type(title).__name__}.",
+            stacklevel=6,
+        )
+        text = _DEFAULT_TITLE
+    if len(text) > _TITLE_TEXT_LENGTH:
+        warnings.warn(
+            f"{path!r} is written with its title truncated to {_TITLE_TEXT_LENGTH} "
+            f"characters ({len(text)} given): the title record is fixed-width and the "
+            f"format marker occupies its last 8 bytes.",
+            stacklevel=6,
+        )
+        text = text[:_TITLE_TEXT_LENGTH]
+    encoded = text.encode("latin-1", errors="replace")
+    if encoded != text.encode("latin-1", errors="ignore"):
+        warnings.warn(
+            f"{path!r} is written with characters replaced in its title: the Selafin "
+            f"title record is latin-1, which cannot represent every character of "
+            f"{text!r}.",
+            stacklevel=6,
+        )
+    return encoded.ljust(_TITLE_TEXT_LENGTH) + f"{marker:<8}".encode("latin-1")
 
 
 def _derive_iparam(
@@ -925,6 +1022,12 @@ def write_selafin(
         )
     if date is not None and len(date) != _DATE_FIELDS:
         raise ValueError(f"date must hold {_DATE_FIELDS} fields, got {len(date)}")
+    if any(not _INT32_MIN <= int(v) <= _INT32_MAX for v in origin):
+        # Checked here, with ipobo, rather than at the np.array() call inside the open
+        # block: an OverflowError there leaves a half-written file at the destination.
+        raise ValueError(
+            f"the coordinate origin must fit in the int32 IPARAM stores; got {tuple(origin)}"
+        )
     if ipobo is not None:
         # Every record in the file is int32. A numbering that does not fit wraps silently
         # (2**31 becomes -2147483648), which would look like a plausible boundary number
@@ -951,7 +1054,7 @@ def write_selafin(
     ndp = len(ikle[0])
     float_code = f"{endian}{'f8' if double else 'f4'}"
     marker = _FORMAT_DOUBLE if double else _FORMAT_SINGLE
-    title_record = f"{(title or 'pyramids-mesh'):<72}{marker:<8}"[:_TITLE_LENGTH]
+    title_record = _title_record(title, marker, path)
     boundary = (
         np.asarray(ipobo, dtype=np.int64)
         if ipobo is not None
@@ -968,7 +1071,7 @@ def write_selafin(
         return word + payload + word
 
     with open(path, "wb") as handle:
-        handle.write(record(title_record.encode("latin-1")))
+        handle.write(record(title_record))
         handle.write(
             record(np.array([len(variable_names), 0], f"{endian}i4").tobytes())
         )
@@ -1135,7 +1238,7 @@ class _SelafinReader:
                 f"{self.path!r} declares a date record that is not a calendar instant "
                 f"({[year, month, day, hour, minute, second]}: {error}); no 'start_date' "
                 f"is reported, so the time values stay relative.",
-                stacklevel=5,
+                stacklevel=6,
             )
             return None
         return stamp.isoformat()

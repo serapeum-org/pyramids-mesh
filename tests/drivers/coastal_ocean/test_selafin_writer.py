@@ -14,7 +14,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
-from pyramids.netcdf.ugrid import MeshDataset
+from pyramids.netcdf.ugrid import MeshDataset, UnsupportedMeshFormatError
 
 from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
 
@@ -775,3 +775,127 @@ def test_a_datetime_start_date_is_written_as_the_date_record(tmp_path):
     _title, iparam, date, _ipobo = _header_of(out)
     assert iparam[9] == 1
     assert date == [1993, 7, 14, 6, 30, 15], f"got {date}"
+
+
+def _intact_destination(tmp_path, name="existing.slf"):
+    """Write a valid Selafin file to act as a destination that must survive a failed write."""
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    path = tmp_path / name
+    write_selafin(
+        str(path),
+        node_x=[0.0, 1.0, 1.0, 0.0],
+        node_y=[0.0, 0.0, 1.0, 1.0],
+        ikle=[[1, 2, 3], [1, 3, 4]],
+        variable_names=[],
+        times=[],
+        values=[],
+    )
+    return path, path.stat().st_size
+
+
+def test_an_over_long_title_is_truncated_so_the_file_stays_readable(tmp_path):
+    """The title must not grow into the format marker in the fixed-width title record.
+
+    73 characters pushed ``SERAFIN``/``SERAFIND`` off the end of the 80-byte record, and
+    since the marker is what declares the float width, the file then failed to read with a
+    record-length error from a completely different part of the file.
+    """
+    src = _read(_SLF)
+    src.global_attributes["title"] = "T" * 73
+    out = tmp_path / "long_title.slf"
+
+    with pytest.warns(UserWarning, match="truncated to 72 characters"):
+        src.to_file(str(out), driver="selafin")
+
+    header = read_header(out)
+    assert header["marker"] == "SERAFIND", (
+        f"the marker must survive, got {header['marker']!r}"
+    )
+    assert header["title"] == "T" * 72
+    assert _read(out).mesh.n_node == 4, "the written file must still read"
+
+
+def test_a_title_latin_1_cannot_hold_is_replaced_not_raised(tmp_path):
+    """An unencodable character is replaced, and the destination is never truncated.
+
+    The title record is latin-1, which has no en dash. Encoding inside the opened output
+    left a valid 356-byte file at the destination as 0 bytes.
+    """
+    src = _read(_SLF)
+    src.global_attributes["title"] = "Rouse \u2013 profile"
+    out, size = _intact_destination(tmp_path)
+
+    with pytest.warns(UserWarning, match="characters replaced in its title"):
+        src.to_file(str(out), driver="selafin")
+
+    assert out.stat().st_size > size, (
+        "the write should have replaced the file, not emptied it"
+    )
+    assert _read(out).global_attributes["title"] == "Rouse ? profile"
+
+
+def test_a_title_of_the_wrong_type_falls_back_to_the_default(tmp_path):
+    """A non-string title warns and uses the default rather than raising a bare TypeError."""
+    src = _read(_SLF)
+    src.global_attributes["title"] = ["a", "b"]
+    out = tmp_path / "listed.slf"
+
+    with pytest.warns(UserWarning, match="is a list"):
+        src.to_file(str(out), driver="selafin")
+
+    assert read_header(out)["title"] == "pyramids-mesh"
+
+
+def test_an_origin_outside_int32_is_refused_before_the_file_is_touched(tmp_path):
+    """The origin is range-checked with ipobo, so a bad one cannot half-write a file.
+
+    Reaching ``np.array`` inside the opened output raised OverflowError and left a 104-byte
+    stub where a valid file had been.
+    """
+    src = _read(_SLF)
+    src.global_attributes["x_origin"] = 2**31
+    src.global_attributes["y_origin"] = 0
+    out, size = _intact_destination(tmp_path, "origin.slf")
+
+    # to_file wraps the driver's ValueError, which is what a caller going through the
+    # facade actually sees; the driver's own message is carried inside it.
+    with pytest.raises(UnsupportedMeshFormatError, match="must fit in the int32"):
+        src.to_file(str(out), driver="selafin")
+
+    assert out.stat().st_size == size, (
+        "a refused write must leave the destination alone"
+    )
+
+
+def test_a_timezone_aware_start_date_keeps_the_instant(tmp_path):
+    """The record has no offset field, so the instant is converted rather than shifted.
+
+    Dropping ``+02:00`` would move the time axis by two hours and say nothing about it.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    src = _read(_SLF)
+    src.global_attributes["start_date"] = datetime(
+        1993, 7, 14, 6, 30, 15, tzinfo=timezone(timedelta(hours=2))
+    )
+    out = tmp_path / "tz.slf"
+
+    with pytest.warns(UserWarning, match="converted to UTC"):
+        src.to_file(str(out), driver="selafin")
+
+    assert read_header(out)["date"] == [1993, 7, 14, 4, 30, 15]
+
+
+def test_a_sub_second_start_date_warns_that_it_is_dropped(tmp_path):
+    """The record stores whole seconds, so losing the microseconds is announced."""
+    from datetime import datetime
+
+    src = _read(_SLF)
+    src.global_attributes["start_date"] = datetime(1993, 7, 14, 6, 30, 15, 123456)
+    out = tmp_path / "micro.slf"
+
+    with pytest.warns(UserWarning, match="sub-second part"):
+        src.to_file(str(out), driver="selafin")
+
+    assert read_header(out)["date"] == [1993, 7, 14, 6, 30, 15]
