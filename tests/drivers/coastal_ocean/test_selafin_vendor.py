@@ -26,8 +26,9 @@ import pytest
 from pyramids.base._errors import FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import MeshDataset, UnsupportedMeshFormatError
 
-from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
 from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
+
+from .selafin_header import read_header
 
 _SAMPLE_DIR = Path(__file__).resolve().parents[2] / "data" / "selafin"
 
@@ -233,15 +234,8 @@ def test_the_boundary_record_is_read_even_when_iparam_claims_none(sample):
     always read and the count recomputed from it.
     """
     path = sample("qgismesh.slf")
-    endian = detect_endianness(path, expect_first_record=80)
-    with open(path, "rb") as handle:
-        _read_record(handle, endian)
-        counts = read_record_ints(handle, endian, 2)
-        for _ in range(int(counts[0] + counts[1])):
-            _read_record(handle, endian)
-        iparam = read_record_ints(handle, endian, 10)
 
-    assert int(iparam[7]) == 0
+    assert read_header(path)["iparam"][7] == 0
 
     dataset = MeshDataset.read_file(path, driver="selafin")
     boundary = np.asarray(dataset.get("boundary_node_number").data)
@@ -299,23 +293,13 @@ def test_round_trip_of_a_real_file_preserves_its_header(tmp_path, sample):
     out = tmp_path / "round_trip.slf"
     source.to_file(str(out), driver="selafin")
 
-    endian = detect_endianness(str(out), expect_first_record=80)
-    with open(out, "rb") as handle:
-        title = _read_record(handle, endian).decode("latin-1")
-        counts = read_record_ints(handle, endian, 2)
-        for _ in range(int(counts[0] + counts[1])):
-            _read_record(handle, endian)
-        iparam = read_record_ints(handle, endian, 10)
-        date = read_record_ints(handle, endian, 6)
-        dims = read_record_ints(handle, endian, 4)
-        read_record_ints(handle, endian, int(dims[0]) * int(dims[2]))
-        ipobo = read_record_ints(handle, endian, int(dims[1]))
+    header = read_header(out)
 
-    assert title[:72].strip() == "Sloped flume Rouse profile test"
-    assert int(iparam[7]) == 264
-    assert int(iparam[9]) == 1
-    assert date.tolist() == [1900, 1, 1, 0, 0, 0]
-    assert np.count_nonzero(ipobo) == 264
+    assert header["title"] == "Sloped flume Rouse profile test"
+    assert header["iparam"][7] == 264
+    assert header["iparam"][9] == 1
+    assert header["date"] == [1900, 1, 1, 0, 0, 0]
+    assert np.count_nonzero(header["ipobo"]) == 264
 
     back = MeshDataset.read_file(str(out), driver="selafin")
     assert back.global_attributes["title"] == "Sloped flume Rouse profile test"
@@ -333,17 +317,10 @@ def test_the_boundary_numbering_is_not_written_as_a_result_series(tmp_path, samp
     out = tmp_path / "round_trip.slf"
     source.to_file(str(out), driver="selafin")
 
-    endian = detect_endianness(str(out), expect_first_record=80)
-    with open(out, "rb") as handle:
-        _read_record(handle, endian)
-        counts = read_record_ints(handle, endian, 2)
-        names = [
-            _read_record(handle, endian).decode("latin-1")
-            for _ in range(int(counts[0] + counts[1]))
-        ]
+    names = read_header(out)["names"]
 
     assert len(names) == 5
-    assert [name[:16].strip() for name in names] == [
+    assert names == [
         "VELOCITY U",
         "VELOCITY V",
         "WATER DEPTH",

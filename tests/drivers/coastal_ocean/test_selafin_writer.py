@@ -18,6 +18,8 @@ from pyramids.netcdf.ugrid import MeshDataset
 
 from pyramids_mesh.drivers.coastal_ocean.telemac import SelafinDriver
 
+from .selafin_header import read_header
+
 _SLF = Path(__file__).parent.parent.parent / "data" / "minimal.slf"
 
 
@@ -158,20 +160,8 @@ def test_write_refuses_mixed_element_widths(tmp_path):
 
 def _header_of(path):
     """Return ``(title, iparam, date, ipobo)`` read back from a written Selafin file."""
-    from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
-
-    endian = detect_endianness(str(path), expect_first_record=80)
-    with open(path, "rb") as handle:
-        title = _read_record(handle, endian).decode("latin-1")
-        counts = read_record_ints(handle, endian, 2)
-        for _ in range(int(counts[0] + counts[1])):
-            _read_record(handle, endian)
-        iparam = read_record_ints(handle, endian, 10).tolist()
-        date = read_record_ints(handle, endian, 6).tolist() if iparam[9] == 1 else None
-        dims = read_record_ints(handle, endian, 4)
-        read_record_ints(handle, endian, int(dims[0]) * int(dims[2]))
-        ipobo = read_record_ints(handle, endian, int(dims[1])).tolist()
-    return title[:72].strip(), iparam, date, ipobo
+    header = read_header(path)
+    return header["title"], header["iparam"], header["date"], header["ipobo"]
 
 
 def test_the_writer_keeps_the_datasets_own_title(tmp_path):
@@ -206,12 +196,10 @@ def test_the_writer_restores_the_boundary_numbering_and_its_count(tmp_path):
     TELEMAC reads the boundary numbering to attach boundary conditions; a file written with
     zeros there is geometry only, whatever mesh it carries.
     """
-    src = _read(_SLF)
-    src = MeshDataset.read_file(str(_SLF), driver="selafin")
-    staged = tmp_path / "staged.slf"
     # Give the source a boundary numbering by writing one and reading it back.
     from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
 
+    staged = tmp_path / "staged.slf"
     write_selafin(
         str(staged),
         node_x=[0.0, 1.0, 1.0, 0.0],
@@ -336,18 +324,7 @@ def test_the_boundary_variable_is_not_written_as_a_result(tmp_path):
     out = tmp_path / "written.slf"
     src.to_file(str(out), driver="selafin")
 
-    from pyramids_mesh._binary import _read_record, detect_endianness, read_record_ints
-
-    endian = detect_endianness(str(out), expect_first_record=80)
-    with open(out, "rb") as handle:
-        _read_record(handle, endian)
-        counts = read_record_ints(handle, endian, 2)
-        names = [
-            _read_record(handle, endian).decode("latin-1")[:16].strip()
-            for _ in range(int(counts[0] + counts[1]))
-        ]
-
-    assert names == ["WATER DEPTH"]
+    assert read_header(out)["names"] == ["WATER DEPTH"]
     # It comes back on the re-read, because the writer restored the IPOBO record it belongs
     # in -- not because it was written as a result.
     assert _read(out).data_variable_names == [
