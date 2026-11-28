@@ -493,11 +493,17 @@ class SelafinDriver(BaseDriver):
                     "elevation) is dropped on write; it is geometry, not a result series.",
                     stacklevel=2,
                 )
-        node_pairs = [
+        # One get() per variable: a lazy variable's get() can be the expensive part, and
+        # the comprehension called it twice for every name it kept.
+        candidates = (
             (name, dataset.get(name))
             for name in dataset.variable_names
-            if dataset.get(name).location == "node"
-            and name not in ("node_z", _BOUNDARY_VARIABLE)
+            if name not in ("node_z", _BOUNDARY_VARIABLE)
+        )
+        node_pairs = [
+            (name, variable)
+            for name, variable in candidates
+            if variable.location == "node"
         ]
         names = [self._selafin_name(name, var.units) for name, var in node_pairs]
         if node_pairs:
@@ -554,7 +560,13 @@ class SelafinDriver(BaseDriver):
         if _BOUNDARY_VARIABLE in dataset.variable_names:
             variable = dataset.get(_BOUNDARY_VARIABLE)
             location = getattr(variable, "location", None)
-            array = np.asarray(variable.data).reshape(-1)
+            # .data is read only once the location is known to be right: on a lazy
+            # variable it is a file read, and a face-located field is rejected regardless.
+            array = (
+                np.asarray(variable.data).reshape(-1)
+                if location == "node"
+                else np.empty(0)
+            )
             if location != "node":
                 # IPOBO is one entry per node by definition; a same-named face or edge
                 # field is a different quantity and writing it would mislabel it.

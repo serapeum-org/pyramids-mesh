@@ -902,3 +902,26 @@ def test_a_sub_second_start_date_warns_that_it_is_dropped(tmp_path):
         src.to_file(str(out), driver="selafin")
 
     assert read_header(out)["date"] == [1993, 7, 14, 6, 30, 15]
+
+
+def test_an_explicit_iparam_plus_an_origin_is_refused(tmp_path):
+    """Passing both would mean one of two IPARAM[2]/[3] sources silently losing.
+
+    An explicit ``iparam`` already carries the origin, so the two can disagree; the caller
+    knows which they meant and ``write_selafin`` does not. Refused like the analogous
+    ``date``/``iparam`` clash rather than discarding the argument without a word.
+    """
+    from pyramids_mesh.drivers.coastal_ocean.telemac import write_selafin
+
+    with pytest.raises(ValueError, match="not both"):
+        write_selafin(
+            str(tmp_path / "clash.slf"),
+            node_x=[0.0, 1.0, 1.0, 0.0],
+            node_y=[0.0, 0.0, 1.0, 1.0],
+            ikle=[[1, 2, 3], [1, 3, 4]],
+            variable_names=[],
+            times=[],
+            values=[],
+            iparam=[1, 0, 315000, 5345000, 0, 0, 0, 0, 0, 0],
+            origin=(315000, 5345000),
+        )
